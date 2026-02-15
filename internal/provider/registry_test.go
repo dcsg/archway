@@ -2,7 +2,9 @@ package provider
 
 import (
 	"context"
+	"io/fs"
 	"testing"
+	"testing/fstest"
 )
 
 type fakeProvider struct{}
@@ -21,6 +23,10 @@ func (fakeProvider) Migrate(_ context.Context, _ MigrateRequest) (*MigrateRespon
 
 func (fakeProvider) GetInfo(_ context.Context) (*ProviderInfo, error) {
 	return &ProviderInfo{Name: "fake", Language: "fake"}, nil
+}
+
+func (fakeProvider) GetTemplateFS() fs.FS {
+	return fstest.MapFS{}
 }
 
 func TestRegistry_RegisterGetList(t *testing.T) {

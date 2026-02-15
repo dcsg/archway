@@ -112,6 +112,10 @@ func (p *GoProvider) GetInfo(_ context.Context) (*provider.ProviderInfo, error) 
 	}, nil
 }
 
+func (p *GoProvider) GetTemplateFS() fs.FS {
+	return templatesFS
+}
+
 func loadManifest(templateDir string) (*scaffold.Manifest, error) {
 	data, err := fs.ReadFile(templatesFS, path.Join(templateDir, "manifest.yaml"))
 	if err != nil {

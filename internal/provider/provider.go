@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"errors"
+	"io/fs"
 )
 
 var ErrNotImplemented = errors.New("not yet implemented")
@@ -12,6 +13,9 @@ type LanguageProvider interface {
 	Analyze(ctx context.Context, req AnalyzeRequest) (*AnalyzeResponse, error)
 	Migrate(ctx context.Context, req MigrateRequest) (*MigrateResponse, error)
 	GetInfo(ctx context.Context) (*ProviderInfo, error)
+	// GetTemplateFS returns the embedded filesystem for template files.
+	// Used by the CLI wizard to load wizard.yaml and manifest.yaml.
+	GetTemplateFS() fs.FS
 }
 
 type ScaffoldRequest struct {

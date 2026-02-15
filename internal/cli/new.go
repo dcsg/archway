@@ -3,11 +3,14 @@ package cli
 import (
 	"context"
 	"fmt"
+	"io/fs"
+	"path"
 	"path/filepath"
 	"strings"
 
 	"github.com/charmbracelet/huh"
 	"github.com/dcsg/archway/internal/provider"
+	"github.com/dcsg/archway/internal/scaffold"
 	_ "github.com/dcsg/archway/providers/golang"
 	"github.com/spf13/cobra"
 )
@@ -58,20 +61,20 @@ This command can run interactively through a wizard or non-interactively using f
 }
 
 func runNew(ctx context.Context, opts *newCommandOptions) error {
-	language := strings.TrimSpace(opts.Language)
-	if language == "" {
-		language = "go"
-	}
-	providerImpl, err := provider.Get(language)
-	if err != nil {
-		return err
+	if strings.TrimSpace(opts.Language) == "" {
+		opts.Language = "go"
 	}
 
+	// Wizard mode: interactive prompts for all options.
+	wizardVars := map[string]interface{}{}
 	if !opts.NoWizard {
-		if err := runNewWizard(opts); err != nil {
+		var err error
+		wizardVars, err = runNewWizard(opts)
+		if err != nil {
 			return err
 		}
 	}
+
 	if strings.TrimSpace(opts.Name) == "" {
 		return fmt.Errorf("project name is required")
 	}
@@ -85,19 +88,30 @@ func runNew(ctx context.Context, opts *newCommandOptions) error {
 		opts.OutputDir = "."
 	}
 
-	request := provider.ScaffoldRequest{
-		ProjectName:  opts.Name,
-		ModulePath:   opts.ModulePath,
-		TemplateName: opts.Template,
-		OutputDir:    filepath.Clean(filepath.Join(opts.OutputDir, opts.Name)),
-		Options:      map[string]string{},
+	providerImpl, err := provider.Get(opts.Language)
+	if err != nil {
+		return err
+	}
+
+	// Build options: wizard vars first, then --set overrides on top.
+	options := map[string]string{}
+	for k, v := range wizardVars {
+		options[k] = fmt.Sprint(v)
 	}
 	for _, kv := range opts.Sets {
 		parts := strings.SplitN(kv, "=", 2)
 		if len(parts) != 2 {
 			return fmt.Errorf("invalid --set %q (expected key=value)", kv)
 		}
-		request.Options[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+		options[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+	}
+
+	request := provider.ScaffoldRequest{
+		ProjectName:  opts.Name,
+		ModulePath:   opts.ModulePath,
+		TemplateName: opts.Template,
+		OutputDir:    filepath.Clean(filepath.Join(opts.OutputDir, opts.Name)),
+		Options:      options,
 	}
 
 	resp, err := providerImpl.Scaffold(ctx, request)
@@ -111,7 +125,7 @@ func runNew(ctx context.Context, opts *newCommandOptions) error {
 	return nil
 }
 
-func runNewWizard(opts *newCommandOptions) error {
+func runNewWizard(opts *newCommandOptions) (map[string]interface{}, error) {
 	// Step 1: Common fields — name, output dir, language.
 	languages := provider.List()
 	languageOptions := make([]huh.Option[string], 0, len(languages))
@@ -141,17 +155,17 @@ func runNewWizard(opts *newCommandOptions) error {
 	}
 
 	if err := huh.NewForm(huh.NewGroup(commonFields...)).Run(); err != nil {
-		return err
+		return nil, err
 	}
 
-	// Step 2: Language-specific fields — template, module path, etc.
+	// Step 2: Template selection.
 	providerImpl, err := provider.Get(opts.Language)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	info, err := providerImpl.GetInfo(context.Background())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	templateOptions := make([]huh.Option[string], 0, len(info.Templates))
@@ -162,18 +176,47 @@ func runNewWizard(opts *newCommandOptions) error {
 		opts.Template = info.Templates[0].Name
 	}
 
-	langFields := []huh.Field{
+	if err := huh.NewForm(huh.NewGroup(
 		huh.NewSelect[string]().Title("Template").Value(&opts.Template).Options(templateOptions...),
+	)).Run(); err != nil {
+		return nil, err
 	}
 
-	// Add module path only for Go.
-	if opts.Language == "go" {
-		langFields = append(langFields,
-			huh.NewInput().Title("Go module path").
-				Description("e.g. github.com/org/service (leave empty for example.com/<name>)").
-				Value(&opts.ModulePath),
-		)
+	// Step 3: Template-specific wizard from wizard.yaml.
+	templateDir := path.Join("templates", opts.Template)
+	tFS := providerImpl.GetTemplateFS()
+
+	manifestData, err := fs.ReadFile(tFS, path.Join(templateDir, "manifest.yaml"))
+	if err != nil {
+		return nil, fmt.Errorf("read manifest: %w", err)
+	}
+	manifest, err := scaffold.ParseManifest(manifestData)
+	if err != nil {
+		return nil, err
 	}
 
-	return huh.NewForm(huh.NewGroup(langFields...)).Run()
+	wizardData, err := fs.ReadFile(tFS, path.Join(templateDir, "wizard.yaml"))
+	if err != nil {
+		// No wizard.yaml — return defaults only.
+		return manifest.Defaults(), nil
+	}
+	wizardCfg, err := scaffold.ParseWizard(wizardData)
+	if err != nil {
+		return nil, err
+	}
+
+	vars, err := scaffold.RunWizard(wizardCfg, manifest)
+	if err != nil {
+		return nil, err
+	}
+
+	// Copy wizard results back to opts for fields it manages.
+	if name, ok := vars["ServiceName"].(string); ok && name != "" {
+		opts.Name = name
+	}
+	if mod, ok := vars["ModulePath"].(string); ok && mod != "" {
+		opts.ModulePath = mod
+	}
+
+	return vars, nil
 }
