@@ -205,7 +205,16 @@ func runNewWizard(opts *newCommandOptions) (map[string]interface{}, error) {
 		return nil, err
 	}
 
-	vars, err := scaffold.RunWizard(wizardCfg, manifest)
+	// Pre-seed with values already collected so the wizard shows them
+	// instead of <nil>, and the user can just confirm or edit.
+	initial := map[string]interface{}{}
+	if opts.Name != "" {
+		initial["ServiceName"] = opts.Name
+	}
+	if opts.ModulePath != "" {
+		initial["ModulePath"] = opts.ModulePath
+	}
+	vars, err := scaffold.RunWizard(wizardCfg, manifest, initial)
 	if err != nil {
 		return nil, err
 	}

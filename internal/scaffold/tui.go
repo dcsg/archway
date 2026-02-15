@@ -8,7 +8,7 @@ import (
 	"github.com/charmbracelet/huh"
 )
 
-func RunWizard(wizardConfig *WizardConfig, manifest *Manifest) (map[string]interface{}, error) {
+func RunWizard(wizardConfig *WizardConfig, manifest *Manifest, initial map[string]interface{}) (map[string]interface{}, error) {
 	if wizardConfig == nil {
 		return nil, fmt.Errorf("wizard config is nil")
 	}
@@ -17,6 +17,9 @@ func RunWizard(wizardConfig *WizardConfig, manifest *Manifest) (map[string]inter
 	}
 
 	state := manifest.Defaults()
+	for k, v := range initial {
+		state[k] = v
+	}
 	groups, err := buildWizardGroups(wizardConfig, manifest, state)
 	if err != nil {
 		return nil, err
