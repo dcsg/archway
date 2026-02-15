@@ -1,0 +1,74 @@
+{{- if and .HasHTTP .UseAuth}}
+package httphandler
+
+import (
+	"context"
+	"log/slog"
+	"net/http"
+	"strings"
+
+	"{{.ModulePath}}/domain"
+	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jwt"
+)
+
+type contextKey string
+
+const userClaimsKey contextKey = "user_claims"
+
+// UserClaims holds extracted JWT claims.
+type UserClaims struct {
+	Subject string
+	Email   string
+	Roles   []string
+}
+
+// GetUserClaims extracts user claims from the request context.
+func GetUserClaims(ctx context.Context) (*UserClaims, bool) {
+	claims, ok := ctx.Value(userClaimsKey).(*UserClaims)
+	return claims, ok
+}
+
+// JWTAuth returns middleware that validates JWT tokens from the Authorization header.
+func JWTAuth(jwksURL string, issuer string, audience string, logger *slog.Logger) func(http.Handler) http.Handler {
+	keySet, err := jwk.Fetch(context.Background(), jwksURL)
+	if err != nil {
+		logger.Error("failed to fetch JWKS", "url", jwksURL, "error", err)
+	}
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			authHeader := r.Header.Get("Authorization")
+			if authHeader == "" {
+				MapError(w, r, logger, domain.ErrUnauthorized)
+				return
+			}
+
+			parts := strings.SplitN(authHeader, " ", 2)
+			bearerPartCount := 2
+			if len(parts) != bearerPartCount || !strings.EqualFold(parts[0], "bearer") {
+				MapError(w, r, logger, domain.ErrUnauthorized)
+				return
+			}
+
+			token, err := jwt.Parse([]byte(parts[1]),
+				jwt.WithKeySet(keySet),
+				jwt.WithIssuer(issuer),
+				jwt.WithAudience(audience),
+				jwt.WithValidate(true),
+			)
+			if err != nil {
+				logger.WarnContext(r.Context(), "invalid jwt", "error", err)
+				MapError(w, r, logger, domain.ErrUnauthorized)
+				return
+			}
+
+			claims := &UserClaims{
+				Subject: token.Subject(),
+			}
+			ctx := context.WithValue(r.Context(), userClaimsKey, claims)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+{{- end}}

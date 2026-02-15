@@ -1,0 +1,8 @@
+steps:
+  - id: basics
+    questions:
+      - variable: ServiceName
+        prompt: Service name
+        validate: "^[a-z][a-z0-9-]*$"
+      - variable: ModulePath
+        prompt: Module path

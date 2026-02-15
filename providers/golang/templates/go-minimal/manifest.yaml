@@ -1,0 +1,15 @@
+name: go-minimal
+description: Minimal Go service template
+language: go
+version: "1.0"
+variables:
+  - name: ServiceName
+    type: string
+    description: Service directory name
+    required: true
+  - name: ModulePath
+    type: string
+    description: Go module path
+    required: true
+hooks:
+  - go mod tidy

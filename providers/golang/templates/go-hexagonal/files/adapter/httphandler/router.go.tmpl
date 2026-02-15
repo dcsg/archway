@@ -1,0 +1,112 @@
+{{- if .HasHTTP}}
+package httphandler
+
+import (
+	"context"
+	"log/slog"
+	"net/http"
+	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	{{- if .HasCORS}}
+	"github.com/go-chi/cors"
+	{{- end}}
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+)
+
+const (
+	defaultReadTimeout    = 30 * time.Second
+	defaultWriteTimeout   = 30 * time.Second
+	serverShutdownTimeout = 10 * time.Second
+)
+
+// NewRouter creates a configured Chi router with standard middleware.
+func NewRouter(logger *slog.Logger) chi.Router {
+	r := chi.NewRouter()
+
+	// Standard middleware stack.
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(otelhttp.NewMiddleware("{{.ServiceName}}"))
+	r.Use(NewRequestLogger(logger))
+	r.Use(SecurityHeaders)
+	r.Use(middleware.Recoverer)
+	r.Use(middleware.Timeout(defaultWriteTimeout))
+	{{- if .HasCORS}}
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Request-ID"},
+		ExposedHeaders:   []string{"X-Request-ID"},
+		AllowCredentials: false,
+		MaxAge:           300,
+	}))
+	{{- end}}
+
+	// Health check endpoints.
+	r.Get("/health/live", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status":"ok"}`))
+	})
+
+	r.Get("/health/ready", func(w http.ResponseWriter, _ *http.Request) {
+		// TODO: Add dependency health checks (DB, Redis, etc.).
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status":"ok"}`))
+	})
+
+	return r
+}
+
+// SecurityHeaders adds standard security headers to responses.
+func SecurityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		next.ServeHTTP(w, r)
+	})
+}
+
+// HTTPServer wraps an http.Server to implement lifecycle.Runnable.
+type HTTPServer struct {
+	server *http.Server
+	logger *slog.Logger
+}
+
+// NewHTTPServer creates a new HTTPServer.
+func NewHTTPServer(addr string, handler http.Handler, logger *slog.Logger) *HTTPServer {
+	return &HTTPServer{
+		server: &http.Server{
+			Addr:         addr,
+			Handler:      handler,
+			ReadTimeout:  defaultReadTimeout,
+			WriteTimeout: defaultWriteTimeout,
+		},
+		logger: logger,
+	}
+}
+
+// Run starts the HTTP server and blocks until the context is cancelled.
+func (s *HTTPServer) Run(ctx context.Context) error {
+	errCh := make(chan error, 1)
+	go func() {
+		s.logger.Info("http server listening", "addr", s.server.Addr)
+		if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			errCh <- err
+		}
+		close(errCh)
+	}()
+
+	select {
+	case err := <-errCh:
+		return err
+	case <-ctx.Done():
+		s.logger.Info("http server shutting down")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), serverShutdownTimeout)
+		defer cancel()
+		return s.server.Shutdown(shutdownCtx)
+	}
+}
+{{- end}}

@@ -1,0 +1,80 @@
+{{- if and .HasHTTP .HasRateLimiting}}
+package httphandler
+
+import (
+	"log/slog"
+	"net"
+	"net/http"
+	"sync"
+	"time"
+
+	"golang.org/x/time/rate"
+)
+
+const (
+	rateLimitCleanupInterval = 3 * time.Minute
+	rateLimitStaleAfter      = 5 * time.Minute
+)
+
+type visitor struct {
+	limiter  *rate.Limiter
+	lastSeen time.Time
+}
+
+// RateLimiter returns middleware that limits requests per IP using a token bucket algorithm.
+func RateLimiter(rps int, burst int, logger *slog.Logger) func(http.Handler) http.Handler {
+	var (
+		mu       sync.Mutex
+		visitors = make(map[string]*visitor)
+	)
+
+	// Cleanup stale entries periodically.
+	go func() {
+		ticker := time.NewTicker(rateLimitCleanupInterval)
+		defer ticker.Stop()
+		for range ticker.C {
+			mu.Lock()
+			for ip, v := range visitors {
+				if time.Since(v.lastSeen) > rateLimitStaleAfter {
+					delete(visitors, ip)
+				}
+			}
+			mu.Unlock()
+		}
+	}()
+
+	getVisitor := func(ip string) *rate.Limiter {
+		mu.Lock()
+		defer mu.Unlock()
+
+		v, exists := visitors[ip]
+		if !exists {
+			limiter := rate.NewLimiter(rate.Limit(rps), burst)
+			visitors[ip] = &visitor{limiter: limiter, lastSeen: time.Now()}
+			return limiter
+		}
+
+		v.lastSeen = time.Now()
+		return v.limiter
+	}
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ip, _, err := net.SplitHostPort(r.RemoteAddr)
+			if err != nil {
+				ip = r.RemoteAddr
+			}
+
+			limiter := getVisitor(ip)
+			if !limiter.Allow() {
+				logger.WarnContext(r.Context(), "rate limited", "ip", ip)
+				w.Header().Set("Retry-After", "1")
+				http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+{{- end}}

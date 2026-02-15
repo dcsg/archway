@@ -1,0 +1,76 @@
+# {{.ServiceName}}
+
+> Generated with [Archway](https://github.com/dcsg/archway)
+
+## Architecture
+
+This project follows **hexagonal architecture** (ports & adapters):
+
+```
+cmd/                    # Application entry points
+config/                 # Configuration loading
+domain/                 # Domain types, errors, value objects
+port/                   # Inbound & outbound port interfaces
+service/                # Business logic (depends on ports)
+adapter/                # Concrete implementations
+  httphandler/          # HTTP transport (Chi)
+{{- if .HasGRPC}}
+  grpchandler/          # gRPC transport
+{{- end}}
+{{- if .HasKafka}}
+  kafkahandler/         # Kafka consumer
+{{- end}}
+{{- if .HasMySQL}}
+  mysqlrepo/            # MySQL repositories
+{{- end}}
+{{- if .HasRedis}}
+  redisrepo/            # Redis repositories
+{{- end}}
+{{- if .HasEmail}}
+  emailgateway/         # Email sending
+{{- end}}
+platform/               # Cross-cutting concerns
+  lifecycle/            # Application lifecycle management
+  observability/        # Logging, tracing, metrics
+  httpclient/           # Resilient HTTP client
+internal/testutil/      # Test helpers
+```
+
+## Getting Started
+
+```bash
+# Install dependencies
+go mod tidy
+
+# Run in development mode
+make dev
+
+# Build
+make build
+
+# Run tests
+make test
+
+# Lint
+make lint
+```
+
+## Configuration
+
+Copy the example config and adjust:
+
+```bash
+cp config/config.yaml.example config.yaml
+```
+
+Environment variables override config file values with the `APP_` prefix.
+
+## Docker
+
+```bash
+# Start all services
+docker-compose up -d
+
+# Build the image
+make docker-build
+```

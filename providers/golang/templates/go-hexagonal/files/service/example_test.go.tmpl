@@ -1,0 +1,21 @@
+package service_test
+
+// This file contains an example test to demonstrate the testing pattern.
+//
+// Tests in the service package validate business logic in isolation,
+// using mock implementations of outbound port interfaces.
+//
+// Example:
+//
+//	func TestOrderService_CreateOrder(t *testing.T) {
+//	    ctrl := gomock.NewController(t)
+//	    repo := mocks.NewMockOrderRepository(ctrl)
+//	    clock := domain.FixedClock{T: testutil.FixedTime()}
+//	    svc := NewOrderService(repo, clock)
+//
+//	    repo.EXPECT().Store(gomock.Any(), gomock.Any()).Return(nil)
+//
+//	    order, err := svc.CreateOrder(context.Background(), CreateOrderCommand{...})
+//	    require.NoError(t, err)
+//	    require.Equal(t, "pending", order.Status)
+//	}

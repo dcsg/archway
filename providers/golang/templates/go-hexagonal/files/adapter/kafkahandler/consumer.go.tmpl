@@ -1,0 +1,101 @@
+{{- if .HasKafka}}
+package kafkahandler
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+
+	"github.com/twmb/franz-go/pkg/kgo"
+)
+
+// Consumer wraps a franz-go client and dispatches messages to handlers.
+// It implements lifecycle.Runnable.
+type Consumer struct {
+	client   *kgo.Client
+	handlers map[string]Handler
+	logger   *slog.Logger
+}
+
+// ConsumerConfig holds Kafka consumer configuration.
+type ConsumerConfig struct {
+	Brokers       []string
+	ConsumerGroup string
+	Topics        []string
+}
+
+// NewConsumer creates a new Kafka consumer.
+func NewConsumer(cfg ConsumerConfig, logger *slog.Logger) (*Consumer, error) {
+	client, err := kgo.NewClient(
+		kgo.SeedBrokers(cfg.Brokers...),
+		kgo.ConsumerGroup(cfg.ConsumerGroup),
+		kgo.ConsumeTopics(cfg.Topics...),
+		kgo.DisableAutoCommit(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("create kafka client: %w", err)
+	}
+
+	return &Consumer{
+		client:   client,
+		handlers: make(map[string]Handler),
+		logger:   logger,
+	}, nil
+}
+
+// RegisterHandler registers a handler for a specific topic.
+func (c *Consumer) RegisterHandler(topic string, h Handler) {
+	c.handlers[topic] = h
+}
+
+// Run starts consuming messages and blocks until the context is cancelled.
+func (c *Consumer) Run(ctx context.Context) error {
+	c.logger.Info("kafka consumer started")
+
+	for {
+		fetches := c.client.PollFetches(ctx)
+		if ctx.Err() != nil {
+			return nil
+		}
+
+		if errs := fetches.Errors(); len(errs) > 0 {
+			for _, e := range errs {
+				c.logger.Error("kafka fetch error",
+					"topic", e.Topic,
+					"partition", e.Partition,
+					"error", e.Err,
+				)
+			}
+		}
+
+		fetches.EachRecord(func(record *kgo.Record) {
+			handler, ok := c.handlers[record.Topic]
+			if !ok {
+				c.logger.Warn("no handler for topic", "topic", record.Topic)
+				return
+			}
+
+			if err := handler.Handle(ctx, record); err != nil {
+				c.logger.ErrorContext(ctx, "message handling failed",
+					"topic", record.Topic,
+					"partition", record.Partition,
+					"offset", record.Offset,
+					"error", err,
+				)
+				return
+			}
+
+			c.client.MarkCommitRecords(record)
+		})
+
+		if err := c.client.CommitUncommittedOffsets(ctx); err != nil {
+			c.logger.Error("commit offsets failed", "error", err)
+		}
+	}
+}
+
+// Close shuts down the Kafka consumer.
+func (c *Consumer) Close() {
+	c.client.Close()
+}
+{{- end}}

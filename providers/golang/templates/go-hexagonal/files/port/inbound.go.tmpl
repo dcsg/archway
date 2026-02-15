@@ -1,0 +1,19 @@
+package port
+
+// This file defines inbound port interfaces -- the contract that
+// the service layer exposes to inbound adapters (HTTP, gRPC, Kafka, CLI).
+//
+// Following CQRS, we split into Commander (write) and Querier (read) interfaces.
+// Adapters depend on these interfaces, never on concrete service implementations.
+//
+// Example:
+//
+//	type OrderCommander interface {
+//	    CreateOrder(ctx context.Context, cmd CreateOrderCommand) (*domain.Order, error)
+//	    CancelOrder(ctx context.Context, id string) error
+//	}
+//
+//	type OrderQuerier interface {
+//	    GetOrder(ctx context.Context, id string) (*domain.Order, error)
+//	    ListOrders(ctx context.Context, filter domain.OrderFilter) (*domain.Page[domain.Order], error)
+//	}

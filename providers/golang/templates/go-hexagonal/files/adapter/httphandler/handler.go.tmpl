@@ -1,0 +1,51 @@
+{{- if .HasHTTP}}
+package httphandler
+
+import (
+	"encoding/json"
+	"log/slog"
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
+)
+
+// Handler implements HTTP handlers for the API.
+// It depends on inbound port interfaces (Commander/Querier).
+type Handler struct {
+	// TODO: Add service dependencies here.
+	// commander port.ExampleCommander
+	// querier   port.ExampleQuerier
+	logger *slog.Logger
+}
+
+// NewHandler creates a new Handler.
+func NewHandler(logger *slog.Logger) *Handler {
+	return &Handler{
+		logger: logger,
+	}
+}
+
+// RegisterRoutes registers all API routes on the given router.
+func (h *Handler) RegisterRoutes(r chi.Router) {
+	r.Route("/api/v1", func(r chi.Router) {
+		// TODO: Add your routes here.
+		// r.Get("/orders", h.ListOrders)
+		// r.Post("/orders", h.CreateOrder)
+		// r.Get("/orders/{id}", h.GetOrder)
+		// r.Put("/orders/{id}", h.UpdateOrder)
+		// r.Delete("/orders/{id}", h.DeleteOrder)
+	})
+}
+
+// decodeJSON reads and decodes a JSON request body into the given destination.
+func decodeJSON(r *http.Request, dst any) error {
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	return decoder.Decode(dst)
+}
+
+// urlParam extracts a URL parameter from the Chi context.
+func urlParam(r *http.Request, key string) string {
+	return chi.URLParam(r, key)
+}
+{{- end}}

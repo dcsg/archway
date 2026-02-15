@@ -1,0 +1,50 @@
+app:
+  name: {{.ServiceName}}
+  environment: development
+
+logger:
+  level: info
+  format: json
+{{- if .HasHTTP}}
+
+http:
+  port: 8080
+  read_timeout: 30
+  write_timeout: 30
+{{- end}}
+{{- if .HasGRPC}}
+
+grpc:
+  port: 9090
+  reflection: true
+{{- end}}
+{{- if .HasKafka}}
+
+kafka:
+  brokers:
+    - localhost:9092
+  consumer_group: {{.ServiceName}}-group
+  topics:
+    - example-topic
+{{- end}}
+{{- if .HasMySQL}}
+
+mysql:
+  dsn: "root:password@tcp(localhost:3306)/{{.ServiceName}}?parseTime=true"
+  max_open_conns: 25
+  max_idle_conns: 5
+{{- end}}
+{{- if .HasPostgreSQL}}
+
+postgresql:
+  dsn: "postgres://postgres:password@localhost:5432/{{.ServiceName}}?sslmode=disable"
+  max_open_conns: 25
+  max_idle_conns: 5
+{{- end}}
+{{- if .HasRedis}}
+
+redis:
+  addr: localhost:6379
+  password: ""
+  db: 0
+{{- end}}

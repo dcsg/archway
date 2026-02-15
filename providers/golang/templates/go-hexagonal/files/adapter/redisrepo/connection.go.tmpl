@@ -1,0 +1,40 @@
+{{- if .HasRedis}}
+package redisrepo
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"time"
+
+	"github.com/redis/go-redis/v9"
+)
+
+const redisHealthCheckTimeout = 5 * time.Second
+
+// ConnectionConfig holds Redis connection configuration.
+type ConnectionConfig struct {
+	Addr     string
+	Password string
+	DB       int
+}
+
+// NewConnection creates a new Redis client.
+func NewConnection(cfg ConnectionConfig, logger *slog.Logger) (*redis.Client, error) {
+	client := redis.NewClient(&redis.Options{
+		Addr:     cfg.Addr,
+		Password: cfg.Password,
+		DB:       cfg.DB,
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), redisHealthCheckTimeout)
+	defer cancel()
+
+	if err := client.Ping(ctx).Err(); err != nil {
+		return nil, fmt.Errorf("ping redis: %w", err)
+	}
+
+	logger.Info("redis connected", "addr", cfg.Addr)
+	return client, nil
+}
+{{- end}}

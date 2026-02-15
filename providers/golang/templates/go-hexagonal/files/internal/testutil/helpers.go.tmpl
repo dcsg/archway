@@ -1,0 +1,27 @@
+package testutil
+
+import (
+	"encoding/json"
+	"testing"
+	"time"
+)
+
+// Ptr returns a pointer to the given value. Useful for creating pointers to literals in tests.
+func Ptr[T any](v T) *T {
+	return &v
+}
+
+// MustJSON marshals v to a JSON byte slice, failing the test on error.
+func MustJSON(t *testing.T, v any) []byte {
+	t.Helper()
+	b, err := json.Marshal(v)
+	if err != nil {
+		t.Fatalf("marshal json: %v", err)
+	}
+	return b
+}
+
+// FixedTime returns a fixed time useful for deterministic tests.
+func FixedTime() time.Time {
+	return time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+}

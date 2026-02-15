@@ -1,0 +1,11 @@
+name: minimal
+description: test template
+language: go
+version: "1.0"
+variables:
+  - name: ServiceName
+    type: string
+    required: true
+  - name: ModulePath
+    type: string
+    required: true

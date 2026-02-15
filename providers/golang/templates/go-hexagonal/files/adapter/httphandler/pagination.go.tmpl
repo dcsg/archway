@@ -1,0 +1,64 @@
+{{- if .HasHTTP}}
+package httphandler
+
+import (
+	"net/http"
+	"strconv"
+)
+
+const (
+	defaultPageSize = 20
+	maxPageSize     = 100
+)
+
+// CursorPage represents a cursor-paginated response.
+type CursorPage[T any] struct {
+	Data       []T    `json:"data"`
+	NextCursor string `json:"next_cursor,omitempty"`
+	HasMore    bool   `json:"has_more"`
+}
+
+// ParseCursorParams extracts cursor pagination parameters from the request.
+func ParseCursorParams(r *http.Request) (cursor string, limit int) {
+	cursor = r.URL.Query().Get("cursor")
+	limit = parseIntParam(r, "limit", defaultPageSize)
+	if limit > maxPageSize {
+		limit = maxPageSize
+	}
+	return cursor, limit
+}
+
+// OffsetPage represents an offset-paginated response.
+type OffsetPage[T any] struct {
+	Data       []T `json:"data"`
+	Page       int `json:"page"`
+	PerPage    int `json:"per_page"`
+	Total      int `json:"total"`
+	TotalPages int `json:"total_pages"`
+}
+
+// ParseOffsetParams extracts offset pagination parameters from the request.
+func ParseOffsetParams(r *http.Request) (page int, perPage int) {
+	page = parseIntParam(r, "page", 1)
+	if page < 1 {
+		page = 1
+	}
+	perPage = parseIntParam(r, "per_page", defaultPageSize)
+	if perPage > maxPageSize {
+		perPage = maxPageSize
+	}
+	return page, perPage
+}
+
+func parseIntParam(r *http.Request, key string, defaultVal int) int {
+	s := r.URL.Query().Get(key)
+	if s == "" {
+		return defaultVal
+	}
+	v, err := strconv.Atoi(s)
+	if err != nil || v < 1 {
+		return defaultVal
+	}
+	return v
+}
+{{- end}}

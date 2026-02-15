@@ -1,0 +1,85 @@
+{{- if .HasGRPC}}
+package grpchandler
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"net"
+
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/reflection"
+)
+
+// Server wraps a gRPC server to implement lifecycle.Runnable.
+type Server struct {
+	server *grpc.Server
+	port   int
+	logger *slog.Logger
+	health *health.Server
+}
+
+// NewServer creates a new gRPC server with standard interceptors.
+func NewServer(port int, enableReflection bool, logger *slog.Logger) *Server {
+	srv := grpc.NewServer(
+		grpc.StatsHandler(otelgrpc.NewServerHandler()),
+		grpc.ChainUnaryInterceptor(
+			LoggingUnaryInterceptor(logger),
+			RecoveryUnaryInterceptor(logger),
+		),
+		grpc.ChainStreamInterceptor(
+			LoggingStreamInterceptor(logger),
+			RecoveryStreamInterceptor(logger),
+		),
+	)
+
+	healthSrv := health.NewServer()
+	healthpb.RegisterHealthServer(srv, healthSrv)
+
+	if enableReflection {
+		reflection.Register(srv)
+	}
+
+	return &Server{
+		server: srv,
+		port:   port,
+		logger: logger,
+		health: healthSrv,
+	}
+}
+
+// GRPCServer returns the underlying grpc.Server for service registration.
+func (s *Server) GRPCServer() *grpc.Server {
+	return s.server
+}
+
+// Run starts the gRPC server and blocks until the context is cancelled.
+func (s *Server) Run(ctx context.Context) error {
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", s.port))
+	if err != nil {
+		return fmt.Errorf("listen on port %d: %w", s.port, err)
+	}
+
+	errCh := make(chan error, 1)
+	go func() {
+		s.logger.Info("grpc server listening", "port", s.port)
+		if err := s.server.Serve(lis); err != nil {
+			errCh <- err
+		}
+		close(errCh)
+	}()
+
+	select {
+	case err := <-errCh:
+		return err
+	case <-ctx.Done():
+		s.logger.Info("grpc server shutting down")
+		s.health.Shutdown()
+		s.server.GracefulStop()
+		return nil
+	}
+}
+{{- end}}

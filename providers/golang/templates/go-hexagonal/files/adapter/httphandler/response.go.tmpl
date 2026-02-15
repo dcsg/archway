@@ -1,0 +1,143 @@
+{{- if .HasHTTP}}
+package httphandler
+
+import (
+	"encoding/json"
+	"errors"
+	"log/slog"
+	"net/http"
+
+	"{{.ModulePath}}/domain"
+)
+
+// ProblemDetail implements RFC 7807 with an additional machine-readable Code field.
+type ProblemDetail struct {
+	Type     string       `json:"type"`
+	Title    string       `json:"title"`
+	Status   int          `json:"status"`
+	Detail   string       `json:"detail,omitempty"`
+	Instance string       `json:"instance,omitempty"`
+	Code     string       `json:"code"`
+	Errors   []FieldError `json:"errors,omitempty"`
+}
+
+// FieldError represents a single field validation error.
+type FieldError struct {
+	Field   string `json:"field"`
+	Message string `json:"message"`
+}
+
+// JSON writes a JSON response with the given status code.
+func JSON(w http.ResponseWriter, status int, data any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	if data != nil {
+		_ = json.NewEncoder(w).Encode(data)
+	}
+}
+
+// NoContent writes a 204 No Content response.
+func NoContent(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// MapError maps a domain error to an RFC 7807 ProblemDetail and writes it.
+func MapError(w http.ResponseWriter, r *http.Request, logger *slog.Logger, err error) {
+	status, problem := toProblemDetail(r, err)
+
+	if status >= http.StatusInternalServerError {
+		logger.ErrorContext(r.Context(), "internal error", "error", err)
+	}
+
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(problem)
+}
+
+func toProblemDetail(r *http.Request, err error) (int, ProblemDetail) {
+	instance := r.URL.Path
+
+	var valErr *domain.ValidationError
+	if errors.As(err, &valErr) {
+		return http.StatusBadRequest, ProblemDetail{
+			Type:     "/errors/validation",
+			Title:    "Validation Error",
+			Status:   http.StatusBadRequest,
+			Detail:   valErr.Error(),
+			Instance: instance,
+			Code:     "VALIDATION_ERROR",
+			Errors: []FieldError{
+				{Field: valErr.Field, Message: valErr.Message},
+			},
+		}
+	}
+
+	var multiValErr *domain.MultiValidationError
+	if errors.As(err, &multiValErr) {
+		fields := make([]FieldError, len(multiValErr.Errors))
+		for i, ve := range multiValErr.Errors {
+			fields[i] = FieldError{Field: ve.Field, Message: ve.Message}
+		}
+		return http.StatusBadRequest, ProblemDetail{
+			Type:     "/errors/validation",
+			Title:    "Validation Error",
+			Status:   http.StatusBadRequest,
+			Detail:   multiValErr.Error(),
+			Instance: instance,
+			Code:     "VALIDATION_ERROR",
+			Errors:   fields,
+		}
+	}
+
+	switch {
+	case errors.Is(err, domain.ErrNotFound):
+		return http.StatusNotFound, ProblemDetail{
+			Type:     "/errors/not-found",
+			Title:    "Not Found",
+			Status:   http.StatusNotFound,
+			Instance: instance,
+			Code:     "NOT_FOUND",
+		}
+	case errors.Is(err, domain.ErrConflict):
+		return http.StatusConflict, ProblemDetail{
+			Type:     "/errors/conflict",
+			Title:    "Conflict",
+			Status:   http.StatusConflict,
+			Instance: instance,
+			Code:     "CONFLICT",
+		}
+	case errors.Is(err, domain.ErrUnauthorized):
+		return http.StatusUnauthorized, ProblemDetail{
+			Type:     "/errors/unauthorized",
+			Title:    "Unauthorized",
+			Status:   http.StatusUnauthorized,
+			Instance: instance,
+			Code:     "UNAUTHORIZED",
+		}
+	case errors.Is(err, domain.ErrForbidden):
+		return http.StatusForbidden, ProblemDetail{
+			Type:     "/errors/forbidden",
+			Title:    "Forbidden",
+			Status:   http.StatusForbidden,
+			Instance: instance,
+			Code:     "FORBIDDEN",
+		}
+	case errors.Is(err, domain.ErrRateLimited):
+		return http.StatusTooManyRequests, ProblemDetail{
+			Type:     "/errors/rate-limited",
+			Title:    "Rate Limited",
+			Status:   http.StatusTooManyRequests,
+			Instance: instance,
+			Code:     "RATE_LIMITED",
+		}
+	default:
+		return http.StatusInternalServerError, ProblemDetail{
+			Type:     "/errors/internal",
+			Title:    "Internal Server Error",
+			Status:   http.StatusInternalServerError,
+			Instance: instance,
+			Code:     "INTERNAL_ERROR",
+		}
+	}
+}
+{{- end}}

@@ -1,0 +1,60 @@
+name: go-hexagonal
+description: Production-ready Go service with hexagonal architecture, CQRS ports, lifecycle management, and observability
+language: go
+version: "2.0"
+variables:
+  - name: ServiceName
+    type: string
+    description: Service name (lowercase, kebab-case)
+    required: true
+  - name: ModulePath
+    type: string
+    description: Go module path (e.g. github.com/org/service)
+    required: true
+  - name: GoVersion
+    type: string
+    description: Go version
+    default: "1.24"
+  - name: HasHTTP
+    type: bool
+    description: Include HTTP transport (Chi router)
+    default: "true"
+  - name: HasGRPC
+    type: bool
+    description: Include gRPC transport
+    default: "false"
+  - name: HasKafka
+    type: bool
+    description: Include Kafka consumer
+    default: "false"
+  - name: HasPostgreSQL
+    type: bool
+    description: Include PostgreSQL data store
+    default: "false"
+  - name: HasMySQL
+    type: bool
+    description: Include MySQL data store
+    default: "false"
+  - name: HasRedis
+    type: bool
+    description: Include Redis data store
+    default: "false"
+  - name: UseAuth
+    type: bool
+    description: Include auth middleware (JWT)
+    default: "false"
+  - name: HasEmail
+    type: bool
+    description: Include email gateway
+    default: "false"
+  - name: HasCORS
+    type: bool
+    description: Include CORS middleware
+    default: "true"
+  - name: HasRateLimiting
+    type: bool
+    description: Include rate limiting middleware
+    default: "false"
+hooks:
+  - go mod tidy
+  - git init

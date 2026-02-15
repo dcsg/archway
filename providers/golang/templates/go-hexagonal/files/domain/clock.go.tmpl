@@ -1,0 +1,26 @@
+package domain
+
+import "time"
+
+// Clock abstracts time for testability. All implementations must return UTC.
+type Clock interface {
+	Now() time.Time
+}
+
+// RealClock returns the actual current time in UTC.
+type RealClock struct{}
+
+// Now returns the current UTC time.
+func (RealClock) Now() time.Time {
+	return time.Now().UTC()
+}
+
+// FixedClock returns a fixed time. Useful for deterministic tests.
+type FixedClock struct {
+	T time.Time
+}
+
+// Now returns the fixed time.
+func (c FixedClock) Now() time.Time {
+	return c.T
+}

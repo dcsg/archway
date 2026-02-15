@@ -1,0 +1,31 @@
+package port
+
+// This file defines outbound port interfaces -- the contract that
+// outbound adapters (repositories, gateways, publishers) must implement.
+//
+// The service layer depends on these interfaces, never on concrete adapters.
+//
+// IMPORTANT: Every method accepts a context.Context. Adapter implementations
+// MUST enforce a timeout on the underlying I/O call (DB query, HTTP request, etc.)
+// using context.WithTimeout. Never pass the context directly to an external call
+// without a deadline.
+//
+// Example:
+//
+//	//go:generate mockgen -source=outbound.go -destination=../internal/mocks/outbound.go -package=mocks
+//
+//	type OrderRepository interface {
+//	    Store(ctx context.Context, order *domain.Order) error
+//	    FindByID(ctx context.Context, id string) (*domain.Order, error)
+//	    Update(ctx context.Context, order *domain.Order) error
+//	}
+//
+//	type EventPublisher interface {
+//	    Publish(ctx context.Context, event domain.Event) error
+//	}
+{{- if .HasEmail}}
+//
+//	type EmailSender interface {
+//	    Send(ctx context.Context, to string, locale string, template string, subject string, data any) error
+//	}
+{{- end}}

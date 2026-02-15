@@ -1,0 +1,47 @@
+steps:
+  - id: basics
+    questions:
+      - variable: ServiceName
+        prompt: "Service name?"
+        validate: "^[a-z][a-z0-9-]*$"
+      - variable: ModulePath
+        prompt: "Go module path?"
+  - id: transports
+    questions:
+      - variable: HasHTTP
+        prompt: "Enable HTTP transport (Chi)?"
+        type: confirm
+      - variable: HasGRPC
+        prompt: "Enable gRPC transport?"
+        type: confirm
+      - variable: HasKafka
+        prompt: "Enable Kafka consumer?"
+        type: confirm
+  - id: datastores
+    questions:
+      - variable: HasPostgreSQL
+        prompt: "Enable PostgreSQL?"
+        type: confirm
+      - variable: HasMySQL
+        prompt: "Enable MySQL?"
+        type: confirm
+      - variable: HasRedis
+        prompt: "Enable Redis?"
+        type: confirm
+  - id: features
+    questions:
+      - variable: UseAuth
+        prompt: "Enable JWT auth middleware?"
+        type: confirm
+        when: "HasHTTP"
+      - variable: HasEmail
+        prompt: "Enable email gateway?"
+        type: confirm
+      - variable: HasCORS
+        prompt: "Enable CORS?"
+        type: confirm
+        when: "HasHTTP"
+      - variable: HasRateLimiting
+        prompt: "Enable rate limiting?"
+        type: confirm
+        when: "HasHTTP"

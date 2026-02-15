@@ -1,0 +1,44 @@
+# Build stage
+FROM golang:{{.GoVersion}}-alpine AS builder
+
+RUN apk add --no-cache git ca-certificates
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+ARG VERSION=dev
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags "-s -w -X main.version=${VERSION}" \
+    -o /bin/{{.ServiceName}} ./cmd/{{.ServiceName}}
+
+# Runtime stage
+FROM alpine:3.19
+
+RUN apk add --no-cache ca-certificates tzdata && \
+    addgroup -g 1000 -S app && \
+    adduser -u 1000 -S app -G app
+
+COPY --from=builder /bin/{{.ServiceName}} /bin/{{.ServiceName}}
+COPY config/config.yaml.example /app/config.yaml
+
+USER app
+WORKDIR /app
+
+{{- if .HasHTTP}}
+EXPOSE 8080
+{{- end}}
+{{- if .HasGRPC}}
+EXPOSE 9090
+{{- end}}
+
+{{- if .HasHTTP}}
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health/live || exit 1
+{{- end}}
+
+ENTRYPOINT ["/bin/{{.ServiceName}}"]

@@ -1,0 +1,63 @@
+{{- if .HasMySQL}}
+package mysqlrepo
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"log/slog"
+	"time"
+
+	_ "github.com/go-sql-driver/mysql"
+)
+
+const (
+	defaultMaxOpenConns    = 25
+	defaultMaxIdleConns    = 5
+	defaultConnMaxLifetime = 5 * time.Minute
+	healthCheckTimeout     = 5 * time.Second
+)
+
+// ConnectionConfig holds MySQL connection configuration.
+type ConnectionConfig struct {
+	DSN             string
+	MaxOpenConns    int
+	MaxIdleConns    int
+	ConnMaxLifetime time.Duration
+}
+
+// NewConnection creates a new MySQL connection pool.
+func NewConnection(cfg ConnectionConfig, logger *slog.Logger) (*sql.DB, error) {
+	db, err := sql.Open("mysql", cfg.DSN)
+	if err != nil {
+		return nil, fmt.Errorf("open mysql connection: %w", err)
+	}
+
+	maxOpen := cfg.MaxOpenConns
+	if maxOpen == 0 {
+		maxOpen = defaultMaxOpenConns
+	}
+	maxIdle := cfg.MaxIdleConns
+	if maxIdle == 0 {
+		maxIdle = defaultMaxIdleConns
+	}
+	maxLifetime := cfg.ConnMaxLifetime
+	if maxLifetime == 0 {
+		maxLifetime = defaultConnMaxLifetime
+	}
+
+	db.SetMaxOpenConns(maxOpen)
+	db.SetMaxIdleConns(maxIdle)
+	db.SetConnMaxLifetime(maxLifetime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), healthCheckTimeout)
+	defer cancel()
+
+	if err := db.PingContext(ctx); err != nil {
+		return nil, fmt.Errorf("ping mysql: %w", err)
+	}
+
+	logger.Info("mysql connected", "max_open", maxOpen, "max_idle", maxIdle)
+	return db, nil
+}
+{{- end}}

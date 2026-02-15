@@ -1,0 +1,64 @@
+version: 2
+
+project_name: archway
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: archway
+    main: ./cmd/archway
+    binary: archway
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X github.com/dcsg/archway/internal/cli.version={{.Version}}
+      - -X github.com/dcsg/archway/internal/cli.commit={{.Commit}}
+      - -X github.com/dcsg/archway/internal/cli.date={{.Date}}
+
+archives:
+  - id: default
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  use: git
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+
+brews:
+  - repository:
+      owner: dcsg
+      name: homebrew-tap
+    folder: Formula
+    homepage: https://github.com/dcsg/archway
+    description: Terraform for Code Architecture
+    license: MIT
+    install: |
+      bin.install "archway"
+    test: |
+      system "#{bin}/archway", "version"

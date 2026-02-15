@@ -1,0 +1,161 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"{{.ModulePath}}/config"
+	{{- if .HasHTTP}}
+	"{{.ModulePath}}/adapter/httphandler"
+	{{- end}}
+	{{- if .HasGRPC}}
+	"{{.ModulePath}}/adapter/grpchandler"
+	{{- end}}
+	{{- if .HasKafka}}
+	"{{.ModulePath}}/adapter/kafkahandler"
+	{{- end}}
+	"{{.ModulePath}}/platform/lifecycle"
+	"{{.ModulePath}}/platform/observability"
+	{{- if .HasMySQL}}
+	"{{.ModulePath}}/adapter/mysqlrepo"
+	{{- end}}
+	{{- if .HasRedis}}
+	"{{.ModulePath}}/adapter/redisrepo"
+	{{- end}}
+)
+
+var version = "dev"
+
+func main() {
+	if err := run(); err != nil {
+		slog.Error("application error", "error", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
+	// Signal-based context cancellation.
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer stop()
+
+	// Load configuration.
+	cfg, err := config.Load("config.yaml")
+	if err != nil {
+		return fmt.Errorf("load config: %w", err)
+	}
+
+	// Initialize logger.
+	logger := observability.NewLogger(observability.LoggerConfig{
+		Level:       cfg.Logger.Level,
+		Format:      cfg.Logger.Format,
+		ServiceName: cfg.App.Name,
+	})
+
+	// Wrap with PII redaction.
+	redactHandler := observability.NewRedactHandler(logger.Handler(), observability.DefaultRedactConfig())
+	logger = slog.New(redactHandler)
+
+	// Initialize OpenTelemetry.
+	otelShutdown, err := observability.InitProvider(ctx, observability.ProviderConfig{
+		ServiceName:    cfg.App.Name,
+		ServiceVersion: version,
+		Environment:    cfg.App.Environment,
+		EnableTraces:   true,
+		EnableMetrics:  true,
+	})
+	if err != nil {
+		return fmt.Errorf("init otel: %w", err)
+	}
+
+	{{- if .HasMySQL}}
+
+	// Connect to MySQL.
+	db, err := mysqlrepo.NewConnection(mysqlrepo.ConnectionConfig{
+		DSN:          cfg.MySQL.DSN,
+		MaxOpenConns: cfg.MySQL.MaxOpenConns,
+		MaxIdleConns: cfg.MySQL.MaxIdleConns,
+	}, logger)
+	if err != nil {
+		return fmt.Errorf("connect mysql: %w", err)
+	}
+	{{- end}}
+
+	{{- if .HasRedis}}
+
+	// Connect to Redis.
+	redisClient, err := redisrepo.NewConnection(redisrepo.ConnectionConfig{
+		Addr:     cfg.Redis.Addr,
+		Password: cfg.Redis.Password,
+		DB:       cfg.Redis.DB,
+	}, logger)
+	if err != nil {
+		return fmt.Errorf("connect redis: %w", err)
+	}
+	{{- end}}
+
+	// Wire dependencies.
+	// TODO: Create service implementations and wire them here.
+	// Example:
+	//   repo := mysqlrepo.NewOrderRepository(db)
+	//   svc := service.NewOrderService(repo)
+
+	// Build application lifecycle.
+	app := lifecycle.New(logger)
+
+	{{- if .HasHTTP}}
+
+	// HTTP server.
+	router := httphandler.NewRouter(logger)
+	handler := httphandler.NewHandler(logger)
+	handler.RegisterRoutes(router)
+	httpServer := httphandler.NewHTTPServer(fmt.Sprintf(":%d", cfg.HTTP.Port), router, logger)
+	app.Register("http-server", httpServer)
+	{{- end}}
+
+	{{- if .HasGRPC}}
+
+	// gRPC server.
+	grpcServer := grpchandler.NewServer(cfg.GRPC.Port, cfg.GRPC.Reflection, logger)
+	// TODO: Register gRPC services here.
+	app.Register("grpc-server", grpcServer)
+	{{- end}}
+
+	{{- if .HasKafka}}
+
+	// Kafka consumer.
+	consumer, err := kafkahandler.NewConsumer(kafkahandler.ConsumerConfig{
+		Brokers:       cfg.Kafka.Brokers,
+		ConsumerGroup: cfg.Kafka.ConsumerGroup,
+		Topics:        cfg.Kafka.Topics,
+	}, logger)
+	if err != nil {
+		return fmt.Errorf("create kafka consumer: %w", err)
+	}
+	// TODO: Register handlers for topics.
+	// consumer.RegisterHandler("topic-name", myHandler)
+	app.Register("kafka-consumer", consumer)
+	{{- end}}
+
+	// Register shutdown hooks (reverse dependency order).
+	{{- if .HasKafka}}
+	app.OnShutdown("kafka-consumer", func(_ context.Context) error { consumer.Close(); return nil })
+	{{- end}}
+	{{- if .HasRedis}}
+	app.OnShutdown("redis", func(_ context.Context) error { return redisClient.Close() })
+	{{- end}}
+	{{- if .HasMySQL}}
+	app.OnShutdown("mysql", func(_ context.Context) error { return db.Close() })
+	{{- end}}
+	app.OnShutdown("otel", otelShutdown)
+
+	logger.Info("starting {{.ServiceName}}",
+		"version", version,
+		"environment", cfg.App.Environment,
+	)
+
+	return app.Run(ctx)
+}

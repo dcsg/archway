@@ -1,0 +1,121 @@
+package config
+
+import (
+	"fmt"
+	"os"
+
+	"gopkg.in/yaml.v3"
+)
+
+// Config holds all configuration for the application.
+type Config struct {
+	App    AppConfig    `yaml:"app"`
+	Logger LoggerConfig `yaml:"logger"`
+	{{- if .HasHTTP}}
+	HTTP   HTTPConfig   `yaml:"http"`
+	{{- end}}
+	{{- if .HasGRPC}}
+	GRPC   GRPCConfig   `yaml:"grpc"`
+	{{- end}}
+	{{- if .HasKafka}}
+	Kafka  KafkaConfig  `yaml:"kafka"`
+	{{- end}}
+	{{- if .HasMySQL}}
+	MySQL  MySQLConfig  `yaml:"mysql"`
+	{{- end}}
+	{{- if .HasPostgreSQL}}
+	PostgreSQL PostgreSQLConfig `yaml:"postgresql"`
+	{{- end}}
+	{{- if .HasRedis}}
+	Redis  RedisConfig  `yaml:"redis"`
+	{{- end}}
+}
+
+// AppConfig holds general application configuration.
+type AppConfig struct {
+	Name        string `yaml:"name"`
+	Version     string `yaml:"version"`
+	Environment string `yaml:"environment"`
+}
+
+// LoggerConfig holds logging configuration.
+type LoggerConfig struct {
+	Level  string `yaml:"level"`
+	Format string `yaml:"format"`
+}
+
+{{- if .HasHTTP}}
+
+// HTTPConfig holds HTTP server configuration.
+type HTTPConfig struct {
+	Port         int `yaml:"port"`
+	ReadTimeout  int `yaml:"read_timeout"`
+	WriteTimeout int `yaml:"write_timeout"`
+}
+{{- end}}
+
+{{- if .HasGRPC}}
+
+// GRPCConfig holds gRPC server configuration.
+type GRPCConfig struct {
+	Port       int  `yaml:"port"`
+	Reflection bool `yaml:"reflection"`
+}
+{{- end}}
+
+{{- if .HasKafka}}
+
+// KafkaConfig holds Kafka consumer configuration.
+type KafkaConfig struct {
+	Brokers       []string `yaml:"brokers"`
+	ConsumerGroup string   `yaml:"consumer_group"`
+	Topics        []string `yaml:"topics"`
+}
+{{- end}}
+
+{{- if .HasMySQL}}
+
+// MySQLConfig holds MySQL connection configuration.
+type MySQLConfig struct {
+	DSN             string `yaml:"dsn"`
+	MaxOpenConns    int    `yaml:"max_open_conns"`
+	MaxIdleConns    int    `yaml:"max_idle_conns"`
+	ConnMaxLifetime int    `yaml:"conn_max_lifetime"`
+}
+{{- end}}
+
+{{- if .HasPostgreSQL}}
+
+// PostgreSQLConfig holds PostgreSQL connection configuration.
+type PostgreSQLConfig struct {
+	DSN             string `yaml:"dsn"`
+	MaxOpenConns    int    `yaml:"max_open_conns"`
+	MaxIdleConns    int    `yaml:"max_idle_conns"`
+	ConnMaxLifetime int    `yaml:"conn_max_lifetime"`
+}
+{{- end}}
+
+{{- if .HasRedis}}
+
+// RedisConfig holds Redis connection configuration.
+type RedisConfig struct {
+	Addr     string `yaml:"addr"`
+	Password string `yaml:"password"`
+	DB       int    `yaml:"db"`
+}
+{{- end}}
+
+// Load reads configuration from a YAML file.
+func Load(configPath string) (*Config, error) {
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("read config file: %w", err)
+	}
+
+	var cfg Config
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return nil, fmt.Errorf("parse config: %w", err)
+	}
+
+	return &cfg, nil
+}

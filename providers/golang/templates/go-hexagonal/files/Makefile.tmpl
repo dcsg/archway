@@ -1,0 +1,101 @@
+.PHONY: build test lint fmt dev mocks check vuln security hooks clean tidy
+{{- if .HasHTTP}}
+.PHONY: generate-api
+{{- end}}
+{{- if .HasGRPC}}
+.PHONY: proto proto-lint proto-generate
+{{- end}}
+.PHONY: docker docker-build
+{{- if or .HasMySQL .HasPostgreSQL}}
+.PHONY: migrate-up migrate-down migrate-create
+{{- end}}
+
+APP_NAME = {{.ServiceName}}
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+
+# Build
+build:
+	go build -ldflags "-X main.version=$(VERSION)" -o bin/$(APP_NAME) ./cmd/$(APP_NAME)
+
+# Test
+test:
+	go test -race -coverprofile=coverage.out ./...
+
+test-integration:
+	go test -race -tags=integration -coverprofile=coverage-integration.out ./...
+
+# Lint
+lint:
+	golangci-lint run ./...
+
+fmt:
+	gofmt -s -w .
+	goimports -w .
+
+check: lint test
+
+# Security
+vuln:
+	govulncheck ./...
+
+security: lint vuln
+
+# Mocks
+mocks:
+	go generate ./port/...
+
+# Development
+dev:
+	air
+
+{{- if .HasHTTP}}
+
+# API code generation (spec-first)
+generate-api:
+	oapi-codegen --config api/oapi-codegen.yaml api/openapi.yaml
+{{- end}}
+
+{{- if .HasGRPC}}
+
+# Proto management
+proto-lint:
+	buf lint proto/
+
+proto-generate:
+	buf generate proto/
+
+proto: proto-lint proto-generate
+{{- end}}
+
+# Docker
+docker:
+	docker-compose up -d
+
+docker-build:
+	docker build -t $(APP_NAME):$(VERSION) .
+
+{{- if or .HasMySQL .HasPostgreSQL}}
+
+# Migrations
+migrate-up:
+	migrate -path migrations/ -database "$(DB_DSN)" up
+
+migrate-down:
+	migrate -path migrations/ -database "$(DB_DSN)" down 1
+
+migrate-create:
+	migrate create -ext sql -dir migrations/ -seq $(name)
+{{- end}}
+
+# Git hooks
+hooks:
+	pre-commit install
+	pre-commit install --hook-type commit-msg
+
+# Clean
+clean:
+	rm -rf bin/ coverage.out coverage-integration.out
+
+# Tidy
+tidy:
+	go mod tidy

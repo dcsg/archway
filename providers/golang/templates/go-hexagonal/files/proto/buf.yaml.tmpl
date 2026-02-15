@@ -1,0 +1,11 @@
+{{- if .HasGRPC}}
+version: v2
+modules:
+  - path: v1
+lint:
+  use:
+    - DEFAULT
+breaking:
+  use:
+    - FILE
+{{- end}}

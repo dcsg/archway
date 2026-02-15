@@ -1,0 +1,34 @@
+package domain
+
+import (
+	"errors"
+	"fmt"
+)
+
+// Sentinel errors for common domain conditions.
+var (
+	ErrNotFound     = errors.New("not found")
+	ErrConflict     = errors.New("conflict")
+	ErrUnauthorized = errors.New("unauthorized")
+	ErrForbidden    = errors.New("forbidden")
+	ErrRateLimited  = errors.New("rate limited")
+)
+
+// ValidationError represents a field-level validation error.
+type ValidationError struct {
+	Field   string
+	Message string
+}
+
+func (e *ValidationError) Error() string {
+	return fmt.Sprintf("validation error on field %s: %s", e.Field, e.Message)
+}
+
+// MultiValidationError holds multiple validation errors.
+type MultiValidationError struct {
+	Errors []ValidationError
+}
+
+func (e *MultiValidationError) Error() string {
+	return fmt.Sprintf("validation failed: %d error(s)", len(e.Errors))
+}

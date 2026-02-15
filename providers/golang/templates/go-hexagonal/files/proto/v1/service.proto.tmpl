@@ -1,0 +1,31 @@
+{{- if .HasGRPC}}
+syntax = "proto3";
+
+package {{snakeCase .ServiceName}}.v1;
+
+option go_package = "{{.ModulePath}}/proto/v1;v1";
+
+// Health check service.
+service HealthService {
+  rpc Check(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message HealthCheckRequest {
+  string service = 1;
+}
+
+message HealthCheckResponse {
+  enum ServingStatus {
+    UNKNOWN = 0;
+    SERVING = 1;
+    NOT_SERVING = 2;
+  }
+  ServingStatus status = 1;
+}
+
+// TODO: Add your service definitions here.
+// service {{pascalCase .ServiceName}}Service {
+//   rpc CreateExample(CreateExampleRequest) returns (CreateExampleResponse);
+//   rpc GetExample(GetExampleRequest) returns (GetExampleResponse);
+// }
+{{- end}}

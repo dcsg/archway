@@ -1,0 +1,34 @@
+language: go
+architecture: hexagonal
+
+rules:
+  dependencies:
+    - layer: domain
+      packages: ["domain/**"]
+      may_depend_on: []
+
+    - layer: ports
+      packages: ["port/**"]
+      may_depend_on: [domain]
+
+    - layer: adapters
+      packages: ["adapter/**"]
+      may_depend_on: [ports, domain]
+
+  naming:
+    - pattern: "adapter/*repo/*"
+      must_end_with: "Repo"
+
+  structure:
+    required_dirs: [cmd/, domain/, adapter/, port/]
+    forbidden_dirs: [utils/, helpers/]
+
+  functions:
+    max_lines: 80
+    max_params: 4
+
+extends:
+  - archway/go-hexagonal-strict
+
+templates:
+  source: archway/go-hexagonal

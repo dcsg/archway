@@ -1,0 +1,177 @@
+package httpclient
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"sync"
+	"time"
+)
+
+const (
+	defaultTimeout    = 10 * time.Second
+	defaultMaxRetries = 3
+	defaultBackoff    = 500 * time.Millisecond
+)
+
+// Client is a production HTTP client with retry and circuit breaker.
+type Client struct {
+	inner          *http.Client
+	maxRetries     int
+	backoff        time.Duration
+	circuitBreaker *circuitBreaker
+	logger         *slog.Logger
+}
+
+// Option configures the Client.
+type Option func(*Client)
+
+// WithTimeout sets the request timeout.
+func WithTimeout(d time.Duration) Option {
+	return func(c *Client) {
+		c.inner.Timeout = d
+	}
+}
+
+// WithRetry configures retry with exponential backoff.
+func WithRetry(maxRetries int, backoff time.Duration) Option {
+	return func(c *Client) {
+		c.maxRetries = maxRetries
+		c.backoff = backoff
+	}
+}
+
+// WithCircuitBreaker enables circuit breaker.
+func WithCircuitBreaker(maxErrors int, resetTimeout time.Duration) Option {
+	return func(c *Client) {
+		c.circuitBreaker = newCircuitBreaker(maxErrors, resetTimeout)
+	}
+}
+
+// WithLogger sets the logger for request/error logging.
+func WithLogger(logger *slog.Logger) Option {
+	return func(c *Client) {
+		c.logger = logger
+	}
+}
+
+// New creates a new resilient HTTP client.
+func New(serviceName string, opts ...Option) *Client {
+	c := &Client{
+		inner: &http.Client{
+			Timeout: defaultTimeout,
+		},
+		maxRetries: defaultMaxRetries,
+		backoff:    defaultBackoff,
+		logger:     slog.Default().With("client", serviceName),
+	}
+
+	for _, opt := range opts {
+		opt(c)
+	}
+
+	return c
+}
+
+// Do executes an HTTP request with retry and circuit breaker.
+func (c *Client) Do(ctx context.Context, req *http.Request) (*http.Response, error) {
+	if c.circuitBreaker != nil && !c.circuitBreaker.allow() {
+		return nil, fmt.Errorf("circuit breaker open for %s", req.URL.Host)
+	}
+
+	var lastErr error
+	for attempt := range c.maxRetries {
+		if attempt > 0 {
+			backoff := c.backoff * time.Duration(1<<(attempt-1))
+			c.logger.DebugContext(ctx, "retrying request",
+				"attempt", attempt+1,
+				"backoff", backoff,
+				"url", req.URL.String(),
+			)
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(backoff):
+			}
+		}
+
+		resp, err := c.inner.Do(req.WithContext(ctx))
+		if err != nil {
+			lastErr = err
+			if c.circuitBreaker != nil {
+				c.circuitBreaker.recordError()
+			}
+			continue
+		}
+
+		if resp.StatusCode >= http.StatusInternalServerError {
+			lastErr = fmt.Errorf("server error: %d", resp.StatusCode)
+			if c.circuitBreaker != nil {
+				c.circuitBreaker.recordError()
+			}
+			_ = resp.Body.Close()
+			continue
+		}
+
+		if c.circuitBreaker != nil {
+			c.circuitBreaker.recordSuccess()
+		}
+		return resp, nil
+	}
+
+	return nil, fmt.Errorf("max retries exceeded: %w", lastErr)
+}
+
+// circuitBreaker implements a simple circuit breaker pattern.
+type circuitBreaker struct {
+	mu           sync.Mutex
+	maxErrors    int
+	resetTimeout time.Duration
+	errors       int
+	lastError    time.Time
+	open         bool
+}
+
+func newCircuitBreaker(maxErrors int, resetTimeout time.Duration) *circuitBreaker {
+	return &circuitBreaker{
+		maxErrors:    maxErrors,
+		resetTimeout: resetTimeout,
+	}
+}
+
+func (cb *circuitBreaker) allow() bool {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+
+	if !cb.open {
+		return true
+	}
+
+	if time.Since(cb.lastError) > cb.resetTimeout {
+		cb.open = false
+		cb.errors = 0
+		return true
+	}
+
+	return false
+}
+
+func (cb *circuitBreaker) recordError() {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+
+	cb.errors++
+	cb.lastError = time.Now()
+	if cb.errors >= cb.maxErrors {
+		cb.open = true
+	}
+}
+
+func (cb *circuitBreaker) recordSuccess() {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+
+	cb.errors = 0
+	cb.open = false
+}

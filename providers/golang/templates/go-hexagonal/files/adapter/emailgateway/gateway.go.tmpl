@@ -1,0 +1,124 @@
+{{- if .HasEmail}}
+package emailgateway
+
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"html/template"
+	"log/slog"
+	"os"
+	"path/filepath"
+	"sync"
+)
+
+// Provider defines the interface for sending emails via different providers.
+type Provider interface {
+	Send(ctx context.Context, to string, subject string, htmlBody string) error
+}
+
+// Gateway implements the email sending port using compiled HTML templates.
+type Gateway struct {
+	provider      Provider
+	templates     map[string]map[string]*template.Template // locale -> name -> template
+	defaultLocale string
+	logger        *slog.Logger
+	mu            sync.RWMutex
+}
+
+// NewGateway creates a new email gateway.
+// templatesDir should contain locale subdirectories (e.g., en/, pt/) with .html template files.
+func NewGateway(provider Provider, templatesDir string, defaultLocale string, logger *slog.Logger) (*Gateway, error) {
+	g := &Gateway{
+		provider:      provider,
+		templates:     make(map[string]map[string]*template.Template),
+		defaultLocale: defaultLocale,
+		logger:        logger,
+	}
+
+	if err := g.loadTemplates(templatesDir); err != nil {
+		return nil, fmt.Errorf("load email templates: %w", err)
+	}
+
+	return g, nil
+}
+
+// Send renders the named template with data and sends the email.
+// Falls back to defaultLocale if the requested locale is not available.
+func (g *Gateway) Send(ctx context.Context, to string, locale string, templateName string, subject string, data any) error {
+	g.mu.RLock()
+	tmpl := g.getTemplate(locale, templateName)
+	g.mu.RUnlock()
+
+	if tmpl == nil {
+		return fmt.Errorf("email template not found: %s/%s", locale, templateName)
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return fmt.Errorf("render email template %s: %w", templateName, err)
+	}
+
+	if err := g.provider.Send(ctx, to, subject, buf.String()); err != nil {
+		return fmt.Errorf("send email to %s: %w", to, err)
+	}
+
+	g.logger.InfoContext(ctx, "email sent",
+		"to", to,
+		"template", templateName,
+		"locale", locale,
+	)
+
+	return nil
+}
+
+func (g *Gateway) getTemplate(locale string, name string) *template.Template {
+	if localeTmpls, ok := g.templates[locale]; ok {
+		if tmpl, ok := localeTmpls[name]; ok {
+			return tmpl
+		}
+	}
+	if localeTmpls, ok := g.templates[g.defaultLocale]; ok {
+		return localeTmpls[name]
+	}
+	return nil
+}
+
+func (g *Gateway) loadTemplates(dir string) error {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return fmt.Errorf("read templates dir: %w", err)
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		locale := entry.Name()
+		g.templates[locale] = make(map[string]*template.Template)
+
+		pattern := filepath.Join(dir, locale, "*.html")
+		files, err := filepath.Glob(pattern)
+		if err != nil {
+			return fmt.Errorf("glob templates for %s: %w", locale, err)
+		}
+
+		for _, f := range files {
+			name := filepath.Base(f)
+			name = name[:len(name)-len(filepath.Ext(name))]
+
+			tmpl, err := template.ParseFiles(f)
+			if err != nil {
+				return fmt.Errorf("parse template %s: %w", f, err)
+			}
+
+			g.templates[locale][name] = tmpl
+		}
+
+		g.logger.Info("loaded email templates", "locale", locale, "count", len(files))
+	}
+
+	return nil
+}
+{{- end}}
