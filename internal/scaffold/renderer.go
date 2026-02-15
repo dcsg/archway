@@ -118,7 +118,34 @@ func (r *Renderer) RenderTemplate(templateDir, outputDir string, vars map[string
 		return nil, err
 	}
 
+	// Remove empty directories left behind by conditionally-skipped files.
+	removeEmptyDirs(outputDir)
+
 	return result, nil
+}
+
+// removeEmptyDirs walks bottom-up and removes directories that contain no files.
+func removeEmptyDirs(root string) {
+	// Collect dirs in reverse depth order (deepest first).
+	var dirs []string
+	_ = filepath.Walk(root, func(p string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		if info.IsDir() {
+			dirs = append(dirs, p)
+		}
+		return nil
+	})
+	for i := len(dirs) - 1; i >= 0; i-- {
+		if dirs[i] == root {
+			continue
+		}
+		entries, err := os.ReadDir(dirs[i])
+		if err == nil && len(entries) == 0 {
+			os.Remove(dirs[i])
+		}
+	}
 }
 
 func executeTemplate(content string, vars map[string]interface{}) ([]byte, error) {

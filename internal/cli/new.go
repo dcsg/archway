@@ -26,17 +26,21 @@ func newNewCommand(_ *globalOptions) *cobra.Command {
 	opts := &newCommandOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "new",
+		Use:   "new [name]",
 		Short: "Scaffold a new project",
 		Long: `Create a new project scaffold from a template.
 
 This command can run interactively through a wizard or non-interactively using flags.`,
-		Example: `  archway new
-  archway new --name orders --language go --template go-hexagonal --module github.com/acme/orders --no-wizard
-  archway new --name orders --set Transport=http --set DataStore=postgres`,
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		Example: `  archway new my-service
+  archway new my-service --template go-hexagonal --module github.com/acme/orders --no-wizard
+  archway new --name orders --set HasGRPC=true --set HasPostgreSQL=true`,
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 && strings.TrimSpace(opts.Name) == "" {
+				opts.Name = args[0]
+			}
 			if opts.NoWizard && strings.TrimSpace(opts.Name) == "" {
-				return fmt.Errorf("--name is required when --no-wizard is set")
+				return fmt.Errorf("name is required: archway new <name> or --name <name>")
 			}
 			return runNew(cmd.Context(), opts)
 		},
@@ -85,7 +89,7 @@ func runNew(ctx context.Context, opts *newCommandOptions) error {
 		ProjectName:  opts.Name,
 		ModulePath:   opts.ModulePath,
 		TemplateName: opts.Template,
-		OutputDir:    filepath.Join(opts.OutputDir, opts.Name),
+		OutputDir:    filepath.Clean(filepath.Join(opts.OutputDir, opts.Name)),
 		Options:      map[string]string{},
 	}
 	for _, kv := range opts.Sets {
@@ -108,28 +112,68 @@ func runNew(ctx context.Context, opts *newCommandOptions) error {
 }
 
 func runNewWizard(opts *newCommandOptions) error {
-	template := opts.Template
-	if template == "" {
-		template = "go-hexagonal"
+	// Step 1: Common fields — name, output dir, language.
+	languages := provider.List()
+	languageOptions := make([]huh.Option[string], 0, len(languages))
+	for _, lang := range languages {
+		languageOptions = append(languageOptions, huh.NewOption(lang, lang))
 	}
-	form := huh.NewForm(
-		huh.NewGroup(
-			huh.NewInput().Title("Service name").Value(&opts.Name).Validate(func(value string) error {
-				if strings.TrimSpace(value) == "" {
-					return fmt.Errorf("service name is required")
-				}
-				return nil
-			}),
-			huh.NewInput().Title("Module path").Value(&opts.ModulePath),
-			huh.NewSelect[string]().Title("Template").Value(&template).Options(
-				huh.NewOption("go-hexagonal", "go-hexagonal"),
-				huh.NewOption("go-minimal", "go-minimal"),
-			),
-		),
-	)
-	if err := form.Run(); err != nil {
+	if opts.Language == "" {
+		opts.Language = "go"
+	}
+
+	commonFields := []huh.Field{
+		huh.NewInput().Title("Service name").Value(&opts.Name).Validate(func(value string) error {
+			if strings.TrimSpace(value) == "" {
+				return fmt.Errorf("service name is required")
+			}
+			return nil
+		}),
+		huh.NewInput().Title("Output directory").
+			Description("Parent directory where the project folder will be created").
+			Placeholder(".").
+			Value(&opts.OutputDir),
+	}
+	if len(languageOptions) > 1 {
+		commonFields = append(commonFields,
+			huh.NewSelect[string]().Title("Language").Value(&opts.Language).Options(languageOptions...),
+		)
+	}
+
+	if err := huh.NewForm(huh.NewGroup(commonFields...)).Run(); err != nil {
 		return err
 	}
-	opts.Template = template
-	return nil
+
+	// Step 2: Language-specific fields — template, module path, etc.
+	providerImpl, err := provider.Get(opts.Language)
+	if err != nil {
+		return err
+	}
+	info, err := providerImpl.GetInfo(context.Background())
+	if err != nil {
+		return err
+	}
+
+	templateOptions := make([]huh.Option[string], 0, len(info.Templates))
+	for _, t := range info.Templates {
+		templateOptions = append(templateOptions, huh.NewOption(fmt.Sprintf("%s — %s", t.Name, t.Description), t.Name))
+	}
+	if opts.Template == "" && len(info.Templates) > 0 {
+		opts.Template = info.Templates[0].Name
+	}
+
+	langFields := []huh.Field{
+		huh.NewSelect[string]().Title("Template").Value(&opts.Template).Options(templateOptions...),
+	}
+
+	// Add module path only for Go.
+	if opts.Language == "go" {
+		langFields = append(langFields,
+			huh.NewInput().Title("Go module path").
+				Description("e.g. github.com/org/service (leave empty for example.com/<name>)").
+				Value(&opts.ModulePath),
+		)
+	}
+
+	return huh.NewForm(huh.NewGroup(langFields...)).Run()
 }

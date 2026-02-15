@@ -150,7 +150,7 @@ func run() error {
 	{{- if .HasMySQL}}
 	app.OnShutdown("mysql", func(_ context.Context) error { return db.Close() })
 	{{- end}}
-	app.OnShutdown("otel", otelShutdown)
+	app.OnShutdown("otel", lifecycle.ShutdownFunc(otelShutdown))
 
 	logger.Info("starting {{.ServiceName}}",
 		"version", version,
