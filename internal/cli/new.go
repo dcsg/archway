@@ -211,8 +211,12 @@ func runNewWizard(opts *newCommandOptions) (map[string]interface{}, error) {
 	if opts.Name != "" {
 		initial["ServiceName"] = opts.Name
 	}
-	if opts.ModulePath != "" {
-		initial["ModulePath"] = opts.ModulePath
+	modulePath := opts.ModulePath
+	if modulePath == "" && opts.Name != "" {
+		modulePath = fmt.Sprintf("github.com/example/%s", opts.Name)
+	}
+	if modulePath != "" {
+		initial["ModulePath"] = modulePath
 	}
 	vars, err := scaffold.RunWizard(wizardCfg, manifest, initial)
 	if err != nil {
