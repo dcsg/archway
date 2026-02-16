@@ -4,7 +4,7 @@
 **Status:** Draft
 **Created:** 2026-02-14
 **Last Updated:** 2026-02-14
-**Source of Truth:** `.planning/CONTEXT.md`
+**Source of Truth:** `docs/research/CONTEXT.md`
 
 ---
 

@@ -3,8 +3,8 @@
 ## Overview
 **Project:** github.com/dcsg/archway
 **Total Phases:** 17 (across 6 parts)
-**Source of Truth:** `.planning/CONTEXT.md`, `.planning/prds/archway-v1.md`
-**ADRs:** 001-006 in `.claude/decisions/`
+**Source of Truth:** `docs/research/CONTEXT.md`, `docs/architecture/prds/archway-v1.md`
+**ADRs:** 001-006 in `docs/architecture/decisions/`
 
 ## Model Assignment Strategy
 
@@ -45,9 +45,9 @@
 **Prompt:**
 ```
 You are building the foundation for Archway, a Go CLI tool. Read these files for full context:
-- .planning/CONTEXT.md (source of truth)
-- .planning/prds/archway-v1.md (PRD)
-- .claude/decisions/006-project-structure.md (project layout)
+- docs/research/CONTEXT.md (source of truth)
+- docs/architecture/prds/archway-v1.md (PRD)
+- docs/architecture/decisions/006-project-structure.md (project layout)
 
 Create the Go module and Cobra CLI skeleton:
 
@@ -122,9 +122,9 @@ When complete, output: PHASE 1.1 COMPLETE
 **Prompt:**
 ```
 Read these files for context:
-- .claude/decisions/001-embedded-providers-over-plugins.md
-- .claude/decisions/005-three-layer-extensibility.md
-- .planning/CONTEXT.md (provider interface section)
+- docs/architecture/decisions/001-embedded-providers-over-plugins.md
+- docs/architecture/decisions/005-three-layer-extensibility.md
+- docs/research/CONTEXT.md (provider interface section)
 
 Implement the provider interface and registry:
 
@@ -183,9 +183,9 @@ When complete, output: PHASE 1.2 COMPLETE
 **Prompt:**
 ```
 Read these files for context:
-- .claude/decisions/004-terraform-mental-model.md
-- .claude/decisions/005-three-layer-extensibility.md
-- .planning/CONTEXT.md (archway.yaml example section)
+- docs/architecture/decisions/004-terraform-mental-model.md
+- docs/architecture/decisions/005-three-layer-extensibility.md
+- docs/research/CONTEXT.md (archway.yaml example section)
 
 Implement two config layers:
 
@@ -240,7 +240,7 @@ When complete, output: PHASE 1.3 COMPLETE
 
 **Prompt:**
 ```
-Read .planning/prds/archway-v1.md for context (US-6: auto-detect language).
+Read docs/architecture/prds/archway-v1.md for context (US-6: auto-detect language).
 
 Implement language auto-detection:
 
@@ -284,8 +284,8 @@ When complete, output: PHASE 1.4 COMPLETE
 **Prompt:**
 ```
 Read these files for context:
-- .claude/decisions/003-template-architecture.md
-- .claude/decisions/005-three-layer-extensibility.md
+- docs/architecture/decisions/003-template-architecture.md
+- docs/architecture/decisions/005-three-layer-extensibility.md
 
 Build the template engine:
 
@@ -340,7 +340,7 @@ When complete, output: PHASE 2.1 COMPLETE
 
 **Prompt:**
 ```
-Read .claude/decisions/003-template-architecture.md for wizard.yaml format context.
+Read docs/architecture/decisions/003-template-architecture.md for wizard.yaml format context.
 
 Build the TUI wizard using charmbracelet/huh:
 
@@ -389,7 +389,7 @@ When complete, output: PHASE 2.2 COMPLETE
 
 **Prompt:**
 ```
-Read .planning/CONTEXT.md for Go provider template details:
+Read docs/research/CONTEXT.md for Go provider template details:
 - Hexagonal architecture, CQRS, Chi, slog, OTel, koanf, franz-go
 - Full wizard: service type, transports, data stores, auth, email, etc.
 
@@ -435,7 +435,7 @@ When complete, output: PHASE 2.3 COMPLETE
 
 **Prompt:**
 ```
-Read .planning/CONTEXT.md: "Generates archway.yaml as part of scaffold (desired state is set from day one)"
+Read docs/research/CONTEXT.md: "Generates archway.yaml as part of scaffold (desired state is set from day one)"
 
 Implement post-scaffold hooks and archway.yaml generation:
 
@@ -483,9 +483,9 @@ When complete, output: PHASE 2.4 COMPLETE
 **Prompt:**
 ```
 Read these files for context:
-- .planning/research/go-cli-ecosystem.md (sections on go/packages, inspector, go/analysis)
-- .planning/research/project-learner-patterns.md (AST analysis pipeline)
-- .claude/decisions/006-project-structure.md
+- docs/research/go-cli-ecosystem.md (sections on go/packages, inspector, go/analysis)
+- docs/research/project-learner-patterns.md (AST analysis pipeline)
+- docs/architecture/decisions/006-project-structure.md
 
 Build the AST analysis pipeline:
 
@@ -540,7 +540,7 @@ When complete, output: PHASE 3.1 COMPLETE
 
 **Prompt:**
 ```
-Read .planning/research/project-learner-patterns.md for detection heuristics.
+Read docs/research/project-learner-patterns.md for detection heuristics.
 
 Implement architecture pattern detection:
 
@@ -598,7 +598,7 @@ When complete, output: PHASE 3.2 COMPLETE
 
 **Prompt:**
 ```
-Read .planning/research/project-learner-patterns.md for detection signals.
+Read docs/research/project-learner-patterns.md for detection signals.
 
 Implement framework and convention detection:
 
@@ -710,7 +710,7 @@ When complete, output: PHASE 3.4 COMPLETE
 
 **Prompt:**
 ```
-Read .planning/prds/archway-v1.md (US-2: Initialize desired architecture).
+Read docs/architecture/prds/archway-v1.md (US-2: Initialize desired architecture).
 
 Implement archway init:
 
@@ -750,7 +750,7 @@ When complete, output: PHASE 3.5 COMPLETE
 
 **Prompt:**
 ```
-Read .claude/decisions/002-openai-compatible-api-for-llm.md for full context.
+Read docs/architecture/decisions/002-openai-compatible-api-for-llm.md for full context.
 
 Implement LLM integration:
 
@@ -856,7 +856,7 @@ When complete, output: PHASE 4.2 COMPLETE
 
 **Prompt:**
 ```
-Read .planning/CONTEXT.md (MCP server section) and .planning/prds/archway-v1.md (US-4).
+Read docs/research/CONTEXT.md (MCP server section) and docs/architecture/prds/archway-v1.md (US-4).
 
 Install dependency: github.com/modelcontextprotocol/go-sdk
 
