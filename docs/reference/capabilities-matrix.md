@@ -113,6 +113,22 @@ When you select capabilities, Archway suggests what you might be missing:
 | `http-client` | `circuit-breaker`, `retry` | Resilient external calls |
 | Any transport | `observability`, `request-id` | Tracing and correlation |
 
+### Capability Warnings
+
+After suggestions, Archway warns about capability combinations that often cause issues in production:
+
+| If you have... | But missing... | Warning |
+|---------------|---------------|---------|
+| `postgres` or `mysql` | `uuid` | UUIDv4 causes index fragmentation — use UUIDv7 |
+| `http-api` | `health` | Production APIs need `/healthz` and `/readyz` endpoints |
+| `http-api` | `cors` | Browser-facing APIs require CORS headers |
+| `http-api` | `observability` | Tracing and request ID propagation for debugging |
+| `event-bus` | `outbox` | Events can be lost without transactional outbox |
+| `http-client` | `circuit-breaker` or `retry` | External calls need resilience patterns |
+| `kafka-consumer` or `grpc` | `health` | Consumers/services need health checks for readiness probes |
+
+Warnings are advisory — they don't block scaffolding.
+
 ## Anti-Pattern Detection
 
 `archway check` detects anti-patterns across three categories:

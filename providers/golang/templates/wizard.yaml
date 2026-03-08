@@ -2,14 +2,16 @@ steps:
   - id: intent
     questions:
       - variable: ProjectCapabilities
-        prompt: "What capabilities does your project need?"
+        prompt: "What kind of service are you building?"
         type: multiselect
         options:
-          - label: "API endpoints (REST, gRPC)"
+          - label: "HTTP API (REST endpoints, middleware, OpenAPI)"
             value: api
-          - label: "Background processing (Kafka, job queues)"
+          - label: "gRPC service (Protocol Buffers, interceptors)"
+            value: grpc
+          - label: "Event consumer (Kafka, message processing)"
             value: worker
-          - label: "CLI commands"
+          - label: "CLI tool (command-line interface)"
             value: cli
 
   - id: structure
@@ -36,13 +38,10 @@ steps:
         when: "HasAPIOrWorker"
 
 routing:
-  # CLI-only -> cli template
   - template: cli
     when: "CLIOnly"
-  # Prototype -> cli template (minimal)
   - template: cli
     when: 'ProjectStage == "prototype"'
-  # Production with API or Worker -> api template
   - template: api
     when: 'ProjectStage == "production"'
 

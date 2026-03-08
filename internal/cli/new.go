@@ -132,6 +132,18 @@ func runNew(ctx context.Context, opts *newCommandOptions) error {
 		return err
 	}
 
+	// Show capability warnings.
+	if opts.Capabilities != "" {
+		caps := strings.Split(opts.Capabilities, ",")
+		capWarnings := scaffold.CapabilityWarnings(caps)
+		if len(capWarnings) > 0 {
+			fmt.Println("\n⚠  Capability warnings:")
+			for _, w := range capWarnings {
+				fmt.Printf("  • %s\n", w.Message)
+			}
+		}
+	}
+
 	fmt.Printf("\nScaffold complete: %d files created\n", len(resp.FilesCreated))
 	for _, file := range resp.FilesCreated {
 		fmt.Printf("  %s\n", file)
@@ -278,6 +290,16 @@ func runCompositionWizard(opts *newCommandOptions) (map[string]interface{}, erro
 			return nil, err
 		}
 		selectedCaps = append(selectedCaps, acceptedSuggestions...)
+	}
+
+	// Step 4b: Capability warnings.
+	capWarnings := scaffold.CapabilityWarnings(selectedCaps)
+	if len(capWarnings) > 0 {
+		fmt.Println("\n⚠  Capability warnings:")
+		for _, w := range capWarnings {
+			fmt.Printf("  • %s\n", w.Message)
+		}
+		fmt.Println()
 	}
 
 	opts.Capabilities = strings.Join(selectedCaps, ",")

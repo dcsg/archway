@@ -4,5 +4,8 @@ requires: []
 suggests:
   - rate-limiting
   - auth-jwt
+  - cors
+  - health
   - observability
+  - request-id
 conflicts: []

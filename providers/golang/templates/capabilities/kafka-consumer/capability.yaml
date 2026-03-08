@@ -2,5 +2,6 @@ name: kafka-consumer
 description: "Kafka consumer with handler pattern"
 requires: []
 suggests:
+  - health
   - observability
 conflicts: []

@@ -95,7 +95,22 @@ Based on your selections, you might also want:
   [x] bootstrap       Bootstrap pattern provides testable dependency wiring
   [ ] rate-limiting   HTTP APIs benefit from rate limiting to prevent abuse
   [ ] auth-jwt        HTTP APIs typically need authentication
+  [ ] uuid            UUIDv7 provides database-friendly primary keys without index fragmentation
+  [ ] health          Health endpoints enable orchestrator readiness probes
 ```
+
+## Capability Warnings
+
+After suggestions, Archway warns about potentially problematic combinations:
+
+```
+⚠  Capability warnings:
+  • postgres without uuid: Consider UUIDv7 for database-friendly primary keys (avoids index fragmentation)
+  • event-bus without outbox: Without transactional outbox, events can be lost if the process crashes
+  • http-api without cors: If this API serves browser clients, CORS headers are required
+```
+
+Warnings are advisory — they don't block scaffolding, but flag combinations that often cause issues in production.
 
 ## Architecture Enforcement
 

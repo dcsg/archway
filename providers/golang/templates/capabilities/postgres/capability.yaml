@@ -2,7 +2,8 @@ name: postgres
 description: "PostgreSQL database connection with pgx driver and repository pattern"
 requires: []
 suggests:
-  - observability
-  - docker
+  - uuid
   - migrations
+  - docker
+  - observability
 conflicts: []
