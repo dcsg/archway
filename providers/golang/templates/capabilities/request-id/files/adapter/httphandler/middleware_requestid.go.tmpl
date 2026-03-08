@@ -7,9 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type contextKey string
-
-const requestIDKey contextKey = "request_id"
+type requestIDKey struct{}
 
 const (
 	headerXRequestID = "X-Request-ID"
@@ -23,7 +21,7 @@ func RequestID(next http.Handler) http.Handler {
 			id = uuid.NewString()
 		}
 
-		ctx := context.WithValue(r.Context(), requestIDKey, id)
+		ctx := context.WithValue(r.Context(), requestIDKey{}, id)
 		w.Header().Set(headerXRequestID, id)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
@@ -31,7 +29,7 @@ func RequestID(next http.Handler) http.Handler {
 
 // GetRequestID extracts the request ID from context.
 func GetRequestID(ctx context.Context) string {
-	if id, ok := ctx.Value(requestIDKey).(string); ok {
+	if id, ok := ctx.Value(requestIDKey{}).(string); ok {
 		return id
 	}
 	return ""

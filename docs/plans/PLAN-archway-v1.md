@@ -6,6 +6,30 @@
 **Source of Truth:** `docs/research/CONTEXT.md`, `docs/architecture/prds/archway-v1.md`
 **ADRs:** 001-006 in `docs/architecture/decisions/`
 
+## Progress
+
+| Phase | Title | Status | Updated |
+|-------|-------|--------|---------|
+| 1.1 | Go Module + Cobra CLI Skeleton | done | 2026-02-14 |
+| 1.2 | Provider Interface + Registry | done | 2026-02-15 |
+| 1.3 | Config System + archway.yaml Parser | done | 2026-02-16 |
+| 1.4 | Language Auto-Detection | done | 2026-02-17 |
+| 2.1 | Template Engine + Manifest/Wizard Parsing | done | 2026-02-20 |
+| 2.2 | TUI Wizard (Bubbletea + Huh) | done | 2026-02-22 |
+| 2.3 | Port Go Templates | done | 2026-02-25 |
+| 2.4 | Post-Scaffold Hooks + archway.yaml Gen | done | 2026-02-26 |
+| 3.1 | AST Analysis Pipeline | done | 2026-03-01 |
+| 3.2 | Architecture Pattern Detection | done | 2026-03-02 |
+| 3.3 | Framework + Convention Detection | done | 2026-03-03 |
+| 3.4 | Output Formatters | done | 2026-03-04 |
+| 3.5 | archway init Wizard | done | 2026-03-05 |
+| 4.1 | LLM Provider Abstraction | deferred | 2026-03-08 |
+| 4.2 | Configure Command + LLM Analysis | deferred | 2026-03-08 |
+| 5.1 | MCP Server + Tools + Resources | deferred | 2026-03-08 |
+| 6.1 | GoReleaser + Homebrew + Docs | done | 2026-03-08 |
+
+**IMPORTANT:** Phases 4.1, 4.2, 5.1 deferred from v1 scope. LLM integration and MCP server will be revisited post-v1.
+
 ## Model Assignment Strategy
 
 | Phase | Task | Model | Reasoning | Est. Cost |
@@ -23,9 +47,9 @@
 | 3.3 | Framework + convention detection | opus | AST pattern matching, multiple detection strategies | $0.80 |
 | 3.4 | Dependency graph + output formatters | sonnet | Graph construction + JSON/Markdown/terminal output | $0.08 |
 | 3.5 | archway init wizard | sonnet | TUI form following Phase 2.2 patterns | $0.08 |
-| 4.1 | LLM provider abstraction + OpenAI client | sonnet | Well-defined from ADR-002, library wrapper | $0.08 |
-| 4.2 | Auto-detection chain + configure command | sonnet | Conditional logic, Ollama health check | $0.08 |
-| 5.1 | MCP server + tools + resources | sonnet | Glue code wiring analysis to MCP SDK | $0.08 |
+| 4.1 | LLM provider abstraction + OpenAI client | sonnet | **Deferred** — removed from v1 | $0.00 |
+| 4.2 | Auto-detection chain + configure command | sonnet | **Deferred** — removed from v1 | $0.00 |
+| 5.1 | MCP server + tools + resources | sonnet | **Deferred** — removed from v1 | $0.00 |
 | 6.1 | GoReleaser + Homebrew + DOF + docs | sonnet | Configuration files, README, CI setup | $0.08 |
 
 **Estimated Total:** ~$6.40

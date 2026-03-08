@@ -154,7 +154,11 @@ func runNew(ctx context.Context, opts *newCommandOptions) error {
 
 	fmt.Println("\nNext steps:")
 	fmt.Printf("  cd %s\n", filepath.Join(opts.OutputDir, opts.Name))
-	fmt.Printf("  go run ./cmd/%s\n", opts.Name)
+	if template == "flat" || opts.Architecture == "flat" {
+		fmt.Println("  go run .")
+	} else {
+		fmt.Printf("  go run ./cmd/%s\n", opts.Name)
+	}
 	fmt.Println("\nTip: Run 'keel:init' to set up AI-powered development guardrails.")
 
 	return nil

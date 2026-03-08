@@ -24,11 +24,11 @@
 | `archway new` — scaffold services | shipped | archway-v1.md |
 | `archway analyze` — detect architecture | shipped | archway-v1.md |
 | `archway init` — generate archway.yaml | shipped | archway-v1.md |
-| `archway mcp serve` — MCP server | shipped | archway-v1.md |
+| `archway check` — validate compliance | shipped | archway-v1.md |
+| `archway mcp serve` — MCP server | deferred | archway-v1.md |
 | `archway plan` — compare desired vs actual | planned | |
 | `archway apply` — execute migrations | planned | |
-| `archway check` — validate compliance | planned | |
-| Multi-language providers (PHP, Node, Python) | planned | |
+| Multi-language providers (TypeScript/Node) | planned | PRD-001 |
 
 ## Market Context
 

@@ -11,9 +11,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 )
 
-type contextKey string
-
-const userClaimsKey contextKey = "user_claims"
+type userClaimsKey struct{}
 
 // UserClaims holds extracted JWT claims.
 type UserClaims struct {
@@ -24,7 +22,7 @@ type UserClaims struct {
 
 // GetUserClaims extracts user claims from the request context.
 func GetUserClaims(ctx context.Context) (*UserClaims, bool) {
-	claims, ok := ctx.Value(userClaimsKey).(*UserClaims)
+	claims, ok := ctx.Value(userClaimsKey{}).(*UserClaims)
 	return claims, ok
 }
 
@@ -65,7 +63,7 @@ func JWTAuth(jwksURL string, issuer string, audience string, logger *slog.Logger
 			claims := &UserClaims{
 				Subject: token.Subject(),
 			}
-			ctx := context.WithValue(r.Context(), userClaimsKey, claims)
+			ctx := context.WithValue(r.Context(), userClaimsKey{}, claims)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

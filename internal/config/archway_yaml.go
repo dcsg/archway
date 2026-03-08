@@ -153,21 +153,32 @@ func DefaultArchwayConfig(language, architecture string) *ArchwayConfig {
 	cfg := &ArchwayConfig{
 		Language:     language,
 		Architecture: architecture,
-		Components: []Component{
+		Rules: RulesConfig{
+			Functions: FunctionRules{MaxLines: 80, MaxParams: 4, MaxReturnValues: 2},
+		},
+	}
+
+	switch architecture {
+	case "flat":
+		cfg.Components = nil
+		cfg.Rules.Structure = StructureConfig{
+			ForbiddenDirs: []string{"utils/", "helpers/"},
+		}
+		cfg.Templates = TemplateSourceConfig{Source: "archway/cli"}
+	default: // hexagonal
+		cfg.Components = []Component{
 			{Name: "domain", In: []string{"domain/**"}, MayDependOn: []string{}},
 			{Name: "ports", In: []string{"port/**"}, MayDependOn: []string{"domain"}},
 			{Name: "service", In: []string{"service/**"}, MayDependOn: []string{"domain", "ports"}},
 			{Name: "adapters", In: []string{"adapter/**"}, MayDependOn: []string{"ports", "domain"}},
 			{Name: "platform", In: []string{"platform/**"}, MayDependOn: []string{}},
-		},
-		Rules: RulesConfig{
-			Structure: StructureConfig{
-				RequiredDirs:  []string{"cmd/", "domain/", "port/", "adapter/"},
-				ForbiddenDirs: []string{"utils/", "helpers/"},
-			},
-			Functions: FunctionRules{MaxLines: 80, MaxParams: 4, MaxReturnValues: 2},
-		},
-		Templates: TemplateSourceConfig{Source: "archway/api"},
+		}
+		cfg.Rules.Structure = StructureConfig{
+			RequiredDirs:  []string{"cmd/", "domain/", "port/", "adapter/"},
+			ForbiddenDirs: []string{"utils/", "helpers/"},
+		}
+		cfg.Templates = TemplateSourceConfig{Source: "archway/api"}
 	}
+
 	return cfg
 }
