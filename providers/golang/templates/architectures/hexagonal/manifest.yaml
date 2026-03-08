@@ -26,6 +26,3 @@ components:
   - name: adapters
     in: ["adapter/**"]
     may_depend_on: [ports, domain]
-  - name: platform
-    in: ["platform/**"]
-    may_depend_on: []

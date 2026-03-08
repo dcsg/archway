@@ -1,0 +1,7 @@
+name: platform
+description: "Config loading, lifecycle management, structured logging, OpenTelemetry, and live reload"
+requires: []
+suggests:
+  - docker
+  - bootstrap
+conflicts: []

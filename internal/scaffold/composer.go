@@ -145,6 +145,8 @@ func ComposeProject(templateFS fs.FS, architecture string, capabilities []string
 		"kafka-consumer": "HasKafka",
 		"mysql":          "HasMySQL",
 		"redis":          "HasRedis",
+		"platform":       "HasPlatform",
+		"bootstrap":      "HasBootstrap",
 	}
 	for _, c := range capabilities {
 		if flag, ok := capFlagMap[c]; ok {

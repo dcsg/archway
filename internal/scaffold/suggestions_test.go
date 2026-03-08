@@ -5,7 +5,7 @@ import "testing"
 func TestComputeSuggestions_HTTPAPISelected(t *testing.T) {
 	suggestions := ComputeSuggestions([]string{"http-api"})
 
-	// Should suggest rate-limiting, auth-jwt, observability, testing, ci-github, linting, docker.
+	// Should suggest platform, rate-limiting, auth-jwt, testing, ci-github, linting, docker.
 	if len(suggestions) < 5 {
 		t.Errorf("expected at least 5 suggestions for http-api, got %d", len(suggestions))
 	}
@@ -14,7 +14,7 @@ func TestComputeSuggestions_HTTPAPISelected(t *testing.T) {
 	for _, s := range suggestions {
 		found[s.Capability] = true
 	}
-	for _, expected := range []string{"rate-limiting", "auth-jwt", "observability", "testing"} {
+	for _, expected := range []string{"platform", "rate-limiting", "auth-jwt", "testing"} {
 		if !found[expected] {
 			t.Errorf("expected suggestion for %q", expected)
 		}
@@ -22,7 +22,7 @@ func TestComputeSuggestions_HTTPAPISelected(t *testing.T) {
 }
 
 func TestComputeSuggestions_AlreadySelected(t *testing.T) {
-	suggestions := ComputeSuggestions([]string{"http-api", "rate-limiting", "auth-jwt", "observability", "testing", "ci-github", "linting", "docker"})
+	suggestions := ComputeSuggestions([]string{"http-api", "rate-limiting", "auth-jwt", "platform", "bootstrap", "testing", "ci-github", "linting", "docker"})
 
 	// Everything is already selected — no suggestions.
 	if len(suggestions) != 0 {
@@ -40,8 +40,8 @@ func TestComputeSuggestions_MySQLSelected(t *testing.T) {
 	for _, s := range suggestions {
 		found[s.Capability] = true
 	}
-	if !found["observability"] {
-		t.Error("expected observability suggestion for mysql")
+	if !found["platform"] {
+		t.Error("expected platform suggestion for mysql")
 	}
 	if !found["docker"] {
 		t.Error("expected docker suggestion for mysql")
@@ -49,7 +49,7 @@ func TestComputeSuggestions_MySQLSelected(t *testing.T) {
 }
 
 func TestComputeSuggestions_NoDuplicates(t *testing.T) {
-	// http-api and mysql both suggest observability.
+	// http-api and mysql both suggest platform.
 	suggestions := ComputeSuggestions([]string{"http-api", "mysql"})
 
 	counts := map[string]int{}

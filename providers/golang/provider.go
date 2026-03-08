@@ -113,6 +113,12 @@ func (p *GoProvider) Scaffold(_ context.Context, req provider.ScaffoldRequest) (
 	files := append([]string{}, renderResult.FilesCreated...)
 	files = append(files, archwayPath)
 
+	// Generate project matrix doc.
+	matrixPath, err := generateProjectMatrix(req.OutputDir, architecture, capabilities, archwayCfg)
+	if err == nil && matrixPath != "" {
+		files = append(files, matrixPath)
+	}
+
 	return &provider.ScaffoldResponse{FilesCreated: files, ArchwayYAML: archwayBytes}, nil
 }
 

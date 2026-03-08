@@ -1,17 +1,21 @@
 package main
 
 import (
-	"log/slog"
+	"fmt"
 	"os"
-
-	"{{.ModulePath}}/internal/bootstrap"
 )
 
-var version = "dev"
-
 func main() {
-	if err := bootstrap.Run(version); err != nil {
-		slog.Error("application error", "error", err)
+	fmt.Println("{{.ServiceName}} service")
+	if err := run(); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+func run() error {
+	// TODO: Wire dependencies and start your application here.
+	// Consider adding the 'bootstrap' capability for production-grade
+	// lifecycle management with config, logging, and graceful shutdown.
+	return nil
 }

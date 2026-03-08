@@ -58,7 +58,7 @@ func TestScaffoldWithCapabilities(t *testing.T) {
 		OutputDir:    out,
 		Options: map[string]string{
 			"skip_hooks":   "true",
-			"capabilities": "http-api,mysql",
+			"capabilities": "platform,bootstrap,http-api,mysql",
 		},
 	})
 	if err != nil {

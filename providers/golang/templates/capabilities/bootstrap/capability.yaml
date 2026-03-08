@@ -1,0 +1,6 @@
+name: bootstrap
+description: "Thin main.go with internal/bootstrap wiring pattern for testable dependency injection"
+requires:
+  - platform
+suggests: []
+conflicts: []

@@ -1,6 +1,0 @@
-name: observability
-description: "Structured logging, OpenTelemetry tracing, lifecycle management, and live reload"
-requires: []
-suggests:
-  - docker
-conflicts: []

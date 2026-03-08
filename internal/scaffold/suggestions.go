@@ -17,14 +17,12 @@ type SuggestionRule struct {
 }
 
 var defaultSuggestionRules = []SuggestionRule{
+	{IfAny: []string{"http-api", "grpc", "kafka-consumer", "mysql", "redis"}, Missing: "platform", Reason: "Production services need config, logging, and lifecycle management"},
+	{IfAny: []string{"platform"}, Missing: "bootstrap", Reason: "Bootstrap pattern provides testable dependency wiring with thin main.go"},
 	{IfAny: []string{"http-api"}, Missing: "rate-limiting", Reason: "HTTP APIs benefit from rate limiting to prevent abuse"},
 	{IfAny: []string{"http-api"}, Missing: "auth-jwt", Reason: "HTTP APIs typically need authentication"},
-	{IfAny: []string{"http-api"}, Missing: "observability", Reason: "APIs need health checks and structured logging for production"},
 	{IfAny: []string{"http-api"}, Missing: "testing", Reason: "APIs need handler tests for reliability"},
-	{IfAny: []string{"grpc"}, Missing: "observability", Reason: "gRPC services need interceptor-based observability"},
-	{IfAny: []string{"mysql", "redis"}, Missing: "observability", Reason: "Database connections need health checks and monitoring"},
 	{IfAny: []string{"mysql", "redis"}, Missing: "docker", Reason: "docker-compose simplifies local development with external dependencies"},
-	{IfAny: []string{"kafka-consumer"}, Missing: "observability", Reason: "Message consumers need logging and metrics"},
 	{IfAny: []string{"http-api", "grpc", "kafka-consumer"}, Missing: "ci-github", Reason: "CI/CD catches issues before they reach production"},
 	{IfAny: []string{"http-api", "grpc", "kafka-consumer"}, Missing: "linting", Reason: "Linting catches code quality issues early"},
 	{IfAny: []string{"http-api", "grpc"}, Missing: "docker", Reason: "Docker simplifies deployment and local development"},

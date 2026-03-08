@@ -1,0 +1,59 @@
+---
+title: Archway
+description: Architecture-aware service composer for Go
+template: splash
+hero:
+  tagline: Stop writing boilerplate. Start composing production-grade Go services.
+  actions:
+    - text: Get Started
+      link: /archway/getting-started/introduction/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/dcsg/archway
+      variant: minimal
+      icon: github
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## What is Archway?
+
+Archway scaffolds Go services by composing an **architecture** with **capabilities**. Pick your structure, pick what your service needs, and Archway wires it all together — config, logging, graceful shutdown, middleware, database connections, and more.
+
+<CardGrid>
+  <Card title="Pick an Architecture" icon="puzzle">
+    Choose **hexagonal** for production APIs or **flat** for simple CLIs. Your architecture defines the structure and dependency rules.
+  </Card>
+  <Card title="Add Capabilities" icon="add-document">
+    HTTP API, gRPC, MySQL, Redis, JWT auth, rate limiting — add what you need. Each capability is self-contained and composable.
+  </Card>
+  <Card title="Smart Suggestions" icon="star">
+    Archway suggests what you might be missing. Adding an HTTP API? You probably want rate limiting and auth too.
+  </Card>
+  <Card title="Enforce at Build Time" icon="approve-check-circle">
+    `archway check` validates your project against its architecture rules — dependency violations, structure checks, and compliance metrics.
+  </Card>
+</CardGrid>
+
+## Quick Example
+
+```bash
+# Interactive wizard
+archway new my-service
+
+# Or non-interactive
+archway new my-service \
+  --arch hexagonal \
+  --cap platform,bootstrap,http-api,mysql,docker \
+  --module github.com/myorg/my-service \
+  --no-wizard
+```
+
+This gives you a production-ready service with:
+- Hexagonal architecture (domain, ports, adapters)
+- REST API with Chi router and RFC 7807 errors
+- MySQL with connection pooling
+- Structured logging and OpenTelemetry
+- Bootstrap pattern for testable dependency wiring
+- Docker Compose for local development
+- `docs/PROJECT.md` with a full anatomy of your project
