@@ -103,14 +103,69 @@ func init() {
 }
 
 func TestDetectNakedGoroutines(t *testing.T) {
-	src := `package foo
+	tests := []struct {
+		name  string
+		src   string
+		wantN int
+	}{
+		{
+			"bare goroutine in regular func",
+			`package foo
 func doWork() {
 	go func() { println("hello") }()
-}`
-	file, fset := parseSource(t, src)
-	results := detectNakedGoroutines(file, fset, "test.go")
-	if len(results) != 1 {
-		t.Errorf("got %d violations, want 1", len(results))
+}`,
+			1,
+		},
+		{
+			"goroutine in Run method skipped",
+			`package foo
+import "context"
+type Server struct{}
+func (s *Server) Run(ctx context.Context) error {
+	go func() { println("serving") }()
+	return nil
+}`,
+			0,
+		},
+		{
+			"goroutine in Start method skipped",
+			`package foo
+func Start() {
+	go func() { println("starting") }()
+}`,
+			0,
+		},
+		{
+			"goroutine in ListenAndServe skipped",
+			`package foo
+func ListenAndServe() {
+	go func() { println("listening") }()
+}`,
+			0,
+		},
+		{
+			"goroutine outside Run still flagged",
+			`package foo
+import "context"
+type Server struct{}
+func (s *Server) Run(ctx context.Context) error {
+	go func() {}()
+	return nil
+}
+func (s *Server) Handle() {
+	go func() { println("bad") }()
+}`,
+			1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			file, fset := parseSource(t, tt.src)
+			results := detectNakedGoroutines(file, fset, "test.go")
+			if len(results) != tt.wantN {
+				t.Errorf("got %d violations, want %d", len(results), tt.wantN)
+			}
+		})
 	}
 }
 
@@ -226,6 +281,125 @@ func f() string { return "hello" }`,
 		t.Run(tt.name, func(t *testing.T) {
 			file, fset := parseSource(t, tt.src)
 			results := detectUUIDv4AsKey(file, fset, "test.go")
+			if len(results) != tt.wantN {
+				t.Errorf("got %d violations, want %d", len(results), tt.wantN)
+			}
+		})
+	}
+}
+
+func TestDetectUUIDv4AsKey_SkipsRequestIDFiles(t *testing.T) {
+	src := `package foo
+import "github.com/google/uuid"
+func f() string { return uuid.NewString() }`
+
+	tests := []struct {
+		name     string
+		filePath string
+		wantN    int
+	}{
+		{"middleware_requestid.go skipped", "middleware_requestid.go", 0},
+		{"request_id.go skipped", "request_id.go", 0},
+		{"handler.go flagged", "handler.go", 1},
+		{"repo.go flagged", "repo.go", 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			file, fset := parseSource(t, src)
+			results := detectUUIDv4AsKey(file, fset, tt.filePath)
+			if len(results) != tt.wantN {
+				t.Errorf("got %d violations, want %d", len(results), tt.wantN)
+			}
+		})
+	}
+}
+
+func TestDetectContextBackground(t *testing.T) {
+	tests := []struct {
+		name    string
+		src     string
+		pkgPath string
+		wantN   int
+	}{
+		{
+			"context.Background in handler flagged",
+			`package httphandler
+import "context"
+func Handle() {
+	ctx := context.Background()
+	_ = ctx
+}`,
+			"github.com/acme/orders/adapter/httphandler",
+			1,
+		},
+		{
+			"context.Background in non-handler skipped",
+			`package service
+import "context"
+func Do() {
+	ctx := context.Background()
+	_ = ctx
+}`,
+			"github.com/acme/orders/service",
+			0,
+		},
+		{
+			"shutdown context.WithTimeout(context.Background()) skipped",
+			`package httphandler
+import "context"
+import "time"
+func Shutdown() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	_ = ctx
+}`,
+			"github.com/acme/orders/adapter/httphandler",
+			0,
+		},
+		{
+			"context.WithDeadline(context.Background()) skipped",
+			`package httphandler
+import "context"
+import "time"
+func Shutdown() {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now())
+	defer cancel()
+	_ = ctx
+}`,
+			"github.com/acme/orders/adapter/httphandler",
+			0,
+		},
+		{
+			"init call like jwk.Fetch(context.Background()) skipped",
+			`package httphandler
+import "context"
+func Setup() {
+	keys := jwk.Fetch(context.Background(), "https://example.com/.well-known/jwks.json")
+	_ = keys
+}`,
+			"github.com/acme/orders/adapter/httphandler",
+			0,
+		},
+		{
+			"bare context.Background alongside shutdown still flagged",
+			`package httphandler
+import "context"
+import "time"
+func Handle() {
+	bad := context.Background()
+	_ = bad
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	_ = ctx
+}`,
+			"github.com/acme/orders/adapter/httphandler",
+			1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			file, fset := parseSource(t, tt.src)
+			results := detectContextBackground(file, fset, "test.go", tt.pkgPath)
 			if len(results) != tt.wantN {
 				t.Errorf("got %d violations, want %d", len(results), tt.wantN)
 			}

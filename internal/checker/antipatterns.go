@@ -137,7 +137,26 @@ func detectInitAbuse(file *ast.File, fset *token.FileSet, filePath string) []Ant
 }
 
 // detectNakedGoroutines finds `go func()` without errgroup/waitgroup/context.
+// Skips goroutines inside Run/Start/ListenAndServe methods (server lifecycle pattern).
 func detectNakedGoroutines(file *ast.File, fset *token.FileSet, filePath string) []AntiPattern {
+	// Collect line ranges for Run/Start/ListenAndServe methods — goroutines
+	// inside these are expected (e.g. HTTP server startup).
+	serverMethods := map[string]bool{"Run": true, "Start": true, "ListenAndServe": true, "Serve": true}
+	type lineRange struct{ start, end int }
+	var excluded []lineRange
+	for _, decl := range file.Decls {
+		fn, ok := decl.(*ast.FuncDecl)
+		if !ok || fn.Body == nil {
+			continue
+		}
+		if serverMethods[fn.Name.Name] {
+			excluded = append(excluded, lineRange{
+				start: fset.Position(fn.Body.Pos()).Line,
+				end:   fset.Position(fn.Body.End()).Line,
+			})
+		}
+	}
+
 	var results []AntiPattern
 	ast.Inspect(file, func(n ast.Node) bool {
 		gs, ok := n.(*ast.GoStmt)
@@ -145,11 +164,15 @@ func detectNakedGoroutines(file *ast.File, fset *token.FileSet, filePath string)
 			return true
 		}
 
-		// go someFunc() or go func(){...}() — check if it's inside a function
-		// that uses errgroup or has defer wg.Done().
-		// Simple heuristic: flag all go statements. Real production code should
-		// use errgroup.Go() or structured concurrency.
 		line := fset.Position(gs.Pos()).Line
+
+		// Skip goroutines inside server lifecycle methods.
+		for _, r := range excluded {
+			if line >= r.start && line <= r.end {
+				return true
+			}
+		}
+
 		results = append(results, AntiPattern{
 			Name:     "naked_goroutine",
 			Category: "code",
@@ -218,11 +241,44 @@ func detectSwallowedErrors(file *ast.File, fset *token.FileSet, filePath string)
 }
 
 // detectContextBackground finds context.Background() usage in handler/adapter packages.
+// Skips shutdown contexts (context.WithTimeout(context.Background(), ...)) which are legitimate.
 func detectContextBackground(file *ast.File, fset *token.FileSet, filePath string, pkgPath string) []AntiPattern {
 	// Only flag in handler/adapter code where request context should be used.
 	if !isHandlerPackage(pkgPath) {
 		return nil
 	}
+
+	// Collect lines where context.Background() is used legitimately:
+	// - Inside context.WithTimeout/WithDeadline (shutdown pattern)
+	// - As argument to initialization calls (Fetch, Connect, Open, Dial, Init, New)
+	skipLines := map[int]bool{}
+	ast.Inspect(file, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		fnName := callName(call)
+
+		// Shutdown pattern: context.WithTimeout(context.Background(), ...)
+		if fnName == "context.WithTimeout" || fnName == "context.WithDeadline" {
+			for _, arg := range call.Args {
+				if innerCall, ok := arg.(*ast.CallExpr); ok && isContextBackgroundCall(innerCall) {
+					skipLines[fset.Position(innerCall.Pos()).Line] = true
+				}
+			}
+		}
+
+		// Initialization calls: jwk.Fetch(context.Background(), ...), sql.Open(...), etc.
+		if isInitCall(fnName) {
+			for _, arg := range call.Args {
+				if innerCall, ok := arg.(*ast.CallExpr); ok && isContextBackgroundCall(innerCall) {
+					skipLines[fset.Position(innerCall.Pos()).Line] = true
+				}
+			}
+		}
+
+		return true
+	})
 
 	var results []AntiPattern
 	ast.Inspect(file, func(n ast.Node) bool {
@@ -232,12 +288,16 @@ func detectContextBackground(file *ast.File, fset *token.FileSet, filePath strin
 		}
 
 		if isContextBackgroundCall(call) {
+			line := fset.Position(call.Pos()).Line
+			if skipLines[line] {
+				return true // skip shutdown contexts
+			}
 			results = append(results, AntiPattern{
 				Name:     "context_background_in_handler",
 				Category: "code",
 				Severity: "warning",
 				File:     filePath,
-				Line:     fset.Position(call.Pos()).Line,
+				Line:     line,
 				Message:  "context.Background() in handler — use request context (r.Context()) for proper cancellation",
 			})
 		}
@@ -341,7 +401,7 @@ func detectGodPackages(pkgs []*packages.Package, projectPath string) []AntiPatte
 			}
 		}
 
-		if exported > 30 {
+		if exported > 40 {
 			relPath := pkg.PkgPath
 			if rel, err := filepath.Rel(projectPath, pkg.PkgPath); err == nil {
 				relPath = rel
@@ -359,7 +419,14 @@ func detectGodPackages(pkgs []*packages.Package, projectPath string) []AntiPatte
 }
 
 // detectUUIDv4AsKey flags uuid.New() / uuid.NewString() usage and suggests UUIDv7 for DB keys.
+// Skips files related to request ID generation where UUIDv4 is appropriate.
 func detectUUIDv4AsKey(file *ast.File, fset *token.FileSet, filePath string) []AntiPattern {
+	// UUIDv4 is appropriate for request IDs — skip those files.
+	baseName := strings.ToLower(filepath.Base(filePath))
+	if strings.Contains(baseName, "requestid") || strings.Contains(baseName, "request_id") {
+		return nil
+	}
+
 	var results []AntiPattern
 	ast.Inspect(file, func(n ast.Node) bool {
 		call, ok := n.(*ast.CallExpr)
@@ -567,6 +634,16 @@ func isHandlerPackage(pkgPath string) bool {
 		strings.Contains(pkgPath, "adapter") ||
 		strings.Contains(pkgPath, "transport") ||
 		strings.Contains(pkgPath, "api")
+}
+
+func isInitCall(fnName string) bool {
+	initSuffixes := []string{"Fetch", "Connect", "Open", "Dial", "Init", "Listen", "Setup", "Configure"}
+	for _, suffix := range initSuffixes {
+		if strings.HasSuffix(fnName, suffix) || strings.HasSuffix(fnName, "."+suffix) {
+			return true
+		}
+	}
+	return false
 }
 
 func isContextBackgroundCall(call *ast.CallExpr) bool {

@@ -86,11 +86,33 @@ func ComposeProject(templateFS fs.FS, architecture string, capabilities []string
 		capDirs = append(capDirs, capDir)
 	}
 
-	// Validate requirements and detect conflicts.
+	// Auto-resolve transitive dependencies.
 	capSet := make(map[string]bool, len(capabilities))
 	for _, c := range capabilities {
 		capSet[c] = true
 	}
+	resolved := resolveCapabilityDeps(templateFS, capabilities, capSet)
+	if len(resolved) > len(capabilities) {
+		// Reload manifests for newly added capabilities.
+		capabilities = resolved
+		capManifests = capManifests[:0]
+		capDirs = capDirs[:0]
+		for _, cap := range capabilities {
+			capDir := path.Join("templates", "capabilities", cap)
+			data, err := fs.ReadFile(templateFS, path.Join(capDir, "capability.yaml"))
+			if err != nil {
+				return nil, fmt.Errorf("read capability manifest %q: %w", cap, err)
+			}
+			cm, err := ParseCapabilityManifest(data)
+			if err != nil {
+				return nil, fmt.Errorf("capability %q: %w", cap, err)
+			}
+			capManifests = append(capManifests, *cm)
+			capDirs = append(capDirs, capDir)
+		}
+	}
+
+	// Validate requirements and detect conflicts.
 	var warnings []string
 	for _, cm := range capManifests {
 		for _, req := range cm.Requires {
@@ -226,6 +248,61 @@ func collectPartials(templateFS fs.FS, capDirs []string, vars map[string]interfa
 		}
 	}
 	return partials, nil
+}
+
+// resolveCapabilityDeps walks the requires graph and adds missing transitive dependencies.
+// Returns the expanded list in dependency-first order.
+func resolveCapabilityDeps(templateFS fs.FS, capabilities []string, capSet map[string]bool) []string {
+	// BFS to discover all transitive requires.
+	queue := make([]string, len(capabilities))
+	copy(queue, capabilities)
+	ordered := make([]string, 0, len(capabilities))
+	visited := map[string]bool{}
+
+	for len(queue) > 0 {
+		cap := queue[0]
+		queue = queue[1:]
+		if visited[cap] {
+			continue
+		}
+		visited[cap] = true
+
+		capDir := path.Join("templates", "capabilities", cap)
+		data, err := fs.ReadFile(templateFS, path.Join(capDir, "capability.yaml"))
+		if err != nil {
+			ordered = append(ordered, cap)
+			continue
+		}
+		cm, err := ParseCapabilityManifest(data)
+		if err != nil {
+			ordered = append(ordered, cap)
+			continue
+		}
+
+		// Add requires that aren't yet selected.
+		for _, req := range cm.Requires {
+			if !capSet[req] {
+				capSet[req] = true
+				queue = append(queue, req)
+			}
+		}
+		ordered = append(ordered, cap)
+	}
+
+	// Put dependencies before dependents: move auto-added deps to front.
+	var deps, orig []string
+	origSet := map[string]bool{}
+	for _, c := range capabilities {
+		origSet[c] = true
+	}
+	for _, c := range ordered {
+		if origSet[c] {
+			orig = append(orig, c)
+		} else {
+			deps = append(deps, c)
+		}
+	}
+	return append(deps, orig...)
 }
 
 // Suggestions returns capabilities suggested by the selected set but not yet included.

@@ -123,16 +123,43 @@ func TestComposeProject(t *testing.T) {
 	}
 }
 
-func TestComposeProject_MissingRequirement(t *testing.T) {
+func TestComposeProject_AutoResolveDependencies(t *testing.T) {
 	tfs := testCapabilityFS()
 	vars := map[string]interface{}{
 		"ServiceName": "orders",
 		"ModulePath":  "github.com/acme/orders",
 	}
 
-	_, err := ComposeProject(tfs, "hexagonal", []string{"auth-jwt"}, vars)
-	if err == nil {
-		t.Fatal("expected error for missing requirement")
+	// auth-jwt requires http-api — should be auto-resolved.
+	plan, err := ComposeProject(tfs, "hexagonal", []string{"auth-jwt"}, vars)
+	if err != nil {
+		t.Fatalf("ComposeProject() should auto-resolve deps, got error: %v", err)
+	}
+
+	// http-api should have been auto-added.
+	capSet := map[string]bool{}
+	for _, c := range plan.Capabilities {
+		capSet[c] = true
+	}
+	if !capSet["http-api"] {
+		t.Errorf("expected http-api to be auto-resolved, got capabilities: %v", plan.Capabilities)
+	}
+	if !capSet["auth-jwt"] {
+		t.Errorf("expected auth-jwt in capabilities, got: %v", plan.Capabilities)
+	}
+	// Dependencies should come before dependents.
+	httpIdx := -1
+	authIdx := -1
+	for i, c := range plan.Capabilities {
+		if c == "http-api" {
+			httpIdx = i
+		}
+		if c == "auth-jwt" {
+			authIdx = i
+		}
+	}
+	if httpIdx > authIdx {
+		t.Errorf("http-api (idx %d) should come before auth-jwt (idx %d)", httpIdx, authIdx)
 	}
 }
 
@@ -159,6 +186,46 @@ func TestComposeProject_MissingVariable(t *testing.T) {
 	_, err := ComposeProject(tfs, "hexagonal", []string{"http-api"}, vars)
 	if err == nil {
 		t.Fatal("expected error for missing required variable")
+	}
+}
+
+func TestComposeProject_NoDuplicatesInAutoResolve(t *testing.T) {
+	tfs := testCapabilityFS()
+	vars := map[string]interface{}{
+		"ServiceName": "orders",
+		"ModulePath":  "github.com/acme/orders",
+	}
+
+	// Both auth-jwt and http-api selected — http-api should not be duplicated.
+	plan, err := ComposeProject(tfs, "hexagonal", []string{"http-api", "auth-jwt"}, vars)
+	if err != nil {
+		t.Fatalf("ComposeProject() error = %v", err)
+	}
+
+	seen := map[string]int{}
+	for _, c := range plan.Capabilities {
+		seen[c]++
+		if seen[c] > 1 {
+			t.Errorf("capability %q appears %d times", c, seen[c])
+		}
+	}
+}
+
+func TestComposeProject_NoDepsMeansNoChange(t *testing.T) {
+	tfs := testCapabilityFS()
+	vars := map[string]interface{}{
+		"ServiceName": "orders",
+		"ModulePath":  "github.com/acme/orders",
+	}
+
+	// http-api has no requires — capabilities should stay the same.
+	plan, err := ComposeProject(tfs, "hexagonal", []string{"http-api"}, vars)
+	if err != nil {
+		t.Fatalf("ComposeProject() error = %v", err)
+	}
+
+	if len(plan.Capabilities) != 1 || plan.Capabilities[0] != "http-api" {
+		t.Errorf("expected [http-api], got %v", plan.Capabilities)
 	}
 }
 

@@ -8,9 +8,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	{{- if .HasCORS}}
-	"github.com/go-chi/cors"
-	{{- end}}
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
@@ -25,7 +22,11 @@ func NewRouter(logger *slog.Logger) chi.Router {
 	r := chi.NewRouter()
 
 	// Standard middleware stack.
+	{{- if .HasRequestID}}
+	r.Use(RequestID)
+	{{- else}}
 	r.Use(middleware.RequestID)
+	{{- end}}
 	r.Use(middleware.RealIP)
 	r.Use(otelhttp.NewMiddleware("{{.ServiceName}}"))
 	r.Use(NewRequestLogger(logger))
@@ -33,27 +34,22 @@ func NewRouter(logger *slog.Logger) chi.Router {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(defaultWriteTimeout))
 	{{- if .HasCORS}}
-	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"*"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Request-ID"},
-		ExposedHeaders:   []string{"X-Request-ID"},
-		AllowCredentials: false,
-		MaxAge:           300,
-	}))
+	r.Use(CORS(DefaultCORSConfig()))
 	{{- end}}
 
-	// Health check endpoints.
+	{{- if not .HasHealth}}
+	// Basic health check endpoints.
 	r.Get("/health/live", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"status":"ok"}`))
 	})
 
 	r.Get("/health/ready", func(w http.ResponseWriter, _ *http.Request) {
-		// TODO: Add dependency health checks (DB, Redis, etc.).
+		// TODO: Add the 'health' capability for dependency-aware readiness checks.
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"status":"ok"}`))
 	})
+	{{- end}}
 
 	return r
 }

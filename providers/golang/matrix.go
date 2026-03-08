@@ -205,7 +205,11 @@ func generateProjectMatrix(outputDir, architecture string, capabilities []string
 	// Key commands.
 	b.WriteString("\n## Key Commands\n\n")
 	b.WriteString("```bash\n")
-	b.WriteString("# Run\ngo run ./cmd/<service-name>\n\n")
+	if architecture == "flat" {
+		b.WriteString("# Run\ngo run .\n\n")
+	} else {
+		b.WriteString("# Run\ngo run ./cmd/<service-name>\n\n")
+	}
 	if capSet["platform"] {
 		b.WriteString("# Live reload\nair\n\n")
 	}

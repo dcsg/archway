@@ -41,8 +41,19 @@ This command runs an interactive wizard by default, or can be used non-interacti
   archway new my-service --template cli --no-wizard`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 && strings.TrimSpace(opts.Name) == "" {
-				opts.Name = args[0]
+			if len(args) > 0 {
+				arg := args[0]
+				// If arg contains a path separator, treat it as output dir + name.
+				if strings.Contains(arg, "/") {
+					if strings.TrimSpace(opts.OutputDir) == "" || opts.OutputDir == "." {
+						opts.OutputDir = filepath.Dir(arg)
+					}
+					if strings.TrimSpace(opts.Name) == "" {
+						opts.Name = filepath.Base(arg)
+					}
+				} else if strings.TrimSpace(opts.Name) == "" {
+					opts.Name = arg
+				}
 			}
 			if opts.NoWizard && strings.TrimSpace(opts.Name) == "" {
 				return fmt.Errorf("name is required: archway new <name> or --name <name>")
