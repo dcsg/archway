@@ -6,6 +6,7 @@ steps:
         validate: "^[a-z][a-z0-9-]*$"
       - variable: ModulePath
         prompt: "Go module path?"
+
   - id: transports
     questions:
       - variable: HasHTTP
@@ -17,6 +18,7 @@ steps:
       - variable: HasKafka
         prompt: "Enable Kafka consumer?"
         type: confirm
+
   - id: datastores
     questions:
       - variable: HasPostgreSQL
@@ -28,6 +30,7 @@ steps:
       - variable: HasRedis
         prompt: "Enable Redis?"
         type: confirm
+
   - id: features
     questions:
       - variable: UseAuth
@@ -45,3 +48,36 @@ steps:
         prompt: "Enable rate limiting?"
         type: confirm
         when: "HasHTTP"
+      - variable: HasFeatureFlags
+        prompt: "Enable feature flags (OpenFeature pattern)?"
+        type: confirm
+
+  - id: testing
+    questions:
+      - variable: HasUnitTests
+        prompt: "Include unit test setup (table-driven)?"
+        type: confirm
+      - variable: HasIntegrationTests
+        prompt: "Include integration test setup (testcontainers)?"
+        type: confirm
+      - variable: HasTestHelpers
+        prompt: "Include test helpers package?"
+        type: confirm
+
+  - id: tooling
+    questions:
+      - variable: HasGolangCILint
+        prompt: "Include golangci-lint configuration?"
+        type: confirm
+      - variable: HasGofumpt
+        prompt: "Use gofumpt (strict formatting)?"
+        type: confirm
+
+  - id: githooks
+    questions:
+      - variable: HasPreCommitHook
+        prompt: "Add pre-commit hook (lint + format)?"
+        type: confirm
+      - variable: HasCommitMsgHook
+        prompt: "Add commit message hook (conventional commits)?"
+        type: confirm

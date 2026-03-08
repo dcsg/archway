@@ -24,7 +24,7 @@ func init() {
 func (p *GoProvider) Scaffold(_ context.Context, req provider.ScaffoldRequest) (*provider.ScaffoldResponse, error) {
 	templateName := strings.TrimSpace(req.TemplateName)
 	if templateName == "" {
-		templateName = "go-hexagonal"
+		templateName = "api"
 	}
 	if req.OutputDir == "" {
 		req.OutputDir = "."
@@ -65,9 +65,10 @@ func (p *GoProvider) Scaffold(_ context.Context, req provider.ScaffoldRequest) (
 		}
 	}
 
-	architecture := "layered"
-	if strings.Contains(templateName, "hexagonal") {
-		architecture = "hexagonal"
+	archMap := map[string]string{"api": "hexagonal", "cli": "flat", "worker": "hexagonal"}
+	architecture := archMap[templateName]
+	if architecture == "" {
+		architecture = "layered"
 	}
 	archwayCfg := config.DefaultArchwayConfig("go", architecture)
 	archwayPath := filepath.Join(req.OutputDir, "archway.yaml")

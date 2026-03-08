@@ -1,0 +1,35 @@
+steps:
+  - id: basics
+    questions:
+      - variable: ServiceName
+        prompt: "Service name?"
+        validate: "^[a-z][a-z0-9-]*$"
+      - variable: ModulePath
+        prompt: "Go module path?"
+
+  - id: testing
+    questions:
+      - variable: HasUnitTests
+        prompt: "Include unit test setup (table-driven)?"
+        type: confirm
+      - variable: HasTestHelpers
+        prompt: "Include test helpers package?"
+        type: confirm
+
+  - id: tooling
+    questions:
+      - variable: HasGolangCILint
+        prompt: "Include golangci-lint configuration?"
+        type: confirm
+      - variable: HasGofumpt
+        prompt: "Use gofumpt (strict formatting)?"
+        type: confirm
+
+  - id: githooks
+    questions:
+      - variable: HasPreCommitHook
+        prompt: "Add pre-commit hook (lint + format)?"
+        type: confirm
+      - variable: HasCommitMsgHook
+        prompt: "Add commit message hook (conventional commits)?"
+        type: confirm

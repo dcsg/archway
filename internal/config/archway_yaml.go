@@ -143,7 +143,7 @@ func DefaultArchwayConfig(language, architecture string) *ArchwayConfig {
 			},
 			Functions: FunctionRules{MaxLines: 80, MaxParams: 4, MaxReturnValues: 2},
 		},
-		Templates: TemplateSourceConfig{Source: "archway/go-hexagonal"},
+		Templates: TemplateSourceConfig{Source: "archway/api"},
 	}
 	return cfg
 }

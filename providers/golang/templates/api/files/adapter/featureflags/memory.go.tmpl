@@ -1,0 +1,128 @@
+{{- if .HasFeatureFlags}}
+package featureflags
+
+import (
+	"context"
+	"sync"
+)
+
+// MemoryConfig holds configuration for the in-memory provider.
+type MemoryConfig struct {
+	// Booleans contains initial boolean flag values.
+	Booleans map[string]bool
+	// Strings contains initial string flag values.
+	Strings map[string]string
+	// Ints contains initial integer flag values.
+	Ints map[string]int64
+	// Floats contains initial float flag values.
+	Floats map[string]float64
+}
+
+// MemoryProvider is a thread-safe in-memory feature flag provider.
+// Useful for testing and local development.
+type MemoryProvider struct {
+	mu      sync.RWMutex
+	bools   map[string]bool
+	strings map[string]string
+	ints    map[string]int64
+	floats  map[string]float64
+}
+
+// NewMemoryProvider creates an in-memory provider with optional initial values.
+func NewMemoryProvider(cfg MemoryConfig) *MemoryProvider {
+	p := &MemoryProvider{
+		bools:   make(map[string]bool),
+		strings: make(map[string]string),
+		ints:    make(map[string]int64),
+		floats:  make(map[string]float64),
+	}
+
+	for k, v := range cfg.Booleans {
+		p.bools[k] = v
+	}
+	for k, v := range cfg.Strings {
+		p.strings[k] = v
+	}
+	for k, v := range cfg.Ints {
+		p.ints[k] = v
+	}
+	for k, v := range cfg.Floats {
+		p.floats[k] = v
+	}
+
+	return p
+}
+
+// SetBoolean sets a boolean flag value at runtime (useful in tests).
+func (p *MemoryProvider) SetBoolean(flag string, value bool) {
+	p.mu.Lock()
+	p.bools[flag] = value
+	p.mu.Unlock()
+}
+
+// SetString sets a string flag value at runtime.
+func (p *MemoryProvider) SetString(flag string, value string) {
+	p.mu.Lock()
+	p.strings[flag] = value
+	p.mu.Unlock()
+}
+
+// SetInt sets an integer flag value at runtime.
+func (p *MemoryProvider) SetInt(flag string, value int64) {
+	p.mu.Lock()
+	p.ints[flag] = value
+	p.mu.Unlock()
+}
+
+// SetFloat sets a float flag value at runtime.
+func (p *MemoryProvider) SetFloat(flag string, value float64) {
+	p.mu.Lock()
+	p.floats[flag] = value
+	p.mu.Unlock()
+}
+
+// BooleanValue returns the stored boolean value or the default.
+func (p *MemoryProvider) BooleanValue(_ context.Context, flag string, defaultValue bool) bool {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	if v, ok := p.bools[flag]; ok {
+		return v
+	}
+	return defaultValue
+}
+
+// StringValue returns the stored string value or the default.
+func (p *MemoryProvider) StringValue(_ context.Context, flag string, defaultValue string) string {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	if v, ok := p.strings[flag]; ok {
+		return v
+	}
+	return defaultValue
+}
+
+// IntValue returns the stored integer value or the default.
+func (p *MemoryProvider) IntValue(_ context.Context, flag string, defaultValue int64) int64 {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	if v, ok := p.ints[flag]; ok {
+		return v
+	}
+	return defaultValue
+}
+
+// FloatValue returns the stored float value or the default.
+func (p *MemoryProvider) FloatValue(_ context.Context, flag string, defaultValue float64) float64 {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	if v, ok := p.floats[flag]; ok {
+		return v
+	}
+	return defaultValue
+}
+
+// Shutdown is a no-op for the in-memory provider.
+func (p *MemoryProvider) Shutdown(_ context.Context) error {
+	return nil
+}
+{{- end}}

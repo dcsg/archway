@@ -1,5 +1,5 @@
-name: go-hexagonal
-description: Production-ready Go service with hexagonal architecture, CQRS ports, lifecycle management, and observability
+name: api
+description: Production-ready Go API service with hexagonal architecture, CQRS ports, lifecycle management, and observability
 language: go
 version: "2.0"
 variables:
@@ -54,6 +54,38 @@ variables:
   - name: HasRateLimiting
     type: bool
     description: Include rate limiting middleware
+    default: "false"
+  - name: HasFeatureFlags
+    type: bool
+    description: Include feature flags (OpenFeature pattern with memory + env providers)
+    default: "false"
+  - name: HasUnitTests
+    type: bool
+    description: Include unit test setup (table-driven)
+    default: "true"
+  - name: HasIntegrationTests
+    type: bool
+    description: Include integration test setup (testcontainers)
+    default: "false"
+  - name: HasTestHelpers
+    type: bool
+    description: Include test helpers package
+    default: "true"
+  - name: HasGolangCILint
+    type: bool
+    description: Include golangci-lint configuration
+    default: "true"
+  - name: HasGofumpt
+    type: bool
+    description: Use gofumpt (strict formatting)
+    default: "true"
+  - name: HasPreCommitHook
+    type: bool
+    description: Add pre-commit hook (lint + format)
+    default: "true"
+  - name: HasCommitMsgHook
+    type: bool
+    description: Add commit message hook (conventional commits)
     default: "false"
 hooks:
   - go mod tidy

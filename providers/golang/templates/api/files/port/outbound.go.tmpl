@@ -29,3 +29,10 @@ package port
 //	    Send(ctx context.Context, to string, locale string, template string, subject string, data any) error
 //	}
 {{- end}}
+{{- if .HasFeatureFlags}}
+//
+//	type FeatureFlagEvaluator interface {
+//	    BooleanValue(ctx context.Context, flag string, defaultValue bool) bool
+//	    StringValue(ctx context.Context, flag string, defaultValue string) string
+//	}
+{{- end}}

@@ -26,6 +26,9 @@ import (
 	{{- if .HasRedis}}
 	"{{.ModulePath}}/adapter/redisrepo"
 	{{- end}}
+	{{- if .HasFeatureFlags}}
+	"{{.ModulePath}}/adapter/featureflags"
+	{{- end}}
 )
 
 var version = "dev"
@@ -97,6 +100,19 @@ func run() error {
 	}
 	{{- end}}
 
+	{{- if .HasFeatureFlags}}
+
+	// Initialize feature flags.
+	ffProvider, err := featureflags.NewProvider(cfg.FeatureFlags.Provider, featureflags.ProviderConfig{
+		Env: featureflags.EnvConfig{Prefix: cfg.FeatureFlags.EnvPrefix},
+	}, logger)
+	if err != nil {
+		return fmt.Errorf("create feature flag provider: %w", err)
+	}
+	ffClient := featureflags.NewClient(ffProvider, logger)
+	_ = ffClient // TODO: Pass ffClient to services that need feature flag evaluation.
+	{{- end}}
+
 	// Wire dependencies.
 	// TODO: Create service implementations and wire them here.
 	// Example:
@@ -143,6 +159,9 @@ func run() error {
 	// Register shutdown hooks (reverse dependency order).
 	{{- if .HasKafka}}
 	app.OnShutdown("kafka-consumer", func(_ context.Context) error { consumer.Close(); return nil })
+	{{- end}}
+	{{- if .HasFeatureFlags}}
+	app.OnShutdown("feature-flags", func(ctx context.Context) error { return ffClient.Shutdown(ctx) })
 	{{- end}}
 	{{- if .HasRedis}}
 	app.OnShutdown("redis", func(_ context.Context) error { return redisClient.Close() })

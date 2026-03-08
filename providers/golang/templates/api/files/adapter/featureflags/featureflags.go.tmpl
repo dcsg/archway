@@ -1,0 +1,81 @@
+{{- if .HasFeatureFlags}}
+package featureflags
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+)
+
+// Provider defines the feature flag evaluation interface.
+// This mirrors the OpenFeature evaluation API (CNCF standard).
+// Built-in providers: "memory" (testing), "env" (environment variables).
+// To add a third-party provider (LaunchDarkly, Unleash, Flipt),
+// implement this interface — zero service code changes required.
+type Provider interface {
+	BooleanValue(ctx context.Context, flag string, defaultValue bool) bool
+	StringValue(ctx context.Context, flag string, defaultValue string) string
+	IntValue(ctx context.Context, flag string, defaultValue int64) int64
+	FloatValue(ctx context.Context, flag string, defaultValue float64) float64
+	Shutdown(ctx context.Context) error
+}
+
+// ProviderConfig aggregates configuration for all built-in providers.
+type ProviderConfig struct {
+	Memory MemoryConfig
+	Env    EnvConfig
+}
+
+// Client wraps a Provider with error handling and logging.
+// Evaluation always returns the default value on error (fail-safe).
+type Client struct {
+	provider Provider
+	logger   *slog.Logger
+}
+
+// NewClient creates a new feature flag client.
+func NewClient(provider Provider, logger *slog.Logger) *Client {
+	return &Client{
+		provider: provider,
+		logger:   logger.With("component", "featureflags"),
+	}
+}
+
+// BooleanValue evaluates a boolean feature flag.
+func (c *Client) BooleanValue(ctx context.Context, flag string, defaultValue bool) bool {
+	return c.provider.BooleanValue(ctx, flag, defaultValue)
+}
+
+// StringValue evaluates a string feature flag.
+func (c *Client) StringValue(ctx context.Context, flag string, defaultValue string) string {
+	return c.provider.StringValue(ctx, flag, defaultValue)
+}
+
+// IntValue evaluates an integer feature flag.
+func (c *Client) IntValue(ctx context.Context, flag string, defaultValue int64) int64 {
+	return c.provider.IntValue(ctx, flag, defaultValue)
+}
+
+// FloatValue evaluates a float feature flag.
+func (c *Client) FloatValue(ctx context.Context, flag string, defaultValue float64) float64 {
+	return c.provider.FloatValue(ctx, flag, defaultValue)
+}
+
+// Shutdown gracefully shuts down the underlying provider.
+func (c *Client) Shutdown(ctx context.Context) error {
+	return c.provider.Shutdown(ctx)
+}
+
+// NewProvider creates a feature flag provider by name.
+// Supported providers: "memory", "env".
+func NewProvider(name string, cfg ProviderConfig, logger *slog.Logger) (Provider, error) {
+	switch name {
+	case "memory":
+		return NewMemoryProvider(cfg.Memory), nil
+	case "env":
+		return NewEnvProvider(cfg.Env, logger), nil
+	default:
+		return nil, fmt.Errorf("unknown feature flag provider: %q (supported: memory, env)", name)
+	}
+}
+{{- end}}

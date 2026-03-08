@@ -35,6 +35,116 @@ func RunWizard(wizardConfig *WizardConfig, manifest *Manifest, initial map[strin
 	return state, nil
 }
 
+// RunProviderWizard runs the provider-level intent wizard and returns
+// the selected template name plus any state collected.
+func RunProviderWizard(cfg *ProviderWizardConfig, initial map[string]interface{}) (templateName string, state map[string]interface{}, err error) {
+	state = map[string]interface{}{}
+	for k, v := range initial {
+		state[k] = v
+	}
+
+	// Run each step as its own form so that derived values (e.g. HasAPIOrWorker)
+	// computed after step N are available as `when` conditions in step N+1.
+	manifest := &Manifest{Name: "intent", Language: "any"}
+	for _, step := range cfg.Steps {
+		singleStepCfg := &WizardConfig{Steps: []WizardStep{step}}
+		groups, err := buildWizardGroups(singleStepCfg, manifest, state)
+		if err != nil {
+			return "", nil, err
+		}
+		if len(groups) > 0 {
+			form := huh.NewForm(groups...)
+			if err := form.Run(); err != nil {
+				return "", nil, err
+			}
+		}
+		// Recompute derived booleans after each step so subsequent
+		// steps can use them in `when` conditions.
+		computeDerived(state)
+	}
+
+	templateName, err = cfg.ResolveTemplate(state)
+	if err != nil {
+		return "", nil, err
+	}
+	return templateName, state, nil
+}
+
+// RunWizardWithFastPath runs the template wizard, skipping steps listed in
+// the fast path and applying fast-path defaults.
+func RunWizardWithFastPath(wizardConfig *WizardConfig, manifest *Manifest, initial map[string]interface{}, fastPath *FastPath) (map[string]interface{}, error) {
+	if wizardConfig == nil {
+		return nil, fmt.Errorf("wizard config is nil")
+	}
+	if manifest == nil {
+		return nil, fmt.Errorf("manifest is nil")
+	}
+
+	state := manifest.Defaults()
+	for k, v := range initial {
+		state[k] = v
+	}
+
+	// Apply fast-path defaults.
+	if fastPath != nil {
+		for k, v := range fastPath.Defaults {
+			state[k] = v
+		}
+	}
+
+	// Build skip set.
+	skipSet := map[string]bool{}
+	if fastPath != nil {
+		for _, s := range fastPath.SkipSteps {
+			skipSet[s] = true
+		}
+	}
+
+	// Filter steps.
+	filteredSteps := make([]WizardStep, 0, len(wizardConfig.Steps))
+	for _, step := range wizardConfig.Steps {
+		if !skipSet[step.ID] {
+			filteredSteps = append(filteredSteps, step)
+		}
+	}
+	filteredConfig := &WizardConfig{Steps: filteredSteps}
+
+	groups, err := buildWizardGroups(filteredConfig, manifest, state)
+	if err != nil {
+		return nil, err
+	}
+	if len(groups) == 0 {
+		return state, nil
+	}
+	form := huh.NewForm(groups...)
+	if err := form.Run(); err != nil {
+		return nil, err
+	}
+	return state, nil
+}
+
+// computeDerived computes boolean flags from multiselect ProjectCapabilities.
+func computeDerived(state map[string]interface{}) {
+	caps, _ := state["ProjectCapabilities"].([]string)
+	hasAPI := sliceContains(caps, "api")
+	hasWorker := sliceContains(caps, "worker")
+	hasCLI := sliceContains(caps, "cli")
+	state["HasAPI"] = hasAPI
+	state["HasWorker"] = hasWorker
+	state["HasCLI"] = hasCLI
+	state["CLIOnly"] = hasCLI && !hasAPI && !hasWorker
+	state["HasAPIOrWorker"] = hasAPI || hasWorker
+}
+
+func sliceContains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
+
 func buildWizardGroups(cfg *WizardConfig, manifest *Manifest, state map[string]interface{}) ([]*huh.Group, error) {
 	variableDefs := map[string]VariableDefinition{}
 	for _, def := range manifest.Variables {
@@ -73,7 +183,10 @@ func buildField(q WizardQuestion, def VariableDefinition, state map[string]inter
 
 	switch questionType {
 	case "input":
-		value := strings.TrimSpace(fmt.Sprint(state[q.Variable]))
+		var value string
+		if v, ok := state[q.Variable]; ok && v != nil {
+			value = strings.TrimSpace(fmt.Sprint(v))
+		}
 		state[q.Variable] = value
 		field := huh.NewInput().Title(q.Prompt).Value(&value)
 		if q.Validate != "" {
@@ -109,15 +222,18 @@ func buildField(q WizardQuestion, def VariableDefinition, state map[string]inter
 		})
 		return field, nil
 	case "select":
-		selected := strings.TrimSpace(fmt.Sprint(state[q.Variable]))
-		opts := optionsForQuestion(q, def)
+		var selected string
+		if v, ok := state[q.Variable]; ok && v != nil {
+			selected = strings.TrimSpace(fmt.Sprint(v))
+		}
+		opts := flexOptionsForQuestion(q, def)
 		if selected == "" && len(opts) > 0 {
-			selected = opts[0]
+			selected = opts[0].Value
 		}
 		state[q.Variable] = selected
 		huhOpts := make([]huh.Option[string], 0, len(opts))
 		for _, opt := range opts {
-			huhOpts = append(huhOpts, huh.NewOption(opt, opt))
+			huhOpts = append(huhOpts, huh.NewOption(opt.Label, opt.Value))
 		}
 		field := huh.NewSelect[string]().Title(q.Prompt).Options(huhOpts...).Value(&selected)
 		field.Validate(func(_ string) error {
@@ -130,10 +246,10 @@ func buildField(q WizardQuestion, def VariableDefinition, state map[string]inter
 		return field, nil
 	case "multiselect":
 		values, _ := state[q.Variable].([]string)
-		opts := optionsForQuestion(q, def)
+		opts := flexOptionsForQuestion(q, def)
 		huhOpts := make([]huh.Option[string], 0, len(opts))
 		for _, opt := range opts {
-			huhOpts = append(huhOpts, huh.NewOption(opt, opt))
+			huhOpts = append(huhOpts, huh.NewOption(opt.Label, opt.Value))
 		}
 		field := huh.NewMultiSelect[string]().Title(q.Prompt).Options(huhOpts...).Value(&values)
 		field.Validate(func(_ []string) error {
@@ -149,11 +265,17 @@ func buildField(q WizardQuestion, def VariableDefinition, state map[string]inter
 	}
 }
 
-func optionsForQuestion(q WizardQuestion, def VariableDefinition) []string {
+// flexOptionsForQuestion returns FlexOption slice from question options or manifest choices.
+func flexOptionsForQuestion(q WizardQuestion, def VariableDefinition) []FlexOption {
 	if len(q.Options) > 0 {
 		return q.Options
 	}
-	return def.Choices
+	// Convert plain string choices from manifest to FlexOption.
+	opts := make([]FlexOption, 0, len(def.Choices))
+	for _, c := range def.Choices {
+		opts = append(opts, FlexOption{Label: c, Value: c})
+	}
+	return opts
 }
 
 func evaluateWhen(expr string, values map[string]interface{}) bool {

@@ -28,7 +28,7 @@ rules:
     max_params: 4
 
 extends:
-  - archway/go-hexagonal-strict
+  - archway/api-strict
 
 templates:
-  source: archway/go-hexagonal
+  source: archway/api

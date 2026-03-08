@@ -48,3 +48,9 @@ redis:
   password: ""
   db: 0
 {{- end}}
+{{- if .HasFeatureFlags}}
+
+feature_flags:
+  provider: env        # "memory" or "env"
+  env_prefix: "FF_"    # prefix for environment variable flag names
+{{- end}}

@@ -161,7 +161,7 @@ func (s *Server) handleListTemplates(ctx context.Context, in listTemplatesInput)
 func (s *Server) handleScaffoldProject(ctx context.Context, in scaffoldInput) (*gomcp.CallToolResult, any, error) {
 	templateName := strings.TrimSpace(in.Template)
 	if templateName == "" {
-		templateName = "go-hexagonal"
+		templateName = "api"
 	}
 	name := strings.TrimSpace(in.Name)
 	if name == "" {

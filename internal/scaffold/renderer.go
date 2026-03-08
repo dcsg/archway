@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strings"
 	"text/template"
+	"time"
 )
 
 type Renderer struct {
@@ -195,6 +196,12 @@ func templateFunctions() template.FuncMap {
 		},
 		"split": func(value, sep string) []string {
 			return strings.Split(value, sep)
+		},
+		"now": func() time.Time {
+			return time.Now()
+		},
+		"date": func(layout string, t time.Time) string {
+			return t.Format(layout)
 		},
 	}
 }

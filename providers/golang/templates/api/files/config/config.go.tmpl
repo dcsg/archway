@@ -29,6 +29,9 @@ type Config struct {
 	{{- if .HasRedis}}
 	Redis  RedisConfig  `yaml:"redis"`
 	{{- end}}
+	{{- if .HasFeatureFlags}}
+	FeatureFlags FeatureFlagsConfig `yaml:"feature_flags"`
+	{{- end}}
 }
 
 // AppConfig holds general application configuration.
@@ -102,6 +105,14 @@ type RedisConfig struct {
 	Addr     string `yaml:"addr"`
 	Password string `yaml:"password"`
 	DB       int    `yaml:"db"`
+}
+{{- end}}
+{{- if .HasFeatureFlags}}
+
+// FeatureFlagsConfig holds feature flag provider configuration.
+type FeatureFlagsConfig struct {
+	Provider  string `yaml:"provider"`   // "memory" or "env"
+	EnvPrefix string `yaml:"env_prefix"` // prefix for env var provider (default: "FF_")
 }
 {{- end}}
 

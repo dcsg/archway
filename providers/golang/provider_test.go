@@ -32,7 +32,7 @@ func TestScaffold(t *testing.T) {
 	resp, err := p.Scaffold(context.Background(), provider.ScaffoldRequest{
 		ProjectName:  "orders",
 		ModulePath:   "github.com/acme/orders",
-		TemplateName: "go-minimal",
+		TemplateName: "cli",
 		OutputDir:    out,
 		Options: map[string]string{
 			"skip_hooks": "true",

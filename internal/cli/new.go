@@ -35,7 +35,7 @@ func newNewCommand(_ *globalOptions) *cobra.Command {
 
 This command can run interactively through a wizard or non-interactively using flags.`,
 		Example: `  archway new my-service
-  archway new my-service --template go-hexagonal --module github.com/acme/orders --no-wizard
+  archway new my-service --template api --module github.com/acme/orders --no-wizard
   archway new --name orders --set HasGRPC=true --set HasPostgreSQL=true`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -82,7 +82,7 @@ func runNew(ctx context.Context, opts *newCommandOptions) error {
 		opts.ModulePath = fmt.Sprintf("example.com/%s", opts.Name)
 	}
 	if strings.TrimSpace(opts.Template) == "" {
-		opts.Template = "go-hexagonal"
+		opts.Template = "api"
 	}
 	if strings.TrimSpace(opts.OutputDir) == "" {
 		opts.OutputDir = "."
@@ -158,11 +158,102 @@ func runNewWizard(opts *newCommandOptions) (map[string]interface{}, error) {
 		return nil, err
 	}
 
-	// Step 2: Template selection.
+	// Step 2: Load provider and attempt intent-driven wizard.
 	providerImpl, err := provider.Get(opts.Language)
 	if err != nil {
 		return nil, err
 	}
+	tFS := providerImpl.GetTemplateFS()
+
+	// Try loading the provider-level wizard.yaml for intent routing.
+	providerWizardData, provWizErr := fs.ReadFile(tFS, path.Join("templates", "wizard.yaml"))
+	if provWizErr != nil {
+		// No provider wizard — fall back to manual template selection.
+		return runLegacyTemplateWizard(opts, providerImpl)
+	}
+
+	providerWizardCfg, err := scaffold.ParseProviderWizard(providerWizardData)
+	if err != nil {
+		return nil, fmt.Errorf("parse provider wizard: %w", err)
+	}
+
+	// Step 3: Run provider wizard — determines intent and template.
+	templateName, intentState, err := scaffold.RunProviderWizard(providerWizardCfg, nil)
+	if err != nil {
+		return nil, err
+	}
+	opts.Template = templateName
+
+	// Step 4: Resolve fast path for template wizard step skipping.
+	fastPath := providerWizardCfg.ResolveFastPath(intentState)
+
+	// Step 5: Load the resolved template's manifest + wizard.
+	templateDir := path.Join("templates", opts.Template)
+
+	manifestData, err := fs.ReadFile(tFS, path.Join(templateDir, "manifest.yaml"))
+	if err != nil {
+		return nil, fmt.Errorf("read manifest: %w", err)
+	}
+	manifest, err := scaffold.ParseManifest(manifestData)
+	if err != nil {
+		return nil, err
+	}
+
+	// Pre-seed with name and module path from step 1.
+	initial := map[string]interface{}{}
+	for k, v := range intentState {
+		initial[k] = v
+	}
+	if opts.Name != "" {
+		initial["ServiceName"] = opts.Name
+	}
+	modulePath := opts.ModulePath
+	if modulePath == "" && opts.Name != "" {
+		modulePath = fmt.Sprintf("github.com/example/%s", opts.Name)
+	}
+	if modulePath != "" {
+		initial["ModulePath"] = modulePath
+	}
+
+	wizardData, err := fs.ReadFile(tFS, path.Join(templateDir, "wizard.yaml"))
+	if err != nil {
+		// No template wizard — return manifest defaults merged with intent state.
+		defaults := manifest.Defaults()
+		for k, v := range initial {
+			defaults[k] = v
+		}
+		return defaults, nil
+	}
+	wizardCfg, err := scaffold.ParseWizard(wizardData)
+	if err != nil {
+		return nil, err
+	}
+
+	// Step 6: Run template wizard with fast-path filtering.
+	var vars map[string]interface{}
+	if fastPath != nil {
+		vars, err = scaffold.RunWizardWithFastPath(wizardCfg, manifest, initial, fastPath)
+	} else {
+		vars, err = scaffold.RunWizard(wizardCfg, manifest, initial)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	// Copy wizard results back to opts for fields it manages.
+	if name, ok := vars["ServiceName"].(string); ok && name != "" {
+		opts.Name = name
+	}
+	if mod, ok := vars["ModulePath"].(string); ok && mod != "" {
+		opts.ModulePath = mod
+	}
+
+	return vars, nil
+}
+
+// runLegacyTemplateWizard falls back to manual template selection when
+// no provider-level wizard.yaml exists.
+func runLegacyTemplateWizard(opts *newCommandOptions, providerImpl provider.LanguageProvider) (map[string]interface{}, error) {
 	info, err := providerImpl.GetInfo(context.Background())
 	if err != nil {
 		return nil, err
@@ -182,9 +273,8 @@ func runNewWizard(opts *newCommandOptions) (map[string]interface{}, error) {
 		return nil, err
 	}
 
-	// Step 3: Template-specific wizard from wizard.yaml.
-	templateDir := path.Join("templates", opts.Template)
 	tFS := providerImpl.GetTemplateFS()
+	templateDir := path.Join("templates", opts.Template)
 
 	manifestData, err := fs.ReadFile(tFS, path.Join(templateDir, "manifest.yaml"))
 	if err != nil {
@@ -197,7 +287,6 @@ func runNewWizard(opts *newCommandOptions) (map[string]interface{}, error) {
 
 	wizardData, err := fs.ReadFile(tFS, path.Join(templateDir, "wizard.yaml"))
 	if err != nil {
-		// No wizard.yaml — return defaults only.
 		return manifest.Defaults(), nil
 	}
 	wizardCfg, err := scaffold.ParseWizard(wizardData)
@@ -205,8 +294,6 @@ func runNewWizard(opts *newCommandOptions) (map[string]interface{}, error) {
 		return nil, err
 	}
 
-	// Pre-seed with values already collected so the wizard shows them
-	// instead of <nil>, and the user can just confirm or edit.
 	initial := map[string]interface{}{}
 	if opts.Name != "" {
 		initial["ServiceName"] = opts.Name
@@ -223,7 +310,6 @@ func runNewWizard(opts *newCommandOptions) (map[string]interface{}, error) {
 		return nil, err
 	}
 
-	// Copy wizard results back to opts for fields it manages.
 	if name, ok := vars["ServiceName"].(string); ok && name != "" {
 		opts.Name = name
 	}
