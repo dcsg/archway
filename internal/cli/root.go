@@ -28,10 +28,10 @@ func newRootCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "archway",
-		Short: "Terraform for Code Architecture",
-		Long: `Archway scaffolds and analyzes code architecture with a Terraform-style workflow.
+		Short: "Architecture-aware service composer",
+		Long: `Archway composes production-ready services from architecture patterns and capability modules.
 
-Use archway new to scaffold projects and archway analyze to understand existing codebases.`,
+Use archway new to scaffold projects, archway check to validate architecture rules, and archway analyze to understand existing codebases.`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}

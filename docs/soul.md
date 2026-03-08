@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A Go CLI tool for code scaffolding, brownfield analysis, and project governance — "Architecture-aware service composer." It works as a standalone CLI (`archway new`, `archway init`, `archway analyze`, `archway plan`, `archway apply`, `archway check`).
+Architecture-aware service composer. Scaffolds production-ready services by composing architecture patterns (hexagonal, flat) with capability modules (http-api, grpc, mysql, redis, kafka, etc.), generating both code AND architectural DNA (archway.yaml) that AI agents and `archway check` can enforce. Standalone CLI: `archway new`, `archway check`, `archway analyze`, `archway init`.
 
 ## Stack
 
@@ -17,7 +17,7 @@ A Go CLI tool for code scaffolding, brownfield analysis, and project governance 
 
 ## Current State
 
-Active development. v1 CLI shipped with scaffolding (`archway new`), analysis (`archway analyze`), and init (`archway init`). Templates refactored from monolithic go-hexagonal/go-minimal to composable api/cli. v2 features (plan/apply/check) are designed but not yet implemented.
+Active development. v1 CLI ships with composition-based scaffolding (`archway new` with `--arch` + `--cap`), architecture validation (`archway check`), brownfield analysis (`archway analyze`), and init (`archway init`). Templates use composable architecture + capability modules with partial-based main.go assembly. Smart wizard suggests missing capabilities. Complements Keel (AI context layer) — Archway owns code + architecture, Keel owns AI guardrails.
 
 ## Users
 
