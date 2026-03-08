@@ -1,4 +1,3 @@
-{{- if .HasGolangCILint -}}
 run:
   timeout: 5m
 
@@ -33,4 +32,3 @@ issues:
       linters:
         - errcheck
         - gocritic
-{{- end}}

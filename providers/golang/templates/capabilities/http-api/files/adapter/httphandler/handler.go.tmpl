@@ -1,4 +1,3 @@
-{{- if .HasHTTP}}
 package httphandler
 
 import (
@@ -48,4 +47,3 @@ func decodeJSON(r *http.Request, dst any) error {
 func urlParam(r *http.Request, key string) string {
 	return chi.URLParam(r, key)
 }
-{{- end}}

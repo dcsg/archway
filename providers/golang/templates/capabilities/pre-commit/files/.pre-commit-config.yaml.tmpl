@@ -1,4 +1,3 @@
-{{- if or .HasPreCommitHook .HasCommitMsgHook -}}
 repos:
 {{- if .HasPreCommitHook}}
   - repo: local
@@ -25,5 +24,4 @@ repos:
     hooks:
       - id: conventional-pre-commit
         stages: [commit-msg]
-{{- end}}
 {{- end}}

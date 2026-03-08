@@ -12,7 +12,7 @@ import (
 	"{{.ModulePath}}/platform/lifecycle"
 	"{{.ModulePath}}/platform/observability"
 {{- if .Partials}}{{if index .Partials "main_imports"}}
-{{range index .Partials "main_imports"}}
+{{- range index .Partials "main_imports"}}
 	{{.}}
 {{- end}}
 {{- end}}{{end}}
@@ -60,31 +60,33 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("init otel: %w", err)
 	}
-{{if .Partials}}{{if index .Partials "main_init"}}
+{{- if .Partials}}{{if index .Partials "main_init"}}
 {{range index .Partials "main_init"}}
 	{{.}}
-{{end}}
+{{- end}}
 {{- end}}{{end}}
+
 	// Wire dependencies.
 	// TODO: Create service implementations and wire them here.
 {{- if .Partials}}{{if index .Partials "main_wire"}}
-{{range index .Partials "main_wire"}}
+{{- range index .Partials "main_wire"}}
 	{{.}}
-{{end}}
+{{- end}}
 {{- end}}{{end}}
 
 	// Build application lifecycle.
 	app := lifecycle.New(logger)
-{{if .Partials}}{{if index .Partials "main_register"}}
+{{- if .Partials}}{{if index .Partials "main_register"}}
 {{range index .Partials "main_register"}}
 	{{.}}
-{{end}}
+{{- end}}
 {{- end}}{{end}}
+
 	// Register shutdown hooks (reverse dependency order).
 {{- if .Partials}}{{if index .Partials "main_shutdown"}}
-{{range index .Partials "main_shutdown"}}
+{{- range index .Partials "main_shutdown"}}
 	{{.}}
-{{end}}
+{{- end}}
 {{- end}}{{end}}
 	app.OnShutdown("otel", lifecycle.ShutdownFunc(otelShutdown))
 

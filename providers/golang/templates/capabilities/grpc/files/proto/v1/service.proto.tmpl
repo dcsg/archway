@@ -1,4 +1,3 @@
-{{- if .HasGRPC}}
 syntax = "proto3";
 
 package {{snakeCase .ServiceName}}.v1;
@@ -28,4 +27,3 @@ message HealthCheckResponse {
 //   rpc CreateExample(CreateExampleRequest) returns (CreateExampleResponse);
 //   rpc GetExample(GetExampleRequest) returns (GetExampleResponse);
 // }
-{{- end}}

@@ -1,4 +1,3 @@
-{{- if and .HasHTTP .UseAuth}}
 package httphandler
 
 import (
@@ -71,4 +70,3 @@ func JWTAuth(jwksURL string, issuer string, audience string, logger *slog.Logger
 		})
 	}
 }
-{{- end}}

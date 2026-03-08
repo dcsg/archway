@@ -1,4 +1,3 @@
-{{- if .HasGRPC}}
 package grpchandler
 
 import (
@@ -89,4 +88,3 @@ func RecoveryStreamInterceptor(logger *slog.Logger) grpc.StreamServerInterceptor
 		return handler(srv, ss)
 	}
 }
-{{- end}}

@@ -1,4 +1,3 @@
-{{- if .HasGRPC}}
 version: v2
 plugins:
   - remote: buf.build/protocolbuffers/go
@@ -7,4 +6,3 @@ plugins:
   - remote: buf.build/grpc/go
     out: .
     opt: paths=source_relative
-{{- end}}

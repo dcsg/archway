@@ -1,4 +1,3 @@
-{{- if .HasHTTP}}
 package httphandler
 
 import (
@@ -109,4 +108,3 @@ func (s *HTTPServer) Run(ctx context.Context) error {
 		return s.server.Shutdown(shutdownCtx)
 	}
 }
-{{- end}}

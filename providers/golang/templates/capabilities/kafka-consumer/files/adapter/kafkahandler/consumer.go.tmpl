@@ -1,4 +1,3 @@
-{{- if .HasKafka}}
 package kafkahandler
 
 import (
@@ -98,4 +97,3 @@ func (c *Consumer) Run(ctx context.Context) error {
 func (c *Consumer) Close() {
 	c.client.Close()
 }
-{{- end}}

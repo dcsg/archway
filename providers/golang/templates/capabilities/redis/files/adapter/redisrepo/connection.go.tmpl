@@ -1,4 +1,3 @@
-{{- if .HasRedis}}
 package redisrepo
 
 import (
@@ -37,4 +36,3 @@ func NewConnection(cfg ConnectionConfig, logger *slog.Logger) (*redis.Client, er
 	logger.Info("redis connected", "addr", cfg.Addr)
 	return client, nil
 }
-{{- end}}

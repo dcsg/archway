@@ -1,4 +1,3 @@
-{{- if .HasMySQL}}
 package mysqlrepo
 
 import (
@@ -60,4 +59,3 @@ func NewConnection(cfg ConnectionConfig, logger *slog.Logger) (*sql.DB, error) {
 	logger.Info("mysql connected", "max_open", maxOpen, "max_idle", maxIdle)
 	return db, nil
 }
-{{- end}}

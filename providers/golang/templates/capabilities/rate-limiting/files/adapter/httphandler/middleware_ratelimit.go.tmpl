@@ -1,4 +1,3 @@
-{{- if and .HasHTTP .HasRateLimiting}}
 package httphandler
 
 import (
@@ -77,4 +76,3 @@ func RateLimiter(rps int, burst int, logger *slog.Logger) func(http.Handler) htt
 		})
 	}
 }
-{{- end}}
