@@ -5,7 +5,7 @@ description: What Archway is and why it exists
 
 ## The Problem
 
-Starting a new Go service means making dozens of decisions upfront: project layout, error handling, logging, config, middleware, database setup, graceful shutdown. You either copy-paste from a previous project (carrying its baggage) or spend hours setting up boilerplate before writing a single line of business logic.
+Starting a new service means making dozens of decisions upfront: project layout, error handling, logging, config, middleware, database setup, graceful shutdown. You either copy-paste from a previous project (carrying its baggage) or spend hours setting up boilerplate before writing a single line of business logic.
 
 ## The Solution
 
@@ -28,12 +28,23 @@ Architecture (hexagonal) + Capabilities (http-api, mysql, docker) = Your Service
 
 ## Who Is It For
 
-- **Teams** starting new Go microservices who want consistent structure across projects
+- **Teams** starting new microservices who want consistent structure across projects
 - **Individual developers** who want production-grade defaults without the setup time
-- **Organizations** that want to enforce architectural standards across their Go services
+- **Organizations** that want to enforce architectural standards across their services
+
+## Language Support
+
+Archway is built on a **provider model** — each language is a self-contained provider with its own architectures, capabilities, and templates.
+
+| Language | Status | Architectures | Capabilities |
+|----------|--------|---------------|-------------|
+| **Go** | Stable | hexagonal, flat | 16 capabilities |
+| **TypeScript/Node** | Planned | — | — |
+
+The composition model (architecture + capabilities), smart suggestions, and `archway check` work identically across all languages. Only the templates and generated code are language-specific.
 
 ## What It Is Not
 
-- Not a framework — Archway generates plain Go code with no runtime dependency
+- Not a framework — Archway generates plain code with no runtime dependency
 - Not opinionated about your business logic — it sets up the infrastructure, you write the domain
 - Not a code generator that you run repeatedly — scaffold once, own the code

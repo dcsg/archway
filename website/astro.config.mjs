@@ -9,7 +9,7 @@ export default defineConfig({
 	integrations: [
 		starlight({
 			title: 'Archway',
-			tagline: 'Architecture-aware service composer for Go',
+			tagline: 'Architecture-aware service composer',
 			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/dcsg/archway' }],
 			editLink: {
 				baseUrl: 'https://github.com/dcsg/archway/edit/main/website/',

@@ -1,8 +1,10 @@
 # Archway
 
-**Architecture-aware service composer for Go.**
+**Architecture-aware service composer.**
 
-Stop writing boilerplate. Compose production-grade Go services from an architecture and capabilities — config, logging, graceful shutdown, middleware, database connections, and more — wired correctly from day one.
+Stop writing boilerplate. Compose production-grade services from an architecture and capabilities — config, logging, graceful shutdown, middleware, database connections, and more — wired correctly from day one.
+
+> **Language support:** Go is fully supported today. TypeScript/Node is next. Archway's provider model makes it straightforward to add any language.
 
 ```bash
 archway new my-service \
@@ -165,7 +167,7 @@ archway check              # Validate architecture
 | `archway check` | Validate project against architecture rules |
 | `archway analyze` | Analyze an existing project's architecture |
 
-## Design Patterns Included
+## Design Patterns Included (Go)
 
 | Pattern | Where |
 |---------|-------|
@@ -179,6 +181,17 @@ archway check              # Validate architecture
 | PII Redaction | Log handler that strips sensitive fields |
 | Graceful Shutdown | Ordered hooks with timeout |
 | Distributed Tracing | OpenTelemetry auto-instrumentation |
+
+## Language Providers
+
+Archway is built on a **provider model** — each language is a self-contained provider with its own architectures, capabilities, and templates.
+
+| Language | Status | Architectures | Capabilities |
+|----------|--------|---------------|-------------|
+| **Go** | Stable | hexagonal, flat | 16 capabilities |
+| **TypeScript/Node** | Planned | — | — |
+
+Want to add a language? See the [provider guide](https://dcsg.github.io/archway/) in the docs.
 
 ## Documentation
 
