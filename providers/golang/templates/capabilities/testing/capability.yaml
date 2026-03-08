@@ -1,0 +1,6 @@
+name: testing
+description: "Test helpers and example test setup"
+requires: []
+suggests:
+  - linting
+conflicts: []

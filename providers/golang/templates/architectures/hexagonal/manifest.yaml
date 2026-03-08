@@ -1,0 +1,27 @@
+name: hexagonal
+description: "Hexagonal architecture with domain, ports, service, adapters, and platform layers"
+variables:
+  - name: ServiceName
+    type: string
+    required: true
+    description: "Name of the service"
+  - name: ModulePath
+    type: string
+    required: true
+    description: "Go module path"
+components:
+  - name: domain
+    in: ["domain/**"]
+    may_depend_on: []
+  - name: ports
+    in: ["port/**"]
+    may_depend_on: [domain]
+  - name: service
+    in: ["service/**"]
+    may_depend_on: [domain, ports]
+  - name: adapters
+    in: ["adapter/**"]
+    may_depend_on: [ports, domain]
+  - name: platform
+    in: ["platform/**"]
+    may_depend_on: []

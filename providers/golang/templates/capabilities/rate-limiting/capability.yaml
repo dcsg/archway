@@ -1,0 +1,6 @@
+name: rate-limiting
+description: "Rate limiting middleware"
+requires:
+  - http-api
+suggests: []
+conflicts: []

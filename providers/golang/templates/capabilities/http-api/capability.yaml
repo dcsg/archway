@@ -1,0 +1,8 @@
+name: http-api
+description: "HTTP API with Chi router, middleware, and OpenAPI spec"
+requires: []
+suggests:
+  - rate-limiting
+  - auth-jwt
+  - observability
+conflicts: []

@@ -1,0 +1,7 @@
+name: redis
+description: "Redis connection and repository pattern"
+requires: []
+suggests:
+  - observability
+  - docker
+conflicts: []

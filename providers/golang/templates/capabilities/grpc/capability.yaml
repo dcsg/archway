@@ -1,0 +1,6 @@
+name: grpc
+description: "gRPC transport with buf tooling and interceptors"
+requires: []
+suggests:
+  - observability
+conflicts: []

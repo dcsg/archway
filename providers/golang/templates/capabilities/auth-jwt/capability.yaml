@@ -1,0 +1,6 @@
+name: auth-jwt
+description: "JWT authentication middleware"
+requires:
+  - http-api
+suggests: []
+conflicts: []

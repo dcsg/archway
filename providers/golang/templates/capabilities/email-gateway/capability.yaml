@@ -1,0 +1,5 @@
+name: email-gateway
+description: "Email gateway adapter"
+requires: []
+suggests: []
+conflicts: []

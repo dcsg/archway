@@ -1,0 +1,5 @@
+name: linting
+description: "golangci-lint configuration"
+requires: []
+suggests: []
+conflicts: []

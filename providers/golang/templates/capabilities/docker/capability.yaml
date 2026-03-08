@@ -1,0 +1,6 @@
+name: docker
+description: "Docker Compose setup and environment example"
+requires: []
+suggests:
+  - linting
+conflicts: []

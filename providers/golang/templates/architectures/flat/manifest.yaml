@@ -1,0 +1,12 @@
+name: flat
+description: "Flat structure for simple CLIs and scripts"
+variables:
+  - name: ServiceName
+    type: string
+    required: true
+    description: "Name of the service"
+  - name: ModulePath
+    type: string
+    required: true
+    description: "Go module path"
+components: []

@@ -1,0 +1,5 @@
+name: ci-github
+description: "GitHub issue templates and pull request template"
+requires: []
+suggests: []
+conflicts: []

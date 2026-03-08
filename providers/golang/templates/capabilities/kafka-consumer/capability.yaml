@@ -1,0 +1,6 @@
+name: kafka-consumer
+description: "Kafka consumer with handler pattern"
+requires: []
+suggests:
+  - observability
+conflicts: []

@@ -1,0 +1,5 @@
+name: pre-commit
+description: "Pre-commit hook configuration"
+requires: []
+suggests: []
+conflicts: []
