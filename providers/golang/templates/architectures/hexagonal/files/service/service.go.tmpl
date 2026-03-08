@@ -1,0 +1,18 @@
+package service
+
+import (
+	"log/slog"
+)
+
+// Service implements the inbound port interfaces.
+// Add domain dependencies (repositories, gateways) as fields.
+type Service struct {
+	logger *slog.Logger
+}
+
+// New creates a new Service with the given dependencies.
+func New(logger *slog.Logger) *Service {
+	return &Service{
+		logger: logger,
+	}
+}

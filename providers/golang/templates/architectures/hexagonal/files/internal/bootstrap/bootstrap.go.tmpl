@@ -1,0 +1,98 @@
+package bootstrap
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"os/signal"
+	"syscall"
+
+	"{{.ModulePath}}/config"
+	"{{.ModulePath}}/platform/lifecycle"
+	"{{.ModulePath}}/platform/observability"
+{{- if .Partials}}{{if index .Partials "main_imports"}}
+
+{{- range index .Partials "main_imports"}}
+	{{.}}
+{{- end}}
+{{- end}}{{end}}
+)
+
+// Run wires all dependencies and starts the application.
+func Run(version string) error {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer stop()
+
+	cfg, err := config.Load("config.yaml")
+	if err != nil {
+		return fmt.Errorf("load config: %w", err)
+	}
+
+	logger := newLogger(cfg)
+	otelShutdown, err := newOTel(ctx, cfg, version)
+	if err != nil {
+		return fmt.Errorf("init otel: %w", err)
+	}
+{{- if .Partials}}{{if index .Partials "main_init"}}
+{{range index .Partials "main_init"}}
+	{{.}}
+{{- end}}
+{{- end}}{{end}}
+
+	// TODO: Create service implementations and wire dependencies here.
+	// Example:
+	//   repo := mysqlrepo.NewOrderRepository(db)
+	//   svc := service.NewOrderService(repo, logger)
+{{- if .Partials}}{{if index .Partials "main_wire"}}
+{{- range index .Partials "main_wire"}}
+	{{.}}
+{{- end}}
+{{- end}}{{end}}
+
+	app := lifecycle.New(logger)
+{{- if .Partials}}{{if index .Partials "main_register"}}
+{{range index .Partials "main_register"}}
+	{{.}}
+{{- end}}
+{{- end}}{{end}}
+
+	// Shutdown hooks — reverse dependency order.
+{{- if .Partials}}{{if index .Partials "main_shutdown"}}
+{{- range index .Partials "main_shutdown"}}
+	{{.}}
+{{- end}}
+{{- end}}{{end}}
+	app.OnShutdown("otel", lifecycle.ShutdownFunc(otelShutdown))
+
+	logger.Info("starting {{.ServiceName}}",
+		"version", version,
+		"environment", cfg.App.Environment,
+	)
+
+	return app.Run(ctx)
+}
+
+func newLogger(cfg *config.Config) *slog.Logger {
+	logger := observability.NewLogger(observability.LoggerConfig{
+		Level:       cfg.Logger.Level,
+		Format:      cfg.Logger.Format,
+		ServiceName: cfg.App.Name,
+	})
+
+	redactHandler := observability.NewRedactHandler(
+		logger.Handler(),
+		observability.DefaultRedactConfig(),
+	)
+
+	return slog.New(redactHandler)
+}
+
+func newOTel(ctx context.Context, cfg *config.Config, version string) (func(context.Context) error, error) {
+	return observability.InitProvider(ctx, observability.ProviderConfig{
+		ServiceName:    cfg.App.Name,
+		ServiceVersion: version,
+		Environment:    cfg.App.Environment,
+		EnableTraces:   true,
+		EnableMetrics:  true,
+	})
+}

@@ -56,19 +56,24 @@ func MapError(w http.ResponseWriter, r *http.Request, logger *slog.Logger, err e
 func toProblemDetail(r *http.Request, err error) (int, ProblemDetail) {
 	instance := r.URL.Path
 
+	if p, ok := toValidationProblem(err, instance); ok {
+		return http.StatusBadRequest, p
+	}
+
+	return toSentinelProblem(err, instance)
+}
+
+func toValidationProblem(err error, instance string) (ProblemDetail, bool) {
 	var valErr *domain.ValidationError
 	if errors.As(err, &valErr) {
-		return http.StatusBadRequest, ProblemDetail{
-			Type:     "/errors/validation",
-			Title:    "Validation Error",
-			Status:   http.StatusBadRequest,
-			Detail:   valErr.Error(),
-			Instance: instance,
-			Code:     "VALIDATION_ERROR",
+		return ProblemDetail{
+			Type: "/errors/validation", Title: "Validation Error",
+			Status: http.StatusBadRequest, Detail: valErr.Error(),
+			Instance: instance, Code: "VALIDATION_ERROR",
 			Errors: []FieldError{
 				{Field: valErr.Field, Message: valErr.Message},
 			},
-		}
+		}, true
 	}
 
 	var multiValErr *domain.MultiValidationError
@@ -77,65 +82,45 @@ func toProblemDetail(r *http.Request, err error) (int, ProblemDetail) {
 		for i, ve := range multiValErr.Errors {
 			fields[i] = FieldError{Field: ve.Field, Message: ve.Message}
 		}
-		return http.StatusBadRequest, ProblemDetail{
-			Type:     "/errors/validation",
-			Title:    "Validation Error",
-			Status:   http.StatusBadRequest,
-			Detail:   multiValErr.Error(),
-			Instance: instance,
-			Code:     "VALIDATION_ERROR",
-			Errors:   fields,
+		return ProblemDetail{
+			Type: "/errors/validation", Title: "Validation Error",
+			Status: http.StatusBadRequest, Detail: multiValErr.Error(),
+			Instance: instance, Code: "VALIDATION_ERROR", Errors: fields,
+		}, true
+	}
+
+	return ProblemDetail{}, false
+}
+
+func toSentinelProblem(err error, instance string) (int, ProblemDetail) {
+	type mapping struct {
+		sentinel error
+		status   int
+		typ      string
+		title    string
+		code     string
+	}
+
+	mappings := []mapping{
+		{domain.ErrNotFound, http.StatusNotFound, "/errors/not-found", "Not Found", "NOT_FOUND"},
+		{domain.ErrConflict, http.StatusConflict, "/errors/conflict", "Conflict", "CONFLICT"},
+		{domain.ErrUnauthorized, http.StatusUnauthorized, "/errors/unauthorized", "Unauthorized", "UNAUTHORIZED"},
+		{domain.ErrForbidden, http.StatusForbidden, "/errors/forbidden", "Forbidden", "FORBIDDEN"},
+		{domain.ErrRateLimited, http.StatusTooManyRequests, "/errors/rate-limited", "Rate Limited", "RATE_LIMITED"},
+	}
+
+	for _, m := range mappings {
+		if errors.Is(err, m.sentinel) {
+			return m.status, ProblemDetail{
+				Type: m.typ, Title: m.title, Status: m.status,
+				Instance: instance, Code: m.code,
+			}
 		}
 	}
 
-	switch {
-	case errors.Is(err, domain.ErrNotFound):
-		return http.StatusNotFound, ProblemDetail{
-			Type:     "/errors/not-found",
-			Title:    "Not Found",
-			Status:   http.StatusNotFound,
-			Instance: instance,
-			Code:     "NOT_FOUND",
-		}
-	case errors.Is(err, domain.ErrConflict):
-		return http.StatusConflict, ProblemDetail{
-			Type:     "/errors/conflict",
-			Title:    "Conflict",
-			Status:   http.StatusConflict,
-			Instance: instance,
-			Code:     "CONFLICT",
-		}
-	case errors.Is(err, domain.ErrUnauthorized):
-		return http.StatusUnauthorized, ProblemDetail{
-			Type:     "/errors/unauthorized",
-			Title:    "Unauthorized",
-			Status:   http.StatusUnauthorized,
-			Instance: instance,
-			Code:     "UNAUTHORIZED",
-		}
-	case errors.Is(err, domain.ErrForbidden):
-		return http.StatusForbidden, ProblemDetail{
-			Type:     "/errors/forbidden",
-			Title:    "Forbidden",
-			Status:   http.StatusForbidden,
-			Instance: instance,
-			Code:     "FORBIDDEN",
-		}
-	case errors.Is(err, domain.ErrRateLimited):
-		return http.StatusTooManyRequests, ProblemDetail{
-			Type:     "/errors/rate-limited",
-			Title:    "Rate Limited",
-			Status:   http.StatusTooManyRequests,
-			Instance: instance,
-			Code:     "RATE_LIMITED",
-		}
-	default:
-		return http.StatusInternalServerError, ProblemDetail{
-			Type:     "/errors/internal",
-			Title:    "Internal Server Error",
-			Status:   http.StatusInternalServerError,
-			Instance: instance,
-			Code:     "INTERNAL_ERROR",
-		}
+	return http.StatusInternalServerError, ProblemDetail{
+		Type: "/errors/internal", Title: "Internal Server Error",
+		Status: http.StatusInternalServerError, Instance: instance,
+		Code: "INTERNAL_ERROR",
 	}
 }
