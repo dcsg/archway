@@ -1,0 +1,4 @@
+// gRPC server.
+	grpcServer := grpchandler.NewServer(cfg.GRPC.Port, cfg.GRPC.Reflection, logger)
+	// TODO: Register gRPC services here.
+	app.Register("grpc-server", grpcServer)

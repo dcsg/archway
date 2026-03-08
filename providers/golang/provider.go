@@ -52,12 +52,40 @@ func (p *GoProvider) Scaffold(_ context.Context, req provider.ScaffoldRequest) (
 	}
 
 	renderer := scaffold.NewRenderer(templatesFS)
-	archDir := path.Join("templates", "architectures", architecture)
-	renderResult, err := renderer.RenderTemplate(archDir, req.OutputDir, vars)
-	if err != nil {
-		return nil, err
+
+	// Parse capabilities from options (comma-separated).
+	var capabilities []string
+	if capStr := req.Options["capabilities"]; capStr != "" {
+		for _, c := range strings.Split(capStr, ",") {
+			c = strings.TrimSpace(c)
+			if c != "" {
+				capabilities = append(capabilities, c)
+			}
+		}
 	}
 
+	var renderResult *scaffold.RenderResult
+	if len(capabilities) > 0 {
+		// Composition mode: architecture + capabilities.
+		plan, err := scaffold.ComposeProject(templatesFS, architecture, capabilities, vars)
+		if err != nil {
+			return nil, fmt.Errorf("compose project: %w", err)
+		}
+		renderResult, err = renderer.RenderComposition(plan, req.OutputDir)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// Legacy mode: single template directory.
+		archDir := path.Join("templates", "architectures", architecture)
+		var err error
+		renderResult, err = renderer.RenderTemplate(archDir, req.OutputDir, vars)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	archDir := path.Join("templates", "architectures", architecture)
 	manifest, err := loadManifest(archDir)
 	if err == nil {
 		hooks := manifest.Hooks
@@ -71,7 +99,11 @@ func (p *GoProvider) Scaffold(_ context.Context, req provider.ScaffoldRequest) (
 			return nil, err
 		}
 	}
+
 	archwayCfg := config.DefaultArchwayConfig("go", architecture)
+	if len(capabilities) > 0 {
+		archwayCfg.Capabilities = capabilities
+	}
 	archwayPath := filepath.Join(req.OutputDir, "archway.yaml")
 	if err := config.SaveArchwayYAML(archwayPath, archwayCfg); err != nil {
 		return nil, err

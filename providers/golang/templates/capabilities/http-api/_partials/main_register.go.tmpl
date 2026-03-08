@@ -1,0 +1,6 @@
+// HTTP server.
+	router := httphandler.NewRouter(logger)
+	handler := httphandler.NewHandler(logger)
+	handler.RegisterRoutes(router)
+	httpServer := httphandler.NewHTTPServer(fmt.Sprintf(":%d", cfg.HTTP.Port), router, logger)
+	app.Register("http-server", httpServer)

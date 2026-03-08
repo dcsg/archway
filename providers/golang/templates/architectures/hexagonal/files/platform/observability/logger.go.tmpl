@@ -1,0 +1,57 @@
+package observability
+
+import (
+	"io"
+	"log/slog"
+	"os"
+)
+
+// LoggerConfig holds configuration for the logger.
+type LoggerConfig struct {
+	Level       string
+	Format      string // "json" or "text"
+	ServiceName string
+}
+
+// NewLogger creates a new slog.Logger based on the given configuration.
+// In production (format=json), it outputs structured JSON logs.
+// In development (format=text), it outputs human-readable text.
+func NewLogger(cfg LoggerConfig) *slog.Logger {
+	level := parseLevel(cfg.Level)
+
+	var handler slog.Handler
+
+	opts := &slog.HandlerOptions{Level: level}
+
+	switch cfg.Format {
+	case "json":
+		handler = slog.NewJSONHandler(os.Stdout, opts)
+	default:
+		handler = slog.NewTextHandler(os.Stdout, opts)
+	}
+
+	logger := slog.New(handler).With(
+		"service", cfg.ServiceName,
+	)
+
+	return logger
+}
+
+// NewTestLogger creates a logger that writes to the given writer.
+// Useful for capturing log output in tests.
+func NewTestLogger(w io.Writer) *slog.Logger {
+	return slog.New(slog.NewTextHandler(w, &slog.HandlerOptions{Level: slog.LevelDebug}))
+}
+
+func parseLevel(s string) slog.Level {
+	switch s {
+	case "debug":
+		return slog.LevelDebug
+	case "warn":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
+	}
+}

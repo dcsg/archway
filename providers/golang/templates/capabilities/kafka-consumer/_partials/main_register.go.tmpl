@@ -1,0 +1,11 @@
+// Kafka consumer.
+	consumer, err := kafkahandler.NewConsumer(kafkahandler.ConsumerConfig{
+		Brokers:       cfg.Kafka.Brokers,
+		ConsumerGroup: cfg.Kafka.ConsumerGroup,
+		Topics:        cfg.Kafka.Topics,
+	}, logger)
+	if err != nil {
+		return fmt.Errorf("create kafka consumer: %w", err)
+	}
+	// TODO: Register handlers for topics.
+	app.Register("kafka-consumer", consumer)

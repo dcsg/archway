@@ -125,6 +125,103 @@ func (r *Renderer) RenderTemplate(templateDir, outputDir string, vars map[string
 	return result, nil
 }
 
+// RenderComposition renders an architecture + capability composition into the output directory.
+func (r *Renderer) RenderComposition(plan *CompositionPlan, outputDir string) (*RenderResult, error) {
+	// Inject partials into vars so templates can use {{range .Partials.main_imports}}.
+	vars := plan.Vars
+	vars["Partials"] = plan.Partials
+
+	// Set boolean flags for each capability (e.g., HasHTTPAPI = true).
+	capSet := map[string]bool{}
+	for _, c := range plan.Capabilities {
+		capSet[c] = true
+	}
+	vars["SelectedCapabilities"] = plan.Capabilities
+
+	result := &RenderResult{}
+
+	// Render architecture files.
+	archResult, err := r.renderFilesDir(path.Join(plan.ArchDir, "files"), outputDir, vars)
+	if err != nil {
+		return nil, fmt.Errorf("render architecture: %w", err)
+	}
+	result.FilesCreated = append(result.FilesCreated, archResult.FilesCreated...)
+
+	// Render each capability's files.
+	for _, capDir := range plan.CapDirs {
+		capResult, err := r.renderFilesDir(path.Join(capDir, "files"), outputDir, vars)
+		if err != nil {
+			return nil, fmt.Errorf("render capability %s: %w", capDir, err)
+		}
+		result.FilesCreated = append(result.FilesCreated, capResult.FilesCreated...)
+	}
+
+	removeEmptyDirs(outputDir)
+	return result, nil
+}
+
+// renderFilesDir walks a files/ directory and renders templates into outputDir.
+func (r *Renderer) renderFilesDir(filesRoot, outputDir string, vars map[string]interface{}) (*RenderResult, error) {
+	result := &RenderResult{}
+
+	// Check if the directory exists.
+	if _, err := fs.Stat(r.fs, filesRoot); err != nil {
+		return result, nil // no files directory
+	}
+
+	if err := fs.WalkDir(r.fs, filesRoot, func(current string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if current == filesRoot {
+			return nil
+		}
+		rel := strings.TrimPrefix(current, filesRoot+"/")
+
+		renderedRel, err := renderPath(rel, vars)
+		if err != nil {
+			return fmt.Errorf("render path %q: %w", rel, err)
+		}
+		dstPath := filepath.Join(outputDir, filepath.FromSlash(renderedRel))
+
+		if d.IsDir() {
+			return os.MkdirAll(dstPath, 0o755)
+		}
+
+		if err := os.MkdirAll(filepath.Dir(dstPath), 0o755); err != nil {
+			return err
+		}
+
+		srcBytes, err := fs.ReadFile(r.fs, current)
+		if err != nil {
+			return err
+		}
+
+		if strings.HasSuffix(dstPath, ".tmpl") {
+			dstPath = strings.TrimSuffix(dstPath, ".tmpl")
+			rendered, err := executeTemplate(string(srcBytes), vars)
+			if err != nil {
+				return fmt.Errorf("render template %q: %w", rel, err)
+			}
+			if len(strings.TrimSpace(string(rendered))) == 0 {
+				return nil
+			}
+			if err := os.WriteFile(dstPath, rendered, 0o644); err != nil {
+				return err
+			}
+		} else {
+			if err := os.WriteFile(dstPath, srcBytes, 0o644); err != nil {
+				return err
+			}
+		}
+		result.FilesCreated = append(result.FilesCreated, dstPath)
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 // removeEmptyDirs walks bottom-up and removes directories that contain no files.
 func removeEmptyDirs(root string) {
 	// Collect dirs in reverse depth order (deepest first).
@@ -150,7 +247,7 @@ func removeEmptyDirs(root string) {
 }
 
 func executeTemplate(content string, vars map[string]interface{}) ([]byte, error) {
-	tmpl, err := template.New("file").Funcs(templateFunctions()).Option("missingkey=error").Parse(content)
+	tmpl, err := template.New("file").Funcs(templateFunctions()).Option("missingkey=zero").Parse(content)
 	if err != nil {
 		return nil, err
 	}

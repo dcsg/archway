@@ -1,0 +1,159 @@
+package observability
+
+import (
+	"context"
+	"log/slog"
+	"regexp"
+	"strings"
+)
+
+const (
+	redactedFull    = "***"
+	redactedPartial = 4 // Show last N characters.
+	minPartialLen   = 6 // Minimum length to apply partial redaction.
+)
+
+// RedactStrategy defines how a field is redacted.
+type RedactStrategy int
+
+const (
+	// Full replaces the entire value with "***".
+	Full RedactStrategy = iota
+	// Partial shows the last 4 characters.
+	Partial
+)
+
+// RedactPattern defines a regex-based redaction rule.
+type RedactPattern struct {
+	KeyPattern *regexp.Regexp
+	Strategy   RedactStrategy
+}
+
+// RedactConfig holds redaction configuration.
+type RedactConfig struct {
+	FullRedactKeys    []string
+	PartialRedactKeys []string
+	Patterns          []RedactPattern
+}
+
+// DefaultRedactConfig returns sensible defaults for PII redaction.
+func DefaultRedactConfig() RedactConfig {
+	return RedactConfig{
+		FullRedactKeys:    []string{"api_key", "password", "secret", "token", "authorization", "cookie", "session"},
+		PartialRedactKeys: []string{"email", "phone", "card_number", "ssn", "tax_id"},
+	}
+}
+
+// RedactHandler wraps a slog.Handler and redacts sensitive attributes.
+type RedactHandler struct {
+	inner       slog.Handler
+	fullKeys    map[string]bool
+	partialKeys map[string]bool
+	patterns    []RedactPattern
+}
+
+// NewRedactHandler creates a new RedactHandler wrapping the given handler.
+func NewRedactHandler(inner slog.Handler, cfg RedactConfig) *RedactHandler {
+	fullKeys := make(map[string]bool, len(cfg.FullRedactKeys))
+	for _, k := range cfg.FullRedactKeys {
+		fullKeys[strings.ToLower(k)] = true
+	}
+
+	partialKeys := make(map[string]bool, len(cfg.PartialRedactKeys))
+	for _, k := range cfg.PartialRedactKeys {
+		partialKeys[strings.ToLower(k)] = true
+	}
+
+	return &RedactHandler{
+		inner:       inner,
+		fullKeys:    fullKeys,
+		partialKeys: partialKeys,
+		patterns:    cfg.Patterns,
+	}
+}
+
+func (h *RedactHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	return h.inner.Enabled(ctx, level)
+}
+
+func (h *RedactHandler) Handle(ctx context.Context, r slog.Record) error {
+	redacted := slog.NewRecord(r.Time, r.Level, r.Message, r.PC)
+	r.Attrs(func(a slog.Attr) bool {
+		redacted.AddAttrs(h.redactAttr(a))
+		return true
+	})
+	return h.inner.Handle(ctx, redacted)
+}
+
+func (h *RedactHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	redacted := make([]slog.Attr, len(attrs))
+	for i, a := range attrs {
+		redacted[i] = h.redactAttr(a)
+	}
+	return &RedactHandler{
+		inner:       h.inner.WithAttrs(redacted),
+		fullKeys:    h.fullKeys,
+		partialKeys: h.partialKeys,
+		patterns:    h.patterns,
+	}
+}
+
+func (h *RedactHandler) WithGroup(name string) slog.Handler {
+	return &RedactHandler{
+		inner:       h.inner.WithGroup(name),
+		fullKeys:    h.fullKeys,
+		partialKeys: h.partialKeys,
+		patterns:    h.patterns,
+	}
+}
+
+func (h *RedactHandler) redactAttr(a slog.Attr) slog.Attr {
+	key := strings.ToLower(a.Key)
+
+	if h.fullKeys[key] {
+		return slog.String(a.Key, redactedFull)
+	}
+
+	if h.partialKeys[key] {
+		return slog.String(a.Key, partialRedact(a.Value.String()))
+	}
+
+	for _, p := range h.patterns {
+		if p.KeyPattern.MatchString(key) {
+			switch p.Strategy {
+			case Full:
+				return slog.String(a.Key, redactedFull)
+			case Partial:
+				return slog.String(a.Key, partialRedact(a.Value.String()))
+			}
+		}
+	}
+
+	// Recurse into groups.
+	if a.Value.Kind() == slog.KindGroup {
+		attrs := a.Value.Group()
+		redacted := make([]slog.Attr, len(attrs))
+		for i, ga := range attrs {
+			redacted[i] = h.redactAttr(ga)
+		}
+		return slog.Group(a.Key, attrsToAny(redacted)...)
+	}
+
+	return a
+}
+
+func partialRedact(s string) string {
+	if len(s) < minPartialLen {
+		return redactedFull
+	}
+	visible := s[len(s)-redactedPartial:]
+	return "***" + visible
+}
+
+func attrsToAny(attrs []slog.Attr) []any {
+	result := make([]any, len(attrs))
+	for i, a := range attrs {
+		result[i] = a
+	}
+	return result
+}

@@ -1,0 +1,111 @@
+package lifecycle
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"sync"
+	"time"
+
+	"golang.org/x/sync/errgroup"
+)
+
+const defaultShutdownTimeout = 30 * time.Second
+
+// Runnable represents a long-running component that can be started and stopped.
+type Runnable interface {
+	Run(ctx context.Context) error
+}
+
+// ShutdownFunc is a function called during shutdown.
+type ShutdownFunc func(ctx context.Context) error
+
+// App manages the lifecycle of multiple Runnables and shutdown hooks.
+type App struct {
+	logger          *slog.Logger
+	runnables       []namedRunnable
+	shutdownFns     []namedShutdown
+	shutdownTimeout time.Duration
+	mu              sync.Mutex
+}
+
+type namedRunnable struct {
+	name     string
+	runnable Runnable
+}
+
+type namedShutdown struct {
+	name string
+	fn   ShutdownFunc
+}
+
+// New creates a new App with the given logger.
+func New(logger *slog.Logger) *App {
+	return &App{
+		logger:          logger,
+		shutdownTimeout: defaultShutdownTimeout,
+	}
+}
+
+// WithShutdownTimeout sets the maximum time allowed for shutdown.
+func (a *App) WithShutdownTimeout(d time.Duration) *App {
+	a.shutdownTimeout = d
+	return a
+}
+
+// Register adds a named Runnable to the application.
+func (a *App) Register(name string, r Runnable) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.runnables = append(a.runnables, namedRunnable{name: name, runnable: r})
+}
+
+// OnShutdown registers a function to be called during shutdown.
+// Functions are called in reverse registration order.
+func (a *App) OnShutdown(name string, fn ShutdownFunc) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.shutdownFns = append(a.shutdownFns, namedShutdown{name: name, fn: fn})
+}
+
+// Run starts all registered Runnables and blocks until the context is cancelled
+// or any Runnable returns an error. On shutdown, it calls shutdown functions in
+// reverse registration order with a timeout.
+func (a *App) Run(ctx context.Context) error {
+	g, gCtx := errgroup.WithContext(ctx)
+
+	for _, nr := range a.runnables {
+		g.Go(func() error {
+			a.logger.Info("starting component", "component", nr.name)
+			if err := nr.runnable.Run(gCtx); err != nil {
+				return fmt.Errorf("%s: %w", nr.name, err)
+			}
+			return nil
+		})
+	}
+
+	g.Go(func() error {
+		<-gCtx.Done()
+		a.logger.Info("shutdown signal received, draining...")
+		a.shutdown()
+		return nil
+	})
+
+	return g.Wait()
+}
+
+func (a *App) shutdown() {
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), a.shutdownTimeout)
+	defer cancel()
+
+	// Shutdown in reverse order.
+	for i := len(a.shutdownFns) - 1; i >= 0; i-- {
+		ns := a.shutdownFns[i]
+		a.logger.Info("shutting down", "component", ns.name)
+		if err := ns.fn(shutdownCtx); err != nil {
+			a.logger.Error("shutdown error", "component", ns.name, "error", err)
+		}
+	}
+
+	a.logger.Info("shutdown complete")
+}

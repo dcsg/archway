@@ -9,26 +9,13 @@ import (
 	"syscall"
 
 	"{{.ModulePath}}/config"
-	{{- if .HasHTTP}}
-	"{{.ModulePath}}/adapter/httphandler"
-	{{- end}}
-	{{- if .HasGRPC}}
-	"{{.ModulePath}}/adapter/grpchandler"
-	{{- end}}
-	{{- if .HasKafka}}
-	"{{.ModulePath}}/adapter/kafkahandler"
-	{{- end}}
 	"{{.ModulePath}}/platform/lifecycle"
 	"{{.ModulePath}}/platform/observability"
-	{{- if .HasMySQL}}
-	"{{.ModulePath}}/adapter/mysqlrepo"
-	{{- end}}
-	{{- if .HasRedis}}
-	"{{.ModulePath}}/adapter/redisrepo"
-	{{- end}}
-	{{- if .HasFeatureFlags}}
-	"{{.ModulePath}}/adapter/featureflags"
-	{{- end}}
+{{- if .Partials}}{{if index .Partials "main_imports"}}
+{{range index .Partials "main_imports"}}
+	{{.}}
+{{- end}}
+{{- end}}{{end}}
 )
 
 var version = "dev"
@@ -73,102 +60,32 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("init otel: %w", err)
 	}
-
-	{{- if .HasMySQL}}
-
-	// Connect to MySQL.
-	db, err := mysqlrepo.NewConnection(mysqlrepo.ConnectionConfig{
-		DSN:          cfg.MySQL.DSN,
-		MaxOpenConns: cfg.MySQL.MaxOpenConns,
-		MaxIdleConns: cfg.MySQL.MaxIdleConns,
-	}, logger)
-	if err != nil {
-		return fmt.Errorf("connect mysql: %w", err)
-	}
-	{{- end}}
-
-	{{- if .HasRedis}}
-
-	// Connect to Redis.
-	redisClient, err := redisrepo.NewConnection(redisrepo.ConnectionConfig{
-		Addr:     cfg.Redis.Addr,
-		Password: cfg.Redis.Password,
-		DB:       cfg.Redis.DB,
-	}, logger)
-	if err != nil {
-		return fmt.Errorf("connect redis: %w", err)
-	}
-	{{- end}}
-
-	{{- if .HasFeatureFlags}}
-
-	// Initialize feature flags.
-	ffProvider, err := featureflags.NewProvider(cfg.FeatureFlags.Provider, featureflags.ProviderConfig{
-		Env: featureflags.EnvConfig{Prefix: cfg.FeatureFlags.EnvPrefix},
-	}, logger)
-	if err != nil {
-		return fmt.Errorf("create feature flag provider: %w", err)
-	}
-	ffClient := featureflags.NewClient(ffProvider, logger)
-	_ = ffClient // TODO: Pass ffClient to services that need feature flag evaluation.
-	{{- end}}
-
+{{if .Partials}}{{if index .Partials "main_init"}}
+{{range index .Partials "main_init"}}
+	{{.}}
+{{end}}
+{{- end}}{{end}}
 	// Wire dependencies.
 	// TODO: Create service implementations and wire them here.
-	// Example:
-	//   repo := mysqlrepo.NewOrderRepository(db)
-	//   svc := service.NewOrderService(repo)
+{{- if .Partials}}{{if index .Partials "main_wire"}}
+{{range index .Partials "main_wire"}}
+	{{.}}
+{{end}}
+{{- end}}{{end}}
 
 	// Build application lifecycle.
 	app := lifecycle.New(logger)
-
-	{{- if .HasHTTP}}
-
-	// HTTP server.
-	router := httphandler.NewRouter(logger)
-	handler := httphandler.NewHandler(logger)
-	handler.RegisterRoutes(router)
-	httpServer := httphandler.NewHTTPServer(fmt.Sprintf(":%d", cfg.HTTP.Port), router, logger)
-	app.Register("http-server", httpServer)
-	{{- end}}
-
-	{{- if .HasGRPC}}
-
-	// gRPC server.
-	grpcServer := grpchandler.NewServer(cfg.GRPC.Port, cfg.GRPC.Reflection, logger)
-	// TODO: Register gRPC services here.
-	app.Register("grpc-server", grpcServer)
-	{{- end}}
-
-	{{- if .HasKafka}}
-
-	// Kafka consumer.
-	consumer, err := kafkahandler.NewConsumer(kafkahandler.ConsumerConfig{
-		Brokers:       cfg.Kafka.Brokers,
-		ConsumerGroup: cfg.Kafka.ConsumerGroup,
-		Topics:        cfg.Kafka.Topics,
-	}, logger)
-	if err != nil {
-		return fmt.Errorf("create kafka consumer: %w", err)
-	}
-	// TODO: Register handlers for topics.
-	// consumer.RegisterHandler("topic-name", myHandler)
-	app.Register("kafka-consumer", consumer)
-	{{- end}}
-
+{{if .Partials}}{{if index .Partials "main_register"}}
+{{range index .Partials "main_register"}}
+	{{.}}
+{{end}}
+{{- end}}{{end}}
 	// Register shutdown hooks (reverse dependency order).
-	{{- if .HasKafka}}
-	app.OnShutdown("kafka-consumer", func(_ context.Context) error { consumer.Close(); return nil })
-	{{- end}}
-	{{- if .HasFeatureFlags}}
-	app.OnShutdown("feature-flags", func(ctx context.Context) error { return ffClient.Shutdown(ctx) })
-	{{- end}}
-	{{- if .HasRedis}}
-	app.OnShutdown("redis", func(_ context.Context) error { return redisClient.Close() })
-	{{- end}}
-	{{- if .HasMySQL}}
-	app.OnShutdown("mysql", func(_ context.Context) error { return db.Close() })
-	{{- end}}
+{{- if .Partials}}{{if index .Partials "main_shutdown"}}
+{{range index .Partials "main_shutdown"}}
+	{{.}}
+{{end}}
+{{- end}}{{end}}
 	app.OnShutdown("otel", lifecycle.ShutdownFunc(otelShutdown))
 
 	logger.Info("starting {{.ServiceName}}",

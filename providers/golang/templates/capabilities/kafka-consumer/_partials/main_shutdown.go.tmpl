@@ -1,0 +1,1 @@
+app.OnShutdown("kafka-consumer", func(_ context.Context) error { consumer.Close(); return nil })

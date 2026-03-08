@@ -1,0 +1,1 @@
+app.OnShutdown("mysql", func(_ context.Context) error { return db.Close() })

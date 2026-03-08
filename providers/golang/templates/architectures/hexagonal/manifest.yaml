@@ -9,6 +9,10 @@ variables:
     type: string
     required: true
     description: "Go module path"
+  - name: GoVersion
+    type: string
+    default: "1.23"
+    description: "Go version for go.mod and Dockerfile"
 components:
   - name: domain
     in: ["domain/**"]

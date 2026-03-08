@@ -1,0 +1,9 @@
+// Connect to Redis.
+	redisClient, err := redisrepo.NewConnection(redisrepo.ConnectionConfig{
+		Addr:     cfg.Redis.Addr,
+		Password: cfg.Redis.Password,
+		DB:       cfg.Redis.DB,
+	}, logger)
+	if err != nil {
+		return fmt.Errorf("connect redis: %w", err)
+	}

@@ -1,0 +1,9 @@
+// Connect to MySQL.
+	db, err := mysqlrepo.NewConnection(mysqlrepo.ConnectionConfig{
+		DSN:          cfg.MySQL.DSN,
+		MaxOpenConns: cfg.MySQL.MaxOpenConns,
+		MaxIdleConns: cfg.MySQL.MaxIdleConns,
+	}, logger)
+	if err != nil {
+		return fmt.Errorf("connect mysql: %w", err)
+	}
