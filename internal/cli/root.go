@@ -58,6 +58,7 @@ Use archway new to scaffold projects and archway analyze to understand existing 
 		newNewCommand(opts),
 		newInitCommand(opts),
 		newAnalyzeCommand(opts),
+		newCheckCommand(opts),
 		newVersionCommand(),
 	)
 

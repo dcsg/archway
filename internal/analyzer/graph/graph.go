@@ -143,6 +143,11 @@ func LayerViolations(graph provider.DependencyGraph, components []config.Compone
 	return violations
 }
 
+// MatchesComponent returns true if the package path matches any of the component's patterns.
+func MatchesComponent(pkgPath string, comp config.Component) bool {
+	return matchesAnyRule(pkgPath, comp.In)
+}
+
 func matchesAnyRule(pkgPath string, patterns []string) bool {
 	for _, pattern := range patterns {
 		if pattern == "" {
