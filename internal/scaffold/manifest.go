@@ -33,9 +33,6 @@ func ParseManifest(data []byte) (*Manifest, error) {
 	if strings.TrimSpace(m.Name) == "" {
 		return nil, fmt.Errorf("manifest missing name")
 	}
-	if strings.TrimSpace(m.Language) == "" {
-		return nil, fmt.Errorf("manifest missing language")
-	}
 	for i := range m.Variables {
 		v := &m.Variables[i]
 		if strings.TrimSpace(v.Type) == "" {

@@ -44,14 +44,21 @@ func (p *GoProvider) Scaffold(_ context.Context, req provider.ScaffoldRequest) (
 		vars["ModulePath"] = req.ModulePath
 	}
 
+	// Map legacy template names to architectures.
+	archMap := map[string]string{"api": "hexagonal", "cli": "flat", "worker": "hexagonal"}
+	architecture := archMap[templateName]
+	if architecture == "" {
+		architecture = templateName
+	}
+
 	renderer := scaffold.NewRenderer(templatesFS)
-	templateDir := path.Join("templates", templateName)
-	renderResult, err := renderer.RenderTemplate(templateDir, req.OutputDir, vars)
+	archDir := path.Join("templates", "architectures", architecture)
+	renderResult, err := renderer.RenderTemplate(archDir, req.OutputDir, vars)
 	if err != nil {
 		return nil, err
 	}
 
-	manifest, err := loadManifest(templateDir)
+	manifest, err := loadManifest(archDir)
 	if err == nil {
 		hooks := manifest.Hooks
 		if len(hooks) == 0 {
@@ -63,12 +70,6 @@ func (p *GoProvider) Scaffold(_ context.Context, req provider.ScaffoldRequest) (
 		if err := scaffold.RunPostScaffoldHooks(req.OutputDir, hooks, vars); err != nil {
 			return nil, err
 		}
-	}
-
-	archMap := map[string]string{"api": "hexagonal", "cli": "flat", "worker": "hexagonal"}
-	architecture := archMap[templateName]
-	if architecture == "" {
-		architecture = "layered"
 	}
 	archwayCfg := config.DefaultArchwayConfig("go", architecture)
 	archwayPath := filepath.Join(req.OutputDir, "archway.yaml")
@@ -126,7 +127,7 @@ func loadManifest(templateDir string) (*scaffold.Manifest, error) {
 }
 
 func listTemplates() ([]provider.TemplateInfo, error) {
-	entries, err := fs.ReadDir(templatesFS, "templates")
+	entries, err := fs.ReadDir(templatesFS, path.Join("templates", "architectures"))
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +136,7 @@ func listTemplates() ([]provider.TemplateInfo, error) {
 		if !entry.IsDir() {
 			continue
 		}
-		manifest, err := loadManifest(path.Join("templates", entry.Name()))
+		manifest, err := loadManifest(path.Join("templates", "architectures", entry.Name()))
 		if err != nil {
 			continue
 		}
