@@ -57,19 +57,5 @@ func (f *MarkdownFormatter) Format(result *provider.AnalyzeResponse) (string, er
 		}
 	}
 
-	if result.LLM != nil {
-		fmt.Fprintf(b, "\n## LLM Insights\n\n")
-		if result.LLM.SemanticAssessment != "" {
-			fmt.Fprintf(b, "%s\n\n", result.LLM.SemanticAssessment)
-		}
-		if len(result.LLM.Invariants) > 0 {
-			b.WriteString("### Invariants\n")
-			for _, invariant := range result.LLM.Invariants {
-				fmt.Fprintf(b, "- %s\n", invariant)
-			}
-			b.WriteString("\n")
-		}
-	}
-
 	return b.String(), nil
 }

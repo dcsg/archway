@@ -32,8 +32,7 @@ type ScaffoldResponse struct {
 }
 
 type AnalyzeRequest struct {
-	Path       string `json:"path"`
-	IncludeLLM bool   `json:"include_llm"`
+	Path string `json:"path"`
 }
 
 type AnalyzeResponse struct {
@@ -47,24 +46,6 @@ type AnalyzeResponse struct {
 	FileCount       int                `json:"file_count"`
 	FunctionCount   int                `json:"function_count"`
 	Metadata        map[string]string  `json:"metadata,omitempty"`
-	LLM             *LLMEnhancement    `json:"llm,omitempty"`
-}
-
-type LLMEnhancement struct {
-	ADRs               []ADR    `json:"adrs,omitempty"`
-	Invariants         []string `json:"invariants,omitempty"`
-	SemanticAssessment string   `json:"semantic_assessment,omitempty"`
-	Provider           string   `json:"provider,omitempty"`
-	Model              string   `json:"model,omitempty"`
-	TokensUsed         int      `json:"tokens_used,omitempty"`
-	Warnings           []string `json:"warnings,omitempty"`
-}
-
-type ADR struct {
-	Title        string `json:"title"`
-	Context      string `json:"context"`
-	Decision     string `json:"decision"`
-	Consequences string `json:"consequences"`
 }
 
 type ArchitectureResult struct {
