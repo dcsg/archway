@@ -16,13 +16,15 @@ import (
 )
 
 type newCommandOptions struct {
-	Name       string
-	Language   string
-	Template   string
-	NoWizard   bool
-	ModulePath string
-	OutputDir  string
-	Sets       []string
+	Name         string
+	Language     string
+	Template     string
+	Architecture string
+	Capabilities string
+	NoWizard     bool
+	ModulePath   string
+	OutputDir    string
+	Sets         []string
 }
 
 func newNewCommand(_ *globalOptions) *cobra.Command {
@@ -31,12 +33,12 @@ func newNewCommand(_ *globalOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "new [name]",
 		Short: "Scaffold a new project",
-		Long: `Create a new project scaffold from a template.
+		Long: `Create a new project scaffold by composing architecture + capabilities.
 
-This command can run interactively through a wizard or non-interactively using flags.`,
+This command runs an interactive wizard by default, or can be used non-interactively with flags.`,
 		Example: `  archway new my-service
-  archway new my-service --template api --module github.com/acme/orders --no-wizard
-  archway new --name orders --set HasGRPC=true --set HasPostgreSQL=true`,
+  archway new my-service --arch hexagonal --cap http-api,mysql,observability --no-wizard
+  archway new my-service --template cli --no-wizard`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 && strings.TrimSpace(opts.Name) == "" {
@@ -51,7 +53,9 @@ This command can run interactively through a wizard or non-interactively using f
 
 	cmd.Flags().StringVar(&opts.Name, "name", "", "Project/service name")
 	cmd.Flags().StringVar(&opts.Language, "language", "", "Project language (defaults to go)")
-	cmd.Flags().StringVar(&opts.Template, "template", "", "Template name")
+	cmd.Flags().StringVar(&opts.Template, "template", "", "Legacy template name (use --arch instead)")
+	cmd.Flags().StringVar(&opts.Architecture, "arch", "", "Architecture pattern (hexagonal, flat)")
+	cmd.Flags().StringVar(&opts.Capabilities, "cap", "", "Capabilities (comma-separated: http-api,mysql,redis)")
 	cmd.Flags().BoolVar(&opts.NoWizard, "no-wizard", false, "Disable interactive wizard")
 	cmd.Flags().StringVar(&opts.ModulePath, "module", "", "Go module path")
 	cmd.Flags().StringVar(&opts.OutputDir, "output-dir", ".", "Output directory")
@@ -65,11 +69,10 @@ func runNew(ctx context.Context, opts *newCommandOptions) error {
 		opts.Language = "go"
 	}
 
-	// Wizard mode: interactive prompts for all options.
 	wizardVars := map[string]interface{}{}
 	if !opts.NoWizard {
 		var err error
-		wizardVars, err = runNewWizard(opts)
+		wizardVars, err = runCompositionWizard(opts)
 		if err != nil {
 			return err
 		}
@@ -81,11 +84,17 @@ func runNew(ctx context.Context, opts *newCommandOptions) error {
 	if strings.TrimSpace(opts.ModulePath) == "" {
 		opts.ModulePath = fmt.Sprintf("example.com/%s", opts.Name)
 	}
-	if strings.TrimSpace(opts.Template) == "" {
-		opts.Template = "api"
-	}
 	if strings.TrimSpace(opts.OutputDir) == "" {
 		opts.OutputDir = "."
+	}
+
+	// Resolve template from architecture flag.
+	template := opts.Template
+	if template == "" && opts.Architecture != "" {
+		template = opts.Architecture
+	}
+	if template == "" {
+		template = "api"
 	}
 
 	providerImpl, err := provider.Get(opts.Language)
@@ -93,7 +102,6 @@ func runNew(ctx context.Context, opts *newCommandOptions) error {
 		return err
 	}
 
-	// Build options: wizard vars first, then --set overrides on top.
 	options := map[string]string{}
 	for k, v := range wizardVars {
 		options[k] = fmt.Sprint(v)
@@ -106,10 +114,15 @@ func runNew(ctx context.Context, opts *newCommandOptions) error {
 		options[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
 	}
 
+	// Pass capabilities to the provider.
+	if opts.Capabilities != "" {
+		options["capabilities"] = opts.Capabilities
+	}
+
 	request := provider.ScaffoldRequest{
 		ProjectName:  opts.Name,
 		ModulePath:   opts.ModulePath,
-		TemplateName: opts.Template,
+		TemplateName: template,
 		OutputDir:    filepath.Clean(filepath.Join(opts.OutputDir, opts.Name)),
 		Options:      options,
 	}
@@ -118,204 +131,243 @@ func runNew(ctx context.Context, opts *newCommandOptions) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Scaffold complete: %d files created\n", len(resp.FilesCreated))
+
+	fmt.Printf("\nScaffold complete: %d files created\n", len(resp.FilesCreated))
 	for _, file := range resp.FilesCreated {
-		fmt.Printf("  - %s\n", file)
+		fmt.Printf("  %s\n", file)
 	}
+
+	// Print equivalent non-interactive command.
+	printEquivalentCommand(opts)
+
+	fmt.Println("\nNext steps:")
+	fmt.Printf("  cd %s\n", filepath.Join(opts.OutputDir, opts.Name))
+	fmt.Println("  go run ./cmd/...")
+	fmt.Println("\nTip: Run 'keel:init' to set up AI-powered development guardrails.")
+
 	return nil
 }
 
-func runNewWizard(opts *newCommandOptions) (map[string]interface{}, error) {
-	// Step 1: Common fields — name, output dir, language.
-	languages := provider.List()
-	languageOptions := make([]huh.Option[string], 0, len(languages))
-	for _, lang := range languages {
-		languageOptions = append(languageOptions, huh.NewOption(lang, lang))
+func printEquivalentCommand(opts *newCommandOptions) {
+	parts := []string{"archway new", opts.Name}
+	if opts.Architecture != "" {
+		parts = append(parts, "--arch", opts.Architecture)
+	} else if opts.Template != "" && opts.Template != "api" {
+		parts = append(parts, "--template", opts.Template)
 	}
+	if opts.Capabilities != "" {
+		parts = append(parts, "--cap", opts.Capabilities)
+	}
+	if opts.ModulePath != "" {
+		parts = append(parts, "--module", opts.ModulePath)
+	}
+	parts = append(parts, "--no-wizard")
+	fmt.Printf("\nEquivalent command:\n  %s\n", strings.Join(parts, " "))
+}
+
+// runCompositionWizard runs the interactive wizard for architecture + capability selection.
+func runCompositionWizard(opts *newCommandOptions) (map[string]interface{}, error) {
+	// Step 1: Project basics.
+	languages := provider.List()
 	if opts.Language == "" {
 		opts.Language = "go"
 	}
 
-	commonFields := []huh.Field{
+	fields := []huh.Field{
 		huh.NewInput().Title("Service name").Value(&opts.Name).Validate(func(value string) error {
 			if strings.TrimSpace(value) == "" {
 				return fmt.Errorf("service name is required")
 			}
 			return nil
 		}),
+		huh.NewInput().Title("Go module path").
+			Description("e.g. github.com/org/my-service").
+			Value(&opts.ModulePath),
 		huh.NewInput().Title("Output directory").
-			Description("Parent directory where the project folder will be created").
 			Placeholder(".").
 			Value(&opts.OutputDir),
 	}
-	if len(languageOptions) > 1 {
-		commonFields = append(commonFields,
-			huh.NewSelect[string]().Title("Language").Value(&opts.Language).Options(languageOptions...),
-		)
+	if len(languages) > 1 {
+		langOpts := make([]huh.Option[string], 0, len(languages))
+		for _, lang := range languages {
+			langOpts = append(langOpts, huh.NewOption(lang, lang))
+		}
+		fields = append(fields, huh.NewSelect[string]().Title("Language").Value(&opts.Language).Options(langOpts...))
 	}
 
-	if err := huh.NewForm(huh.NewGroup(commonFields...)).Run(); err != nil {
+	if err := huh.NewForm(huh.NewGroup(fields...)).Run(); err != nil {
 		return nil, err
 	}
 
-	// Step 2: Load provider and attempt intent-driven wizard.
+	// Set default module path.
+	if strings.TrimSpace(opts.ModulePath) == "" && opts.Name != "" {
+		opts.ModulePath = fmt.Sprintf("github.com/example/%s", opts.Name)
+	}
+
 	providerImpl, err := provider.Get(opts.Language)
 	if err != nil {
 		return nil, err
 	}
 	tFS := providerImpl.GetTemplateFS()
 
-	// Try loading the provider-level wizard.yaml for intent routing.
-	providerWizardData, provWizErr := fs.ReadFile(tFS, path.Join("templates", "wizard.yaml"))
-	if provWizErr != nil {
-		// No provider wizard — fall back to manual template selection.
-		return runLegacyTemplateWizard(opts, providerImpl)
-	}
-
-	providerWizardCfg, err := scaffold.ParseProviderWizard(providerWizardData)
-	if err != nil {
-		return nil, fmt.Errorf("parse provider wizard: %w", err)
-	}
-
-	// Step 3: Run provider wizard — determines intent and template.
-	templateName, intentState, err := scaffold.RunProviderWizard(providerWizardCfg, nil)
-	if err != nil {
-		return nil, err
-	}
-	opts.Template = templateName
-
-	// Step 4: Resolve fast path for template wizard step skipping.
-	fastPath := providerWizardCfg.ResolveFastPath(intentState)
-
-	// Step 5: Load the resolved template's manifest + wizard.
-	templateDir := path.Join("templates", opts.Template)
-
-	manifestData, err := fs.ReadFile(tFS, path.Join(templateDir, "manifest.yaml"))
-	if err != nil {
-		return nil, fmt.Errorf("read manifest: %w", err)
-	}
-	manifest, err := scaffold.ParseManifest(manifestData)
+	// Step 2: Architecture selection.
+	architectures, err := listArchitectures(tFS)
 	if err != nil {
 		return nil, err
 	}
 
-	// Pre-seed with name and module path from step 1.
-	initial := map[string]interface{}{}
-	for k, v := range intentState {
-		initial[k] = v
+	archOpts := make([]huh.Option[string], 0, len(architectures))
+	for _, a := range architectures {
+		archOpts = append(archOpts, huh.NewOption(a.label, a.name))
 	}
-	if opts.Name != "" {
-		initial["ServiceName"] = opts.Name
-	}
-	modulePath := opts.ModulePath
-	if modulePath == "" && opts.Name != "" {
-		modulePath = fmt.Sprintf("github.com/example/%s", opts.Name)
-	}
-	if modulePath != "" {
-		initial["ModulePath"] = modulePath
-	}
-
-	wizardData, err := fs.ReadFile(tFS, path.Join(templateDir, "wizard.yaml"))
-	if err != nil {
-		// No template wizard — return manifest defaults merged with intent state.
-		defaults := manifest.Defaults()
-		for k, v := range initial {
-			defaults[k] = v
-		}
-		return defaults, nil
-	}
-	wizardCfg, err := scaffold.ParseWizard(wizardData)
-	if err != nil {
-		return nil, err
-	}
-
-	// Step 6: Run template wizard with fast-path filtering.
-	var vars map[string]interface{}
-	if fastPath != nil {
-		vars, err = scaffold.RunWizardWithFastPath(wizardCfg, manifest, initial, fastPath)
-	} else {
-		vars, err = scaffold.RunWizard(wizardCfg, manifest, initial)
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	// Copy wizard results back to opts for fields it manages.
-	if name, ok := vars["ServiceName"].(string); ok && name != "" {
-		opts.Name = name
-	}
-	if mod, ok := vars["ModulePath"].(string); ok && mod != "" {
-		opts.ModulePath = mod
-	}
-
-	return vars, nil
-}
-
-// runLegacyTemplateWizard falls back to manual template selection when
-// no provider-level wizard.yaml exists.
-func runLegacyTemplateWizard(opts *newCommandOptions, providerImpl provider.LanguageProvider) (map[string]interface{}, error) {
-	info, err := providerImpl.GetInfo(context.Background())
-	if err != nil {
-		return nil, err
-	}
-
-	templateOptions := make([]huh.Option[string], 0, len(info.Templates))
-	for _, t := range info.Templates {
-		templateOptions = append(templateOptions, huh.NewOption(fmt.Sprintf("%s — %s", t.Name, t.Description), t.Name))
-	}
-	if opts.Template == "" && len(info.Templates) > 0 {
-		opts.Template = info.Templates[0].Name
+	if opts.Architecture == "" && len(architectures) > 0 {
+		opts.Architecture = architectures[0].name
 	}
 
 	if err := huh.NewForm(huh.NewGroup(
-		huh.NewSelect[string]().Title("Template").Value(&opts.Template).Options(templateOptions...),
+		huh.NewSelect[string]().
+			Title("Architecture pattern").
+			Options(archOpts...).
+			Value(&opts.Architecture),
 	)).Run(); err != nil {
 		return nil, err
 	}
 
-	tFS := providerImpl.GetTemplateFS()
-	templateDir := path.Join("templates", opts.Template)
-
-	manifestData, err := fs.ReadFile(tFS, path.Join(templateDir, "manifest.yaml"))
-	if err != nil {
-		return nil, fmt.Errorf("read manifest: %w", err)
-	}
-	manifest, err := scaffold.ParseManifest(manifestData)
+	// Step 3: Capability selection (multi-select).
+	capabilities, err := listCapabilities(tFS)
 	if err != nil {
 		return nil, err
 	}
 
-	wizardData, err := fs.ReadFile(tFS, path.Join(templateDir, "wizard.yaml"))
-	if err != nil {
-		return manifest.Defaults(), nil
+	capOpts := make([]huh.Option[string], 0, len(capabilities))
+	for _, c := range capabilities {
+		capOpts = append(capOpts, huh.NewOption(
+			fmt.Sprintf("%-18s %s", c.name, c.description),
+			c.name,
+		))
 	}
-	wizardCfg, err := scaffold.ParseWizard(wizardData)
-	if err != nil {
+
+	var selectedCaps []string
+	if err := huh.NewForm(huh.NewGroup(
+		huh.NewMultiSelect[string]().
+			Title("What does your service need? (space to toggle)").
+			Options(capOpts...).
+			Value(&selectedCaps),
+	)).Run(); err != nil {
 		return nil, err
 	}
 
-	initial := map[string]interface{}{}
-	if opts.Name != "" {
-		initial["ServiceName"] = opts.Name
+	// Step 4: Suggestions.
+	suggestions := scaffold.ComputeSuggestions(selectedCaps)
+	if len(suggestions) > 0 {
+		suggOpts := make([]huh.Option[string], 0, len(suggestions))
+		for _, s := range suggestions {
+			suggOpts = append(suggOpts, huh.NewOption(
+				fmt.Sprintf("%-18s %s", s.Capability, s.Reason),
+				s.Capability,
+			))
+		}
+
+		var acceptedSuggestions []string
+		if err := huh.NewForm(huh.NewGroup(
+			huh.NewMultiSelect[string]().
+				Title("Based on your selections, you might also want:").
+				Options(suggOpts...).
+				Value(&acceptedSuggestions),
+		)).Run(); err != nil {
+			return nil, err
+		}
+		selectedCaps = append(selectedCaps, acceptedSuggestions...)
 	}
-	modulePath := opts.ModulePath
-	if modulePath == "" && opts.Name != "" {
-		modulePath = fmt.Sprintf("github.com/example/%s", opts.Name)
+
+	opts.Capabilities = strings.Join(selectedCaps, ",")
+
+	// Step 5: Confirmation.
+	fmt.Printf("\nReady to scaffold:\n")
+	fmt.Printf("  Project:        %s\n", opts.Name)
+	fmt.Printf("  Module:         %s\n", opts.ModulePath)
+	fmt.Printf("  Architecture:   %s\n", opts.Architecture)
+	if len(selectedCaps) > 0 {
+		fmt.Printf("  Capabilities:   %s\n", strings.Join(selectedCaps, ", "))
 	}
-	if modulePath != "" {
-		initial["ModulePath"] = modulePath
-	}
-	vars, err := scaffold.RunWizard(wizardCfg, manifest, initial)
-	if err != nil {
+	fmt.Printf("  Output:         %s\n", filepath.Join(opts.OutputDir, opts.Name))
+
+	var confirmed bool
+	if err := huh.NewForm(huh.NewGroup(
+		huh.NewConfirm().Title("Proceed?").Value(&confirmed),
+	)).Run(); err != nil {
 		return nil, err
 	}
-
-	if name, ok := vars["ServiceName"].(string); ok && name != "" {
-		opts.Name = name
-	}
-	if mod, ok := vars["ModulePath"].(string); ok && mod != "" {
-		opts.ModulePath = mod
+	if !confirmed {
+		return nil, fmt.Errorf("cancelled")
 	}
 
-	return vars, nil
+	return map[string]interface{}{
+		"ServiceName": opts.Name,
+		"ModulePath":  opts.ModulePath,
+	}, nil
+}
+
+type archEntry struct {
+	name        string
+	label       string
+	description string
+}
+
+func listArchitectures(tFS fs.FS) ([]archEntry, error) {
+	entries, err := fs.ReadDir(tFS, path.Join("templates", "architectures"))
+	if err != nil {
+		return nil, fmt.Errorf("list architectures: %w", err)
+	}
+	var archs []archEntry
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		data, err := fs.ReadFile(tFS, path.Join("templates", "architectures", entry.Name(), "manifest.yaml"))
+		if err != nil {
+			continue
+		}
+		m, err := scaffold.ParseManifest(data)
+		if err != nil {
+			continue
+		}
+		archs = append(archs, archEntry{
+			name:        entry.Name(),
+			label:       fmt.Sprintf("%s — %s", m.Name, m.Description),
+			description: m.Description,
+		})
+	}
+	return archs, nil
+}
+
+type capEntry struct {
+	name        string
+	description string
+}
+
+func listCapabilities(tFS fs.FS) ([]capEntry, error) {
+	entries, err := fs.ReadDir(tFS, path.Join("templates", "capabilities"))
+	if err != nil {
+		return nil, fmt.Errorf("list capabilities: %w", err)
+	}
+	var caps []capEntry
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		data, err := fs.ReadFile(tFS, path.Join("templates", "capabilities", entry.Name(), "capability.yaml"))
+		if err != nil {
+			continue
+		}
+		cm, err := scaffold.ParseCapabilityManifest(data)
+		if err != nil {
+			continue
+		}
+		caps = append(caps, capEntry{
+			name:        cm.Name,
+			description: cm.Description,
+		})
+	}
+	return caps, nil
 }
