@@ -32,10 +32,10 @@ func TestBuildGraph(t *testing.T) {
 func TestLayerViolations(t *testing.T) {
 	pkgs := loadPkgs(t, filepath.Join("..", "testdata", "hexagonal"))
 	g := BuildGraph(pkgs)
-	rules := []config.DependencyRule{
-		{Layer: "domain", Packages: []string{"domain/**"}, MayDependOn: []string{}},
-		{Layer: "ports", Packages: []string{"port/**"}, MayDependOn: []string{"domain"}},
-		{Layer: "adapters", Packages: []string{"adapter/**"}, MayDependOn: []string{"ports", "domain"}},
+	components := []config.Component{
+		{Name: "domain", In: []string{"domain/**"}, MayDependOn: []string{}},
+		{Name: "ports", In: []string{"port/**"}, MayDependOn: []string{"domain"}},
+		{Name: "adapters", In: []string{"adapter/**"}, MayDependOn: []string{"ports", "domain"}},
 	}
-	_ = LayerViolations(g, rules)
+	_ = LayerViolations(g, components)
 }

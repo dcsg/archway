@@ -90,7 +90,7 @@ func (a *Analyzer) Analyze(_ context.Context) (*provider.AnalyzeResponse, error)
 
 	if archwayPath, err := config.FindArchwayYAML(a.path); err == nil {
 		if cfg, err := config.LoadArchwayYAML(archwayPath); err == nil {
-			result.Violations = graph.LayerViolations(depGraph, cfg.Rules.Dependencies)
+			result.Violations = graph.LayerViolations(depGraph, cfg.Components)
 		}
 	}
 	return result, nil

@@ -94,23 +94,23 @@ func FindCycles(graph provider.DependencyGraph) [][]string {
 	return dedupeCycles(cycles)
 }
 
-func LayerViolations(graph provider.DependencyGraph, rules []config.DependencyRule) []provider.Violation {
+func LayerViolations(graph provider.DependencyGraph, components []config.Component) []provider.Violation {
 	layerByPkg := map[string]string{}
 	allowed := map[string]map[string]bool{}
-	for _, rule := range rules {
-		allow := make(map[string]bool, len(rule.MayDependOn))
-		for _, targetLayer := range rule.MayDependOn {
-			allow[targetLayer] = true
+	for _, comp := range components {
+		allow := make(map[string]bool, len(comp.MayDependOn))
+		for _, target := range comp.MayDependOn {
+			allow[target] = true
 		}
-		allowed[rule.Layer] = allow
+		allowed[comp.Name] = allow
 	}
 
 	for _, node := range graph.Nodes {
 		layer := node.Layer
 		if layer == "" {
-			for _, rule := range rules {
-				if matchesAnyRule(node.Path, rule.Packages) {
-					layer = rule.Layer
+			for _, comp := range components {
+				if matchesAnyRule(node.Path, comp.In) {
+					layer = comp.Name
 					break
 				}
 			}

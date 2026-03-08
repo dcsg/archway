@@ -12,22 +12,24 @@ import (
 type ArchwayConfig struct {
 	Language     string               `yaml:"language" json:"language"`
 	Architecture string               `yaml:"architecture" json:"architecture"`
+	Capabilities []string             `yaml:"capabilities,omitempty" json:"capabilities,omitempty"`
+	Components   []Component          `yaml:"components" json:"components"`
 	Rules        RulesConfig          `yaml:"rules,omitempty" json:"rules,omitempty"`
 	Extends      []string             `yaml:"extends,omitempty" json:"extends,omitempty"`
 	Templates    TemplateSourceConfig `yaml:"templates,omitempty" json:"templates,omitempty"`
 }
 
-type RulesConfig struct {
-	Dependencies []DependencyRule `yaml:"dependencies,omitempty" json:"dependencies,omitempty"`
-	Naming       []NamingRule     `yaml:"naming,omitempty" json:"naming,omitempty"`
-	Structure    StructureConfig  `yaml:"structure,omitempty" json:"structure,omitempty"`
-	Functions    FunctionRules    `yaml:"functions,omitempty" json:"functions,omitempty"`
+// Component defines a named architectural component with dependency rules.
+type Component struct {
+	Name        string   `yaml:"name" json:"name"`
+	In          []string `yaml:"in" json:"in"`
+	MayDependOn []string `yaml:"may_depend_on" json:"may_depend_on"`
 }
 
-type DependencyRule struct {
-	Layer       string   `yaml:"layer" json:"layer"`
-	Packages    []string `yaml:"packages" json:"packages"`
-	MayDependOn []string `yaml:"may_depend_on" json:"may_depend_on"`
+type RulesConfig struct {
+	Naming    []NamingRule    `yaml:"naming,omitempty" json:"naming,omitempty"`
+	Structure StructureConfig `yaml:"structure,omitempty" json:"structure,omitempty"`
+	Functions FunctionRules   `yaml:"functions,omitempty" json:"functions,omitempty"`
 }
 
 type NamingRule struct {
@@ -92,9 +94,29 @@ func ValidateArchwayYAML(cfg *ArchwayConfig) []error {
 	if strings.TrimSpace(cfg.Architecture) == "" {
 		errs = append(errs, fmt.Errorf("architecture is required"))
 	}
-	for i, dep := range cfg.Rules.Dependencies {
-		if strings.TrimSpace(dep.Layer) == "" {
-			errs = append(errs, fmt.Errorf("rules.dependencies[%d].layer is required", i))
+	seen := map[string]bool{}
+	for i, comp := range cfg.Components {
+		name := strings.TrimSpace(comp.Name)
+		if name == "" {
+			errs = append(errs, fmt.Errorf("components[%d].name is required", i))
+			continue
+		}
+		if seen[name] {
+			errs = append(errs, fmt.Errorf("components[%d].name %q is duplicated", i, name))
+		}
+		seen[name] = true
+		for _, dep := range comp.MayDependOn {
+			if dep == name {
+				errs = append(errs, fmt.Errorf("components[%d] %q must not reference itself in may_depend_on", i, name))
+			}
+		}
+	}
+	// Validate may_depend_on references exist.
+	for i, comp := range cfg.Components {
+		for _, dep := range comp.MayDependOn {
+			if !seen[dep] {
+				errs = append(errs, fmt.Errorf("components[%d] %q references unknown component %q in may_depend_on", i, comp.Name, dep))
+			}
 		}
 	}
 	return errs
@@ -131,14 +153,16 @@ func DefaultArchwayConfig(language, architecture string) *ArchwayConfig {
 	cfg := &ArchwayConfig{
 		Language:     language,
 		Architecture: architecture,
+		Components: []Component{
+			{Name: "domain", In: []string{"domain/**"}, MayDependOn: []string{}},
+			{Name: "ports", In: []string{"port/**"}, MayDependOn: []string{"domain"}},
+			{Name: "service", In: []string{"service/**"}, MayDependOn: []string{"domain", "ports"}},
+			{Name: "adapters", In: []string{"adapter/**"}, MayDependOn: []string{"ports", "domain"}},
+			{Name: "platform", In: []string{"platform/**"}, MayDependOn: []string{}},
+		},
 		Rules: RulesConfig{
-			Dependencies: []DependencyRule{
-				{Layer: "domain", Packages: []string{"domain/**"}, MayDependOn: []string{}},
-				{Layer: "ports", Packages: []string{"port/**"}, MayDependOn: []string{"domain"}},
-				{Layer: "adapters", Packages: []string{"adapter/**"}, MayDependOn: []string{"ports", "domain"}},
-			},
 			Structure: StructureConfig{
-				RequiredDirs:  []string{"cmd/", "internal/domain/", "internal/port/", "internal/adapter/"},
+				RequiredDirs:  []string{"cmd/", "domain/", "port/", "adapter/"},
 				ForbiddenDirs: []string{"utils/", "helpers/"},
 			},
 			Functions: FunctionRules{MaxLines: 80, MaxParams: 4, MaxReturnValues: 2},

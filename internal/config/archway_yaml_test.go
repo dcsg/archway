@@ -18,8 +18,11 @@ func TestLoadArchwayYAML(t *testing.T) {
 	if cfg.Architecture != "hexagonal" {
 		t.Fatalf("Architecture = %q, want hexagonal", cfg.Architecture)
 	}
-	if len(cfg.Rules.Dependencies) != 3 {
-		t.Fatalf("Dependencies len = %d, want 3", len(cfg.Rules.Dependencies))
+	if len(cfg.Components) != 5 {
+		t.Fatalf("Components len = %d, want 5", len(cfg.Components))
+	}
+	if cfg.Components[0].Name != "domain" {
+		t.Fatalf("Components[0].Name = %q, want domain", cfg.Components[0].Name)
 	}
 }
 
@@ -68,6 +71,37 @@ func TestFindArchwayYAML(t *testing.T) {
 	}
 	if found != path {
 		t.Fatalf("FindArchwayYAML = %q, want %q", found, path)
+	}
+}
+
+func TestValidateComponentUniqueNames(t *testing.T) {
+	cfg := DefaultArchwayConfig("go", "hexagonal")
+	cfg.Components = append(cfg.Components, Component{Name: "domain", In: []string{"other/**"}, MayDependOn: []string{}})
+	errs := ValidateArchwayYAML(cfg)
+	if len(errs) == 0 {
+		t.Fatal("expected duplicate name error")
+	}
+}
+
+func TestValidateComponentNoSelfReference(t *testing.T) {
+	cfg := DefaultArchwayConfig("go", "hexagonal")
+	cfg.Components = []Component{
+		{Name: "domain", In: []string{"domain/**"}, MayDependOn: []string{"domain"}},
+	}
+	errs := ValidateArchwayYAML(cfg)
+	if len(errs) == 0 {
+		t.Fatal("expected self-reference error")
+	}
+}
+
+func TestValidateComponentUnknownDependency(t *testing.T) {
+	cfg := DefaultArchwayConfig("go", "hexagonal")
+	cfg.Components = []Component{
+		{Name: "domain", In: []string{"domain/**"}, MayDependOn: []string{"nonexistent"}},
+	}
+	errs := ValidateArchwayYAML(cfg)
+	if len(errs) == 0 {
+		t.Fatal("expected unknown dependency error")
 	}
 }
 
