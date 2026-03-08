@@ -1,0 +1,4 @@
+// Health endpoints.
+	health := httphandler.NewHealthHandler()
+	r.Get("/healthz", health.Liveness)
+	r.Get("/readyz", health.Readiness)

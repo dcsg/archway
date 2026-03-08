@@ -1,0 +1,7 @@
+name: idempotency
+description: "Idempotency key middleware for safe request retries"
+requires:
+  - http-api
+suggests:
+  - redis
+conflicts: []

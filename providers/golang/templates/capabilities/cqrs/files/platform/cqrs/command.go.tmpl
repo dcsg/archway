@@ -1,0 +1,42 @@
+package cqrs
+
+import "context"
+
+// Command represents a write operation.
+type Command interface {
+	CommandName() string
+}
+
+// CommandHandler processes a specific command type.
+type CommandHandler[C Command] interface {
+	Handle(ctx context.Context, cmd C) error
+}
+
+// CommandBus dispatches commands to their handlers.
+type CommandBus struct {
+	handlers map[string]any
+}
+
+// NewCommandBus creates a new command bus.
+func NewCommandBus() *CommandBus {
+	return &CommandBus{handlers: make(map[string]any)}
+}
+
+// Register associates a handler with a command type.
+func Register[C Command](bus *CommandBus, handler CommandHandler[C]) {
+	var zero C
+	bus.handlers[zero.CommandName()] = handler
+}
+
+// Dispatch sends a command to its registered handler.
+func Dispatch[C Command](ctx context.Context, bus *CommandBus, cmd C) error {
+	h, ok := bus.handlers[cmd.CommandName()]
+	if !ok {
+		return ErrHandlerNotFound{Name: cmd.CommandName()}
+	}
+	handler, ok := h.(CommandHandler[C])
+	if !ok {
+		return ErrHandlerNotFound{Name: cmd.CommandName()}
+	}
+	return handler.Handle(ctx, cmd)
+}

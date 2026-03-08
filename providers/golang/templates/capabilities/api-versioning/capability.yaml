@@ -1,0 +1,6 @@
+name: api-versioning
+description: "API versioning middleware (URL prefix or header-based)"
+requires:
+  - http-api
+suggests: []
+conflicts: []

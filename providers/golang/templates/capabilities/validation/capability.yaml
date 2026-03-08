@@ -1,0 +1,6 @@
+name: validation
+description: "Request validation with go-playground/validator"
+requires: []
+suggests:
+  - http-api
+conflicts: []

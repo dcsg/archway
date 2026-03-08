@@ -143,9 +143,12 @@ func TestComposeProject_ConflictDetection(t *testing.T) {
 		"ModulePath":  "github.com/acme/orders",
 	}
 
-	_, err := ComposeProject(tfs, "hexagonal", []string{"conflict-a", "conflict-b"}, vars)
-	if err == nil {
-		t.Fatal("expected error for conflicting capabilities")
+	plan, err := ComposeProject(tfs, "hexagonal", []string{"conflict-a", "conflict-b"}, vars)
+	if err != nil {
+		t.Fatalf("conflicts should warn, not error: %v", err)
+	}
+	if len(plan.Warnings) == 0 {
+		t.Fatal("expected warnings for conflicting capabilities")
 	}
 }
 

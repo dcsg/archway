@@ -1,0 +1,127 @@
+package circuitbreaker
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"sync"
+	"time"
+)
+
+// State represents the circuit breaker state.
+type State int
+
+const (
+	StateClosed State = iota
+	StateOpen
+	StateHalfOpen
+)
+
+func (s State) String() string {
+	switch s {
+	case StateClosed:
+		return "closed"
+	case StateOpen:
+		return "open"
+	case StateHalfOpen:
+		return "half-open"
+	default:
+		return "unknown"
+	}
+}
+
+// ErrCircuitOpen is returned when the circuit breaker is open.
+var ErrCircuitOpen = errors.New("circuit breaker is open")
+
+// Config holds circuit breaker configuration.
+type Config struct {
+	MaxFailures   int
+	Timeout       time.Duration // how long to stay open before half-open
+	HalfOpenMax   int           // max requests in half-open state
+}
+
+// DefaultConfig returns sensible defaults.
+func DefaultConfig() Config {
+	return Config{
+		MaxFailures: 5,
+		Timeout:     30 * time.Second,
+		HalfOpenMax: 1,
+	}
+}
+
+// Breaker implements the circuit breaker pattern.
+type Breaker struct {
+	mu          sync.Mutex
+	state       State
+	failures    int
+	lastFailure time.Time
+	halfOpenReq int
+	cfg         Config
+}
+
+// New creates a new circuit breaker.
+func New(cfg Config) *Breaker {
+	return &Breaker{
+		state: StateClosed,
+		cfg:   cfg,
+	}
+}
+
+// Do executes fn through the circuit breaker.
+func (b *Breaker) Do(ctx context.Context, fn func(ctx context.Context) error) error {
+	if err := b.allowRequest(); err != nil {
+		return err
+	}
+
+	err := fn(ctx)
+	b.recordResult(err)
+	return err
+}
+
+func (b *Breaker) allowRequest() error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	switch b.state {
+	case StateClosed:
+		return nil
+	case StateOpen:
+		if time.Since(b.lastFailure) > b.cfg.Timeout {
+			b.state = StateHalfOpen
+			b.halfOpenReq = 0
+			return nil
+		}
+		return ErrCircuitOpen
+	case StateHalfOpen:
+		if b.halfOpenReq >= b.cfg.HalfOpenMax {
+			return ErrCircuitOpen
+		}
+		b.halfOpenReq++
+		return nil
+	}
+	return nil
+}
+
+func (b *Breaker) recordResult(err error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if err == nil {
+		b.failures = 0
+		b.state = StateClosed
+		return
+	}
+
+	b.failures++
+	b.lastFailure = time.Now()
+	if b.failures >= b.cfg.MaxFailures {
+		b.state = StateOpen
+	}
+}
+
+// State returns the current circuit breaker state.
+func (b *Breaker) State() State {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.state
+}

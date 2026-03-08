@@ -1,0 +1,82 @@
+package retry
+
+import (
+	"context"
+	"fmt"
+	"math"
+	"math/rand/v2"
+	"time"
+)
+
+// Config holds retry configuration.
+type Config struct {
+	MaxAttempts  int
+	InitialDelay time.Duration
+	MaxDelay     time.Duration
+	Multiplier   float64
+}
+
+// DefaultConfig returns sensible defaults.
+func DefaultConfig() Config {
+	return Config{
+		MaxAttempts:  3,
+		InitialDelay: 100 * time.Millisecond,
+		MaxDelay:     10 * time.Second,
+		Multiplier:   2.0,
+	}
+}
+
+// Do retries fn with exponential backoff and jitter.
+func Do(ctx context.Context, cfg Config, fn func(ctx context.Context) error) error {
+	var lastErr error
+	delay := cfg.InitialDelay
+
+	for attempt := 0; attempt < cfg.MaxAttempts; attempt++ {
+		lastErr = fn(ctx)
+		if lastErr == nil {
+			return nil
+		}
+
+		if attempt == cfg.MaxAttempts-1 {
+			break
+		}
+
+		// Add jitter: delay * (0.5 to 1.5).
+		jitter := delay/2 + time.Duration(rand.Int64N(int64(delay)))
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("retry cancelled after %d attempts: %w", attempt+1, ctx.Err())
+		case <-time.After(jitter):
+		}
+
+		// Exponential backoff.
+		delay = time.Duration(float64(delay) * cfg.Multiplier)
+		if delay > cfg.MaxDelay {
+			delay = cfg.MaxDelay
+		}
+	}
+
+	return fmt.Errorf("failed after %d attempts: %w", cfg.MaxAttempts, lastErr)
+}
+
+// IsRetryable returns true if the error is worth retrying.
+// Override this for domain-specific retry logic.
+var IsRetryable = func(err error) bool {
+	return err != nil
+}
+
+// DoWithCheck retries only if IsRetryable returns true.
+func DoWithCheck(ctx context.Context, cfg Config, fn func(ctx context.Context) error) error {
+	return Do(ctx, cfg, func(ctx context.Context) error {
+		err := fn(ctx)
+		if err != nil && !IsRetryable(err) {
+			// Wrap to break out of retry loop.
+			return &nonRetryableError{err}
+		}
+		return err
+	})
+}
+
+type nonRetryableError struct{ error }
+
+func (e *nonRetryableError) Unwrap() error { return e.error }

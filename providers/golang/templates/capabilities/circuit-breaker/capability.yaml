@@ -1,0 +1,7 @@
+name: circuit-breaker
+description: "Circuit breaker for resilient external calls"
+requires: []
+suggests:
+  - observability
+  - retry
+conflicts: []

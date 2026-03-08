@@ -1,0 +1,7 @@
+name: scheduler
+description: "Cron-style periodic task scheduler"
+requires: []
+suggests:
+  - observability
+  - worker
+conflicts: []

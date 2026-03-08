@@ -1,0 +1,43 @@
+package httphandler
+
+import (
+	"context"
+	"net/http"
+	"strings"
+)
+
+const (
+	defaultAPIVersion  = "v1"
+	versionHeader      = "X-API-Version"
+	versionContextKey  contextKey = "api_version"
+)
+
+// APIVersion extracts the API version from URL prefix (/v1/, /v2/) or header.
+func APIVersion(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		version := defaultAPIVersion
+
+		// Check URL prefix first: /v1/resource, /v2/resource
+		parts := strings.SplitN(strings.TrimPrefix(r.URL.Path, "/"), "/", 2)
+		if len(parts) > 0 && len(parts[0]) >= 2 && parts[0][0] == 'v' {
+			version = parts[0]
+		}
+
+		// Header overrides URL prefix.
+		if hv := r.Header.Get(versionHeader); hv != "" {
+			version = hv
+		}
+
+		ctx := context.WithValue(r.Context(), versionContextKey, version)
+		w.Header().Set(versionHeader, version)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// GetAPIVersion extracts the API version from context.
+func GetAPIVersion(ctx context.Context) string {
+	if v, ok := ctx.Value(versionContextKey).(string); ok {
+		return v
+	}
+	return defaultAPIVersion
+}

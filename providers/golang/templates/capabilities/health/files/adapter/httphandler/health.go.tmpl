@@ -1,0 +1,79 @@
+package httphandler
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"sync"
+	"time"
+)
+
+const healthCheckTimeout = 5 * time.Second
+
+// HealthChecker can report its health status.
+type HealthChecker interface {
+	HealthCheck(ctx context.Context) error
+}
+
+// HealthHandler serves /healthz and /readyz endpoints.
+type HealthHandler struct {
+	mu       sync.RWMutex
+	checkers map[string]HealthChecker
+}
+
+// NewHealthHandler creates a health handler.
+func NewHealthHandler() *HealthHandler {
+	return &HealthHandler{checkers: make(map[string]HealthChecker)}
+}
+
+// Register adds a named health checker.
+func (h *HealthHandler) Register(name string, checker HealthChecker) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.checkers[name] = checker
+}
+
+// Liveness returns 200 if the process is running.
+func (h *HealthHandler) Liveness(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
+// Readiness checks all registered dependencies.
+func (h *HealthHandler) Readiness(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), healthCheckTimeout)
+	defer cancel()
+
+	h.mu.RLock()
+	checkers := make(map[string]HealthChecker, len(h.checkers))
+	for k, v := range h.checkers {
+		checkers[k] = v
+	}
+	h.mu.RUnlock()
+
+	results := make(map[string]string, len(checkers))
+	allOK := true
+	for name, checker := range checkers {
+		if err := checker.HealthCheck(ctx); err != nil {
+			results[name] = err.Error()
+			allOK = false
+		} else {
+			results[name] = "ok"
+		}
+	}
+
+	status := http.StatusOK
+	overall := "ok"
+	if !allOK {
+		status = http.StatusServiceUnavailable
+		overall = "degraded"
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status": overall,
+		"checks": results,
+	})
+}

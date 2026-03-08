@@ -1,0 +1,56 @@
+package httphandler
+
+import (
+	"fmt"
+	"net/http"
+	"strings"
+)
+
+// CORSConfig holds CORS middleware configuration.
+type CORSConfig struct {
+	AllowedOrigins   []string
+	AllowedMethods   []string
+	AllowedHeaders   []string
+	AllowCredentials bool
+	MaxAge           int
+}
+
+// DefaultCORSConfig returns a safe default CORS configuration.
+func DefaultCORSConfig() CORSConfig {
+	return CORSConfig{
+		AllowedOrigins: []string{"*"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+		AllowedHeaders: []string{"Accept", "Authorization", "Content-Type", "X-Request-ID"},
+		MaxAge:         86400,
+	}
+}
+
+// CORS returns a CORS middleware handler.
+func CORS(cfg CORSConfig) func(http.Handler) http.Handler {
+	origins := strings.Join(cfg.AllowedOrigins, ", ")
+	methods := strings.Join(cfg.AllowedMethods, ", ")
+	headers := strings.Join(cfg.AllowedHeaders, ", ")
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", origins)
+			w.Header().Set("Access-Control-Allow-Methods", methods)
+			w.Header().Set("Access-Control-Allow-Headers", headers)
+
+			if cfg.AllowCredentials {
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
+			}
+
+			if cfg.MaxAge > 0 {
+				w.Header().Set("Access-Control-Max-Age", fmt.Sprintf("%d", cfg.MaxAge))
+			}
+
+			if r.Method == http.MethodOptions {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}

@@ -1,0 +1,62 @@
+package scheduler
+
+import (
+	"context"
+	"log/slog"
+	"sync"
+	"time"
+)
+
+// Task represents a scheduled task.
+type Task struct {
+	Name     string
+	Interval time.Duration
+	Execute  func(ctx context.Context) error
+}
+
+// Scheduler runs tasks at configured intervals.
+type Scheduler struct {
+	logger *slog.Logger
+	tasks  []Task
+	wg     sync.WaitGroup
+}
+
+// New creates a new scheduler.
+func New(logger *slog.Logger) *Scheduler {
+	return &Scheduler{logger: logger}
+}
+
+// Add registers a task.
+func (s *Scheduler) Add(task Task) {
+	s.tasks = append(s.tasks, task)
+}
+
+// Start runs all tasks on their intervals until ctx is cancelled.
+func (s *Scheduler) Start(ctx context.Context) {
+	for _, task := range s.tasks {
+		s.wg.Add(1)
+		go func(t Task) {
+			defer s.wg.Done()
+			ticker := time.NewTicker(t.Interval)
+			defer ticker.Stop()
+
+			s.logger.Info("scheduled task started", "task", t.Name, "interval", t.Interval)
+			for {
+				select {
+				case <-ctx.Done():
+					s.logger.Info("scheduled task stopped", "task", t.Name)
+					return
+				case <-ticker.C:
+					if err := t.Execute(ctx); err != nil {
+						s.logger.Error("scheduled task failed", "task", t.Name, "error", err)
+					}
+				}
+			}
+		}(task)
+	}
+}
+
+// Wait blocks until all tasks have stopped.
+func (s *Scheduler) Wait() {
+	s.wg.Wait()
+}

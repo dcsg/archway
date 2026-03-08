@@ -34,16 +34,29 @@ Architecture  +  Capabilities  =  Your Service
 | Hexagonal | `domain/` → `port/` → `service/` → `adapter/` | Production APIs, microservices |
 | Flat | Single package | CLIs, scripts, prototypes |
 
-**Capabilities** are modular features you compose in:
+**Capabilities** are modular features you compose in — **36 and growing:**
 
-| | | | |
-|---|---|---|---|
-| `http-api` | `grpc` | `kafka-consumer` | `mysql` |
-| `redis` | `auth-jwt` | `rate-limiting` | `docker` |
-| `platform` | `bootstrap` | `linting` | `testing` |
-| `ci-github` | `pre-commit` | `email-gateway` | `http-client` |
+| Transport | Data | Resilience | Patterns |
+|-----------|------|------------|----------|
+| `http-api` | `postgres` | `circuit-breaker` | `cqrs` |
+| `grpc` | `mysql` | `retry` | `event-bus` |
+| `kafka-consumer` | `redis` | `idempotency` | `outbox` |
+| `websocket` | `migrations` | `health` | `repository` |
+| | `uuid` | | |
+
+| Security | Observability | Infrastructure | Quality |
+|----------|---------------|----------------|---------|
+| `auth-jwt` | `observability` | `platform` | `testing` |
+| `rate-limiting` | `request-id` | `bootstrap` | `linting` |
+| `cors` | `audit-log` | `docker` | `pre-commit` |
+| `validation` | | `worker` | `ci-github` |
+| `api-versioning` | | `scheduler` | |
+| | | `http-client` | |
+| | | `email-gateway` | |
 
 Each capability provides template files, config, and wiring code. The `bootstrap` capability gives you a thin 15-line `main.go` that delegates to `internal/bootstrap/` for testable dependency injection — and other capabilities automatically wire into it.
+
+See the full [capabilities matrix](docs/reference/capabilities-matrix.md) for details on each.
 
 ## What You Get
 
@@ -91,19 +104,38 @@ Every project gets an `archway.yaml` with component boundaries. Run `archway che
 ```bash
 $ archway check
 
-Architecture: hexagonal
-Components: 4 defined
+Archway Check — hexagonal
+═══════════════════════════════════════════════════════
 
-Dependency Violations: 0
-Structure Issues: 0
-Function Issues: 0
-Component Coverage: 100% (4/4)
-Compliance: 100%
+Components:  4 defined, 4 covered (100% coverage)
+Rules:       12 checked
 
-All checks passed
+DEPENDENCY VIOLATIONS (0)
+  ✓ All checks pass
+
+STRUCTURE VIOLATIONS (0)
+  ✓ All checks pass
+
+FUNCTION VIOLATIONS (0)
+  ✓ All checks pass
+
+ANTI-PATTERN VIOLATIONS (2)
+  ⚠ [uuid_v4_as_key] service/order.go:15 uuid.New() generates UUIDv4 (random) — use UUIDv7
+  ✗ [sql_concatenation] adapter/repo.go:42 SQL string concatenation — use parameterized queries
+
+═══════════════════════════════════════════════════════
+Result: FAIL — 2 violations found
+  Compliance: 83% (10/12 rules passing)
+  Coverage:   100% (4/4 components checked)
 ```
 
-Domain importing adapter code? Service bypassing ports? Functions over 80 lines? Caught.
+**11 anti-pattern detectors** catch issues across code, architecture, and security:
+
+| Category | Detectors |
+|----------|-----------|
+| **Code** | Global mutable state, init() abuse, naked goroutines, swallowed errors, UUIDv4 as DB key |
+| **Architecture** | Fat handlers, god packages, domain importing adapters, MVC in hexagonal |
+| **Security** | SQL string concatenation, context.Background() in handlers |
 
 ## Install
 
@@ -134,12 +166,12 @@ The wizard walks you through architecture, capabilities, and suggestions.
 ```bash
 # Full production API
 archway new my-api --arch hexagonal \
-  --cap platform,bootstrap,http-api,mysql,auth-jwt,rate-limiting,docker,linting \
+  --cap platform,bootstrap,http-api,postgres,uuid,migrations,health,cors,auth-jwt,rate-limiting,observability,request-id,docker,linting \
   --no-wizard
 
 # gRPC microservice
 archway new my-grpc --arch hexagonal \
-  --cap platform,bootstrap,grpc,redis,docker \
+  --cap platform,bootstrap,grpc,redis,health,observability,docker \
   --no-wizard
 
 # Simple CLI
@@ -147,7 +179,12 @@ archway new my-cli --arch flat --no-wizard
 
 # Event-driven worker
 archway new my-worker --arch hexagonal \
-  --cap platform,bootstrap,kafka-consumer,mysql,docker \
+  --cap platform,bootstrap,kafka-consumer,postgres,event-bus,outbox,worker,docker \
+  --no-wizard
+
+# CQRS service
+archway new my-cqrs --arch hexagonal \
+  --cap platform,bootstrap,http-api,postgres,uuid,cqrs,event-bus,outbox,repository,docker \
   --no-wizard
 ```
 
@@ -169,18 +206,37 @@ archway check              # Validate architecture
 
 ## Design Patterns Included (Go)
 
-| Pattern | Where |
-|---------|-------|
-| Hexagonal / Ports & Adapters | Architecture layer structure |
-| Composition Root / Bootstrap | `internal/bootstrap/bootstrap.go` |
-| Repository Pattern | `adapter/*/` implements `port/outbound.go` |
-| RFC 7807 Problem Detail | `adapter/httphandler/response.go` |
-| Sentinel + Typed Errors | `domain/errors.go` |
-| Chain of Responsibility | HTTP/gRPC middleware stacks |
-| Structured Logging | `slog` with JSON/text handlers |
-| PII Redaction | Log handler that strips sensitive fields |
-| Graceful Shutdown | Ordered hooks with timeout |
-| Distributed Tracing | OpenTelemetry auto-instrumentation |
+| Category | Pattern | Capability |
+|----------|---------|------------|
+| **Architecture** | Hexagonal / Ports & Adapters | Architecture layer |
+| | Composition Root / Bootstrap | `bootstrap` |
+| | CQRS (Command/Query Separation) | `cqrs` |
+| | Transactional Outbox | `outbox` |
+| **Data** | Repository Pattern (generics) | `repository` |
+| | UUIDv7 (time-sortable IDs) | `uuid` |
+| | Database Migrations | `migrations` |
+| **Resilience** | Circuit Breaker | `circuit-breaker` |
+| | Retry with Backoff + Jitter | `retry` |
+| | Idempotency Keys | `idempotency` |
+| **Events** | Domain Event Bus (pub/sub) | `event-bus` |
+| | Reliable Event Publishing | `outbox` |
+| **HTTP** | RFC 7807 Problem Detail | `http-api` |
+| | Chain of Responsibility (middleware) | `http-api` |
+| | CORS | `cors` |
+| | Request Validation | `validation` |
+| | API Versioning | `api-versioning` |
+| **Observability** | Structured Logging (`slog`) | `platform` |
+| | Distributed Tracing (OTel) | `observability` |
+| | Prometheus Metrics | `observability` |
+| | Request ID Propagation | `request-id` |
+| | Audit Trail | `audit-log` |
+| | PII Redaction | `platform` |
+| **Lifecycle** | Graceful Shutdown | `platform` |
+| | Background Workers | `worker` |
+| | Scheduled Tasks | `scheduler` |
+| **Security** | JWT Authentication | `auth-jwt` |
+| | Rate Limiting | `rate-limiting` |
+| | Health/Readiness Probes | `health` |
 
 ## Language Providers
 
@@ -188,7 +244,7 @@ Archway is built on a **provider model** — each language is a self-contained p
 
 | Language | Status | Architectures | Capabilities |
 |----------|--------|---------------|-------------|
-| **Go** | Stable | hexagonal, flat | 16 capabilities |
+| **Go** | Stable | hexagonal, flat | 36 capabilities |
 | **TypeScript/Node** | Planned | — | — |
 
 Want to add a language? See the [provider guide](https://dcsg.github.io/archway/) in the docs.

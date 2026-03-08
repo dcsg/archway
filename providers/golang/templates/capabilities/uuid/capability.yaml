@@ -1,0 +1,7 @@
+name: uuid
+description: "Time-sortable UUIDs (UUIDv7) for database-friendly primary keys"
+requires: []
+suggests:
+  - postgres
+  - mysql
+conflicts: []

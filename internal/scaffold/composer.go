@@ -29,6 +29,7 @@ type CompositionPlan struct {
 	Partials     map[string][]string    // partial_name → rendered snippets
 	ArchDir      string                 // e.g. "templates/architectures/hexagonal"
 	CapDirs      []string               // e.g. ["templates/capabilities/http-api", ...]
+	Warnings     []string               // non-fatal warnings (e.g. capability conflicts)
 }
 
 // ParseCapabilityManifest parses a capability.yaml file.
@@ -85,11 +86,12 @@ func ComposeProject(templateFS fs.FS, architecture string, capabilities []string
 		capDirs = append(capDirs, capDir)
 	}
 
-	// Validate requirements.
+	// Validate requirements and detect conflicts.
 	capSet := make(map[string]bool, len(capabilities))
 	for _, c := range capabilities {
 		capSet[c] = true
 	}
+	var warnings []string
 	for _, cm := range capManifests {
 		for _, req := range cm.Requires {
 			if !capSet[req] {
@@ -98,7 +100,7 @@ func ComposeProject(templateFS fs.FS, architecture string, capabilities []string
 		}
 		for _, conflict := range cm.Conflicts {
 			if capSet[conflict] {
-				return nil, fmt.Errorf("capability %q conflicts with %q", cm.Name, conflict)
+				warnings = append(warnings, fmt.Sprintf("capability %q conflicts with %q — is this intentional?", cm.Name, conflict))
 			}
 		}
 	}
@@ -147,6 +149,26 @@ func ComposeProject(templateFS fs.FS, architecture string, capabilities []string
 		"redis":          "HasRedis",
 		"platform":       "HasPlatform",
 		"bootstrap":      "HasBootstrap",
+		"postgres":        "HasPostgres",
+		"health":          "HasHealth",
+		"cors":            "HasCORS",
+		"validation":      "HasValidation",
+		"migrations":      "HasMigrations",
+		"event-bus":       "HasEventBus",
+		"circuit-breaker": "HasCircuitBreaker",
+		"retry":           "HasRetry",
+		"idempotency":     "HasIdempotency",
+		"observability":   "HasObservability",
+		"request-id":      "HasRequestID",
+		"audit-log":       "HasAuditLog",
+		"worker":          "HasWorker",
+		"scheduler":       "HasScheduler",
+		"websocket":       "HasWebSocket",
+		"api-versioning":  "HasAPIVersioning",
+		"cqrs":            "HasCQRS",
+		"outbox":          "HasOutbox",
+		"repository":      "HasRepository",
+		"uuid":            "HasUUID",
 	}
 	for _, c := range capabilities {
 		if flag, ok := capFlagMap[c]; ok {
@@ -169,6 +191,7 @@ func ComposeProject(templateFS fs.FS, architecture string, capabilities []string
 		Partials:     partials,
 		ArchDir:      archDir,
 		CapDirs:      capDirs,
+		Warnings:     warnings,
 	}, nil
 }
 

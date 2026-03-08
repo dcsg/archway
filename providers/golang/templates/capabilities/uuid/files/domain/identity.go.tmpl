@@ -1,0 +1,100 @@
+package domain
+
+import (
+	"crypto/rand"
+	"encoding/binary"
+	"fmt"
+	"time"
+)
+
+// ID represents a time-sortable unique identifier (UUIDv7).
+//
+// UUIDv7 is recommended over UUIDv4 for database primary keys because:
+//   - Time-sorted: new IDs are always greater than old ones
+//   - B-tree friendly: sequential inserts avoid random page splits
+//   - Index-friendly: no fragmentation, better cache locality
+//   - Timestamp extractable: creation time is embedded in the ID
+//
+// Avoid UUIDv4 for primary keys — random distribution causes:
+//   - Index fragmentation and page splits
+//   - Poor cache utilization
+//   - Slower INSERT performance at scale
+type ID [16]byte
+
+// NewID generates a new UUIDv7 (time-ordered, random suffix).
+func NewID() ID {
+	var id ID
+
+	// Encode Unix timestamp in milliseconds (48 bits).
+	ms := uint64(time.Now().UnixMilli())
+	id[0] = byte(ms >> 40)
+	id[1] = byte(ms >> 32)
+	id[2] = byte(ms >> 24)
+	id[3] = byte(ms >> 16)
+	id[4] = byte(ms >> 8)
+	id[5] = byte(ms)
+
+	// Fill remaining bytes with random data.
+	rand.Read(id[6:])
+
+	// Set version (7) and variant (RFC 9562).
+	id[6] = (id[6] & 0x0F) | 0x70 // version 7
+	id[8] = (id[8] & 0x3F) | 0x80 // variant 10
+
+	return id
+}
+
+// String returns the standard UUID string representation.
+func (id ID) String() string {
+	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
+		id[0:4], id[4:6], id[6:8], id[8:10], id[10:16])
+}
+
+// IsZero returns true if the ID is all zeros.
+func (id ID) IsZero() bool {
+	return id == ID{}
+}
+
+// Time extracts the timestamp from a UUIDv7.
+func (id ID) Time() time.Time {
+	ms := int64(binary.BigEndian.Uint64(append([]byte{0, 0}, id[0:6]...)))
+	return time.UnixMilli(ms)
+}
+
+// ParseID parses a UUID string into an ID.
+func ParseID(s string) (ID, error) {
+	var id ID
+	if len(s) != 36 {
+		return id, fmt.Errorf("invalid UUID length: %d", len(s))
+	}
+	hex := s[0:8] + s[9:13] + s[14:18] + s[19:23] + s[24:36]
+	if len(hex) != 32 {
+		return id, fmt.Errorf("invalid UUID format")
+	}
+	for i := 0; i < 16; i++ {
+		b, err := parseHexByte(hex[i*2 : i*2+2])
+		if err != nil {
+			return id, fmt.Errorf("invalid UUID hex at position %d: %w", i*2, err)
+		}
+		id[i] = b
+	}
+	return id, nil
+}
+
+func parseHexByte(s string) (byte, error) {
+	var b byte
+	for _, c := range s {
+		b <<= 4
+		switch {
+		case c >= '0' && c <= '9':
+			b |= byte(c - '0')
+		case c >= 'a' && c <= 'f':
+			b |= byte(c - 'a' + 10)
+		case c >= 'A' && c <= 'F':
+			b |= byte(c - 'A' + 10)
+		default:
+			return 0, fmt.Errorf("invalid hex character: %c", c)
+		}
+	}
+	return b, nil
+}

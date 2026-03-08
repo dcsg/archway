@@ -1,0 +1,98 @@
+package outbox
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log/slog"
+	"time"
+)
+
+// Entry represents an outbox entry waiting to be published.
+type Entry struct {
+	ID          string
+	EventType   string
+	Payload     json.RawMessage
+	CreatedAt   time.Time
+	PublishedAt *time.Time
+	Retries     int
+}
+
+// Store persists outbox entries within the same transaction as domain changes.
+type Store interface {
+	// Insert adds an entry to the outbox (called within the domain transaction).
+	Insert(ctx context.Context, eventType string, payload any) error
+	// FetchUnpublished returns entries that haven't been published yet.
+	FetchUnpublished(ctx context.Context, limit int) ([]Entry, error)
+	// MarkPublished marks entries as successfully published.
+	MarkPublished(ctx context.Context, ids []string) error
+	// MarkFailed increments the retry counter for failed entries.
+	MarkFailed(ctx context.Context, ids []string) error
+}
+
+// Publisher sends outbox entries to their destination.
+type Publisher interface {
+	Publish(ctx context.Context, entry Entry) error
+}
+
+// Relay reads unpublished outbox entries and publishes them.
+type Relay struct {
+	store     Store
+	publisher Publisher
+	logger    *slog.Logger
+	batchSize int
+}
+
+// NewRelay creates a new outbox relay.
+func NewRelay(store Store, publisher Publisher, logger *slog.Logger) *Relay {
+	return &Relay{
+		store:     store,
+		publisher: publisher,
+		logger:    logger,
+		batchSize: 100,
+	}
+}
+
+// ProcessBatch fetches and publishes one batch of outbox entries.
+func (r *Relay) ProcessBatch(ctx context.Context) (int, error) {
+	entries, err := r.store.FetchUnpublished(ctx, r.batchSize)
+	if err != nil {
+		return 0, fmt.Errorf("fetch unpublished: %w", err)
+	}
+
+	if len(entries) == 0 {
+		return 0, nil
+	}
+
+	var published, failed []string
+
+	for _, entry := range entries {
+		if err := r.publisher.Publish(ctx, entry); err != nil {
+			r.logger.Warn("outbox publish failed",
+				"id", entry.ID,
+				"type", entry.EventType,
+				"error", err,
+			)
+			failed = append(failed, entry.ID)
+			continue
+		}
+		published = append(published, entry.ID)
+	}
+
+	if len(published) > 0 {
+		if err := r.store.MarkPublished(ctx, published); err != nil {
+			return 0, fmt.Errorf("mark published: %w", err)
+		}
+	}
+	if len(failed) > 0 {
+		if err := r.store.MarkFailed(ctx, failed); err != nil {
+			r.logger.Error("mark failed entries", "error", err)
+		}
+	}
+
+	r.logger.Info("outbox batch processed",
+		"published", len(published),
+		"failed", len(failed),
+	)
+	return len(published), nil
+}

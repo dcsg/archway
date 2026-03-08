@@ -1,0 +1,7 @@
+name: worker
+description: "Background job processor with graceful shutdown"
+requires: []
+suggests:
+  - observability
+  - platform
+conflicts: []

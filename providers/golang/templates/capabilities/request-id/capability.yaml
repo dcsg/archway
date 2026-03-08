@@ -1,0 +1,7 @@
+name: request-id
+description: "Request ID middleware with context propagation"
+requires:
+  - http-api
+suggests:
+  - observability
+conflicts: []

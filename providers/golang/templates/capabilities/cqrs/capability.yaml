@@ -1,0 +1,7 @@
+name: cqrs
+description: "Command/Query Responsibility Segregation pattern"
+requires: []
+suggests:
+  - event-bus
+  - repository
+conflicts: []

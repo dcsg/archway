@@ -1,0 +1,32 @@
+package domain
+
+import "context"
+
+// Repository defines the generic repository interface.
+type Repository[T any, ID comparable] interface {
+	FindByID(ctx context.Context, id ID) (*T, error)
+	FindAll(ctx context.Context) ([]T, error)
+	Save(ctx context.Context, entity *T) error
+	Delete(ctx context.Context, id ID) error
+}
+
+// PageRequest holds pagination parameters.
+type PageRequest struct {
+	Page    int
+	PerPage int
+}
+
+// PageResult holds a paginated result set.
+type PageResult[T any] struct {
+	Items      []T
+	Total      int
+	Page       int
+	PerPage    int
+	TotalPages int
+}
+
+// PaginatedRepository extends Repository with pagination support.
+type PaginatedRepository[T any, ID comparable] interface {
+	Repository[T, ID]
+	FindPaginated(ctx context.Context, page PageRequest) (*PageResult[T], error)
+}

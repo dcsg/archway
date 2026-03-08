@@ -1,0 +1,66 @@
+package validation
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/go-playground/validator/v10"
+)
+
+// Validator wraps go-playground/validator with domain-friendly error formatting.
+type Validator struct {
+	v *validator.Validate
+}
+
+// New creates a new Validator instance.
+func New() *Validator {
+	return &Validator{v: validator.New(validator.WithRequiredStructEnabled())}
+}
+
+// Validate checks a struct and returns a formatted error if validation fails.
+func (val *Validator) Validate(s interface{}) error {
+	if err := val.v.Struct(s); err != nil {
+		validationErrs, ok := err.(validator.ValidationErrors)
+		if !ok {
+			return fmt.Errorf("validation: %w", err)
+		}
+		return &Error{Violations: formatErrors(validationErrs)}
+	}
+	return nil
+}
+
+// Error holds structured validation failures.
+type Error struct {
+	Violations []FieldError
+}
+
+func (e *Error) Error() string {
+	msgs := make([]string, len(e.Violations))
+	for i, v := range e.Violations {
+		msgs[i] = v.String()
+	}
+	return "validation failed: " + strings.Join(msgs, "; ")
+}
+
+// FieldError describes a single field validation failure.
+type FieldError struct {
+	Field   string
+	Tag     string
+	Message string
+}
+
+func (f FieldError) String() string {
+	return fmt.Sprintf("%s: %s", f.Field, f.Message)
+}
+
+func formatErrors(errs validator.ValidationErrors) []FieldError {
+	result := make([]FieldError, len(errs))
+	for i, e := range errs {
+		result[i] = FieldError{
+			Field:   e.Field(),
+			Tag:     e.Tag(),
+			Message: fmt.Sprintf("failed on '%s' validation", e.Tag()),
+		}
+	}
+	return result
+}

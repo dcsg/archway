@@ -1,0 +1,66 @@
+package pgxrepo
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+const (
+	defaultMaxConns      = 25
+	defaultMinConns      = 5
+	defaultMaxConnLife   = 30 * time.Minute
+	healthCheckTimeout   = 5 * time.Second
+)
+
+// ConnectionConfig holds PostgreSQL connection configuration.
+type ConnectionConfig struct {
+	URL          string
+	MaxConns     int32
+	MinConns     int32
+	MaxConnLife  time.Duration
+}
+
+// NewPool creates a new PostgreSQL connection pool.
+func NewPool(cfg ConnectionConfig, logger *slog.Logger) (*pgxpool.Pool, error) {
+	poolCfg, err := pgxpool.ParseConfig(cfg.URL)
+	if err != nil {
+		return nil, fmt.Errorf("parse postgres config: %w", err)
+	}
+
+	maxConns := cfg.MaxConns
+	if maxConns == 0 {
+		maxConns = defaultMaxConns
+	}
+	minConns := cfg.MinConns
+	if minConns == 0 {
+		minConns = defaultMinConns
+	}
+	maxLife := cfg.MaxConnLife
+	if maxLife == 0 {
+		maxLife = defaultMaxConnLife
+	}
+
+	poolCfg.MaxConns = maxConns
+	poolCfg.MinConns = minConns
+	poolCfg.MaxConnLifetime = maxLife
+
+	ctx, cancel := context.WithTimeout(context.Background(), healthCheckTimeout)
+	defer cancel()
+
+	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
+	if err != nil {
+		return nil, fmt.Errorf("create postgres pool: %w", err)
+	}
+
+	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("ping postgres: %w", err)
+	}
+
+	logger.Info("postgres connected", "max_conns", maxConns, "min_conns", minConns)
+	return pool, nil
+}

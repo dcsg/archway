@@ -1,0 +1,106 @@
+package httphandler
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"net/http"
+	"sync"
+	"time"
+)
+
+const (
+	idempotencyHeader = "Idempotency-Key"
+	defaultTTL        = 24 * time.Hour
+)
+
+// IdempotencyStore persists idempotency results.
+type IdempotencyStore interface {
+	Get(ctx context.Context, key string) ([]byte, bool, error)
+	Set(ctx context.Context, key string, response []byte, ttl time.Duration) error
+}
+
+// memoryStore is a simple in-memory idempotency store.
+type memoryStore struct {
+	mu      sync.RWMutex
+	entries map[string]memoryEntry
+}
+
+type memoryEntry struct {
+	response  []byte
+	expiresAt time.Time
+}
+
+// NewMemoryIdempotencyStore creates an in-memory store (use Redis in production).
+func NewMemoryIdempotencyStore() IdempotencyStore {
+	return &memoryStore{entries: make(map[string]memoryEntry)}
+}
+
+func (s *memoryStore) Get(_ context.Context, key string) ([]byte, bool, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	entry, ok := s.entries[key]
+	if !ok || time.Now().After(entry.expiresAt) {
+		return nil, false, nil
+	}
+	return entry.response, true, nil
+}
+
+func (s *memoryStore) Set(_ context.Context, key string, response []byte, ttl time.Duration) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.entries[key] = memoryEntry{
+		response:  response,
+		expiresAt: time.Now().Add(ttl),
+	}
+	return nil
+}
+
+// Idempotency returns middleware that deduplicates requests by idempotency key.
+func Idempotency(store IdempotencyStore) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			key := r.Header.Get(idempotencyHeader)
+			if key == "" || r.Method == http.MethodGet {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			// Hash the key for storage safety.
+			hash := sha256.Sum256([]byte(key))
+			storageKey := hex.EncodeToString(hash[:])
+
+			// Check for existing response.
+			if cached, found, err := store.Get(r.Context(), storageKey); err == nil && found {
+				w.Header().Set("X-Idempotent-Replayed", "true")
+				w.Write(cached)
+				return
+			}
+
+			// Capture response.
+			rec := &responseRecorder{ResponseWriter: w}
+			next.ServeHTTP(rec, r)
+
+			// Store for deduplication.
+			if rec.statusCode >= 200 && rec.statusCode < 300 {
+				store.Set(r.Context(), storageKey, rec.body, defaultTTL)
+			}
+		})
+	}
+}
+
+type responseRecorder struct {
+	http.ResponseWriter
+	statusCode int
+	body       []byte
+}
+
+func (r *responseRecorder) WriteHeader(code int) {
+	r.statusCode = code
+	r.ResponseWriter.WriteHeader(code)
+}
+
+func (r *responseRecorder) Write(b []byte) (int, error) {
+	r.body = append(r.body, b...)
+	return r.ResponseWriter.Write(b)
+}

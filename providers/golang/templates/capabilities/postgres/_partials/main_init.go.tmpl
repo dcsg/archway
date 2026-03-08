@@ -1,0 +1,9 @@
+// Connect to PostgreSQL.
+	pool, err := pgxrepo.NewPool(pgxrepo.ConnectionConfig{
+		URL:      cfg.Postgres.URL,
+		MaxConns: cfg.Postgres.MaxConns,
+		MinConns: cfg.Postgres.MinConns,
+	}, logger)
+	if err != nil {
+		return fmt.Errorf("connect postgres: %w", err)
+	}

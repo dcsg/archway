@@ -1,0 +1,7 @@
+name: audit-log
+description: "Structured audit trail for compliance and debugging"
+requires: []
+suggests:
+  - observability
+  - request-id
+conflicts: []

@@ -1,0 +1,8 @@
+name: websocket
+description: "WebSocket handler with connection management"
+requires:
+  - http-api
+suggests:
+  - observability
+  - request-id
+conflicts: []

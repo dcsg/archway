@@ -1,0 +1,44 @@
+package cqrs
+
+import "context"
+
+// Query represents a read operation.
+type Query interface {
+	QueryName() string
+}
+
+// QueryHandler processes a specific query type and returns a result.
+type QueryHandler[Q Query, R any] interface {
+	Handle(ctx context.Context, query Q) (R, error)
+}
+
+// QueryBus dispatches queries to their handlers.
+type QueryBus struct {
+	handlers map[string]any
+}
+
+// NewQueryBus creates a new query bus.
+func NewQueryBus() *QueryBus {
+	return &QueryBus{handlers: make(map[string]any)}
+}
+
+// RegisterQuery associates a handler with a query type.
+func RegisterQuery[Q Query, R any](bus *QueryBus, handler QueryHandler[Q, R]) {
+	var zero Q
+	bus.handlers[zero.QueryName()] = handler
+}
+
+// Ask sends a query to its registered handler and returns the result.
+func Ask[Q Query, R any](ctx context.Context, bus *QueryBus, query Q) (R, error) {
+	h, ok := bus.handlers[query.QueryName()]
+	if !ok {
+		var zero R
+		return zero, ErrHandlerNotFound{Name: query.QueryName()}
+	}
+	handler, ok := h.(QueryHandler[Q, R])
+	if !ok {
+		var zero R
+		return zero, ErrHandlerNotFound{Name: query.QueryName()}
+	}
+	return handler.Handle(ctx, query)
+}

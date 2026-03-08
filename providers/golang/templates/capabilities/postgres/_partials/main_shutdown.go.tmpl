@@ -1,0 +1,1 @@
+app.OnShutdown("postgres", func(_ context.Context) error { pool.Close(); return nil })

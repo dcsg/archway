@@ -1,0 +1,7 @@
+name: repository
+description: "Generic repository pattern using Go generics"
+requires: []
+suggests:
+  - postgres
+  - mysql
+conflicts: []

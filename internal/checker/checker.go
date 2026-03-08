@@ -26,20 +26,22 @@ type Violation struct {
 
 // CheckResult holds the outcome of all checks.
 type CheckResult struct {
-	DependencyViolations []Violation `json:"dependency_violations"`
-	StructureViolations  []Violation `json:"structure_violations"`
-	FunctionViolations   []Violation `json:"function_violations"`
-	NamingViolations     []Violation `json:"naming_violations"`
-	ComponentsCovered    int         `json:"components_covered"`
-	ComponentsTotal      int         `json:"components_total"`
-	RulesChecked         int         `json:"rules_checked"`
-	RulesPassing         int         `json:"rules_passing"`
+	DependencyViolations  []Violation    `json:"dependency_violations"`
+	StructureViolations   []Violation    `json:"structure_violations"`
+	FunctionViolations    []Violation    `json:"function_violations"`
+	NamingViolations      []Violation    `json:"naming_violations"`
+	AntiPatternViolations []AntiPattern  `json:"anti_pattern_violations"`
+	ComponentsCovered     int            `json:"components_covered"`
+	ComponentsTotal       int            `json:"components_total"`
+	RulesChecked          int            `json:"rules_checked"`
+	RulesPassing          int            `json:"rules_passing"`
 }
 
 // TotalViolations returns the count of all violations.
 func (r *CheckResult) TotalViolations() int {
 	return len(r.DependencyViolations) + len(r.StructureViolations) +
-		len(r.FunctionViolations) + len(r.NamingViolations)
+		len(r.FunctionViolations) + len(r.NamingViolations) +
+		len(r.AntiPatternViolations)
 }
 
 // Passed returns true if no violations were found.
@@ -89,6 +91,9 @@ func Check(cfg *config.ArchwayConfig, projectPath string) (*CheckResult, error) 
 
 	// Function violations.
 	result.FunctionViolations = checkFunctions(cfg.Rules.Functions, a.Packages())
+
+	// Anti-pattern violations.
+	result.AntiPatternViolations = checkAntiPatterns(a.Packages(), projectPath)
 
 	// Compute metrics.
 	result.RulesChecked = len(cfg.Components) + structureRuleCount(cfg.Rules.Structure) + functionRuleCount(cfg.Rules.Functions)

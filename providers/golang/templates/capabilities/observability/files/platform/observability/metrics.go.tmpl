@@ -1,0 +1,54 @@
+package observability
+
+import (
+	"net/http"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+)
+
+// Metrics holds application-level Prometheus metrics.
+type Metrics struct {
+	RequestsTotal   *prometheus.CounterVec
+	RequestDuration *prometheus.HistogramVec
+	ErrorsTotal     *prometheus.CounterVec
+}
+
+// NewMetrics registers and returns standard metrics.
+func NewMetrics(namespace string) *Metrics {
+	m := &Metrics{
+		RequestsTotal: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: namespace,
+				Name:      "requests_total",
+				Help:      "Total number of requests by method and path.",
+			},
+			[]string{"method", "path", "status"},
+		),
+		RequestDuration: prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Namespace: namespace,
+				Name:      "request_duration_seconds",
+				Help:      "Request duration in seconds.",
+				Buckets:   prometheus.DefBuckets,
+			},
+			[]string{"method", "path"},
+		),
+		ErrorsTotal: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: namespace,
+				Name:      "errors_total",
+				Help:      "Total number of errors by type.",
+			},
+			[]string{"type"},
+		),
+	}
+
+	prometheus.MustRegister(m.RequestsTotal, m.RequestDuration, m.ErrorsTotal)
+	return m
+}
+
+// Handler returns the Prometheus metrics HTTP handler.
+func Handler() http.Handler {
+	return promhttp.Handler()
+}

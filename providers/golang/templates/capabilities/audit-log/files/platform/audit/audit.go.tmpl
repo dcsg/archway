@@ -1,0 +1,67 @@
+package audit
+
+import (
+	"context"
+	"log/slog"
+	"time"
+)
+
+// Action represents an auditable action.
+type Action string
+
+const (
+	ActionCreate Action = "create"
+	ActionUpdate Action = "update"
+	ActionDelete Action = "delete"
+	ActionAccess Action = "access"
+)
+
+// Entry represents a single audit log entry.
+type Entry struct {
+	Timestamp  time.Time
+	Actor      string // user ID or system identifier
+	Action     Action
+	Resource   string // e.g. "order", "user"
+	ResourceID string
+	Details    map[string]any
+}
+
+// Logger writes audit entries.
+type Logger interface {
+	Log(ctx context.Context, entry Entry) error
+}
+
+// SlogLogger writes audit entries to structured logs.
+type SlogLogger struct {
+	logger *slog.Logger
+}
+
+// NewSlogLogger creates an audit logger backed by slog.
+func NewSlogLogger(logger *slog.Logger) *SlogLogger {
+	return &SlogLogger{logger: logger.With("component", "audit")}
+}
+
+// Log writes an audit entry.
+func (l *SlogLogger) Log(ctx context.Context, entry Entry) error {
+	l.logger.InfoContext(ctx, "audit",
+		"actor", entry.Actor,
+		"action", string(entry.Action),
+		"resource", entry.Resource,
+		"resource_id", entry.ResourceID,
+		"details", entry.Details,
+		"timestamp", entry.Timestamp,
+	)
+	return nil
+}
+
+// Record is a convenience function for creating and logging an entry.
+func Record(ctx context.Context, logger Logger, actor string, action Action, resource string, resourceID string, details map[string]any) error {
+	return logger.Log(ctx, Entry{
+		Timestamp:  time.Now(),
+		Actor:      actor,
+		Action:     action,
+		Resource:   resource,
+		ResourceID: resourceID,
+		Details:    details,
+	})
+}

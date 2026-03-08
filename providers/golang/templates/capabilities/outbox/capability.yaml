@@ -1,0 +1,8 @@
+name: outbox
+description: "Transactional outbox pattern for reliable event publishing"
+requires: []
+suggests:
+  - postgres
+  - event-bus
+  - scheduler
+conflicts: []

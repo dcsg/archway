@@ -1,0 +1,6 @@
+app.OnShutdown("tracer", func(ctx context.Context) error {
+		if tp != nil {
+			return tp.Shutdown(ctx)
+		}
+		return nil
+	})

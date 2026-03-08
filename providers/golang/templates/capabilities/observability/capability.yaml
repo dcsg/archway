@@ -1,0 +1,7 @@
+name: observability
+description: "OpenTelemetry tracing and Prometheus metrics"
+requires: []
+suggests:
+  - health
+  - docker
+conflicts: []

@@ -1,0 +1,6 @@
+name: cors
+description: "CORS middleware configuration"
+requires:
+  - http-api
+suggests: []
+conflicts: []

@@ -1,0 +1,7 @@
+name: retry
+description: "Retry with exponential backoff and jitter"
+requires: []
+suggests:
+  - circuit-breaker
+  - observability
+conflicts: []

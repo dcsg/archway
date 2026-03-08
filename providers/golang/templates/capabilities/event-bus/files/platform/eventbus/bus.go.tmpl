@@ -1,0 +1,52 @@
+package eventbus
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"sync"
+
+	"{{.ModulePath}}/domain"
+)
+
+// InProcessBus is a synchronous in-process event bus.
+type InProcessBus struct {
+	mu       sync.RWMutex
+	handlers map[string][]domain.EventHandler
+	logger   *slog.Logger
+}
+
+// New creates a new in-process event bus.
+func New(logger *slog.Logger) *InProcessBus {
+	return &InProcessBus{
+		handlers: make(map[string][]domain.EventHandler),
+		logger:   logger,
+	}
+}
+
+// Subscribe registers a handler for a given event type.
+func (b *InProcessBus) Subscribe(eventType string, handler domain.EventHandler) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.handlers[eventType] = append(b.handlers[eventType], handler)
+}
+
+// Publish dispatches events to all registered handlers.
+func (b *InProcessBus) Publish(ctx context.Context, events ...domain.Event) error {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	for _, event := range events {
+		handlers := b.handlers[event.Type]
+		b.logger.DebugContext(ctx, "publishing event",
+			"type", event.Type,
+			"handlers", len(handlers),
+		)
+		for _, handler := range handlers {
+			if err := handler(ctx, event); err != nil {
+				return fmt.Errorf("handle event %q: %w", event.Type, err)
+			}
+		}
+	}
+	return nil
+}

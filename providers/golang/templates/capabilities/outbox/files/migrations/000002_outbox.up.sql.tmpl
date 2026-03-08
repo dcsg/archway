@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS outbox (
+    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_type   TEXT NOT NULL,
+    payload      JSONB NOT NULL,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    published_at TIMESTAMPTZ,
+    retries      INT NOT NULL DEFAULT 0
+);
+
+CREATE INDEX idx_outbox_unpublished ON outbox (created_at) WHERE published_at IS NULL;

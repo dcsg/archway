@@ -1,0 +1,7 @@
+name: health
+description: "Health check and readiness endpoints"
+requires:
+  - http-api
+suggests:
+  - observability
+conflicts: []

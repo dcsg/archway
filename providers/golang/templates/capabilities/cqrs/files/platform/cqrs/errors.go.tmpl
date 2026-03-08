@@ -1,0 +1,12 @@
+package cqrs
+
+import "fmt"
+
+// ErrHandlerNotFound is returned when no handler is registered for a command/query.
+type ErrHandlerNotFound struct {
+	Name string
+}
+
+func (e ErrHandlerNotFound) Error() string {
+	return fmt.Sprintf("no handler registered for %q", e.Name)
+}

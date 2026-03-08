@@ -1,0 +1,64 @@
+package worker
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"sync"
+)
+
+// Job represents a unit of background work.
+type Job struct {
+	Name    string
+	Execute func(ctx context.Context) error
+}
+
+// Pool manages a set of background workers with graceful shutdown.
+type Pool struct {
+	logger *slog.Logger
+	wg     sync.WaitGroup
+	jobs   []Job
+}
+
+// NewPool creates a new worker pool.
+func NewPool(logger *slog.Logger) *Pool {
+	return &Pool{logger: logger}
+}
+
+// Add registers a job to run in the pool.
+func (p *Pool) Add(job Job) {
+	p.jobs = append(p.jobs, job)
+}
+
+// Start launches all registered jobs as goroutines.
+// Returns when ctx is cancelled and all workers have stopped.
+func (p *Pool) Start(ctx context.Context) error {
+	errCh := make(chan error, len(p.jobs))
+
+	for _, job := range p.jobs {
+		p.wg.Add(1)
+		go func(j Job) {
+			defer p.wg.Done()
+			p.logger.Info("worker started", "job", j.Name)
+			if err := j.Execute(ctx); err != nil {
+				p.logger.Error("worker failed", "job", j.Name, "error", err)
+				errCh <- fmt.Errorf("job %q: %w", j.Name, err)
+			}
+			p.logger.Info("worker stopped", "job", j.Name)
+		}(job)
+	}
+
+	// Wait for context cancellation.
+	<-ctx.Done()
+	p.logger.Info("shutting down workers")
+	p.wg.Wait()
+
+	close(errCh)
+	var firstErr error
+	for err := range errCh {
+		if firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
+}

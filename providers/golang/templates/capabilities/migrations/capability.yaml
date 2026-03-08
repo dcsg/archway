@@ -1,0 +1,6 @@
+name: migrations
+description: "Database migrations with golang-migrate"
+requires: []
+suggests:
+  - docker
+conflicts: []
