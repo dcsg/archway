@@ -1,8 +1,36 @@
 # Soul — Archway
 
+## Tagline
+
+Architecture-aware service composer and enforcer.
+
+## Vision
+
+Code architecture becomes a first-class artifact — declared, composed, and enforced. The gap between intended architecture and actual architecture is zero. Architecture drift becomes as unacceptable as infrastructure drift.
+
+## Mission
+
+Give developers the tools to declare their architecture, compose services from proven patterns, and enforce structural integrity — from first commit to production, across every service.
+
+## Core Beliefs
+
+1. **Architecture is code** — declared in config, versioned in git, enforced in CI
+2. **Composition beats generation** — modular capabilities snap together; the rules travel with the code
+3. **The gap should be zero** — if you can describe your architecture, your tooling should enforce it
+
 ## What This Is
 
 Architecture-aware service composer and enforcer. Scaffolds production-ready services by composing architecture patterns (hexagonal, flat) with capability modules (http-api, grpc, mysql, redis, kafka, etc.), generating both code AND architectural DNA (archway.yaml) that AI agents and `archway check` can enforce. Standalone CLI: `archway new`, `archway check`, `archway analyze`, `archway init`.
+
+## Product Pillars
+
+| Belief | Pillar | CLI command |
+|---|---|---|
+| Composition beats generation | **Compose** | `archway new` |
+| Architecture is code | **Analyze** | `archway analyze` |
+| The gap should be zero | **Enforce** | `archway check` |
+
+Future: `archway plan`, `archway apply`, `archway diff` complete the lifecycle.
 
 ## Stack
 
@@ -35,3 +63,4 @@ Active development. v1 CLI ships with composition-based scaffolding (`archway ne
 ---
 
 *Initialized: 2026-02-14*
+*Updated: 2026-03-09 — added vision, mission, core beliefs, product pillars*
