@@ -1,9 +1,11 @@
 ---
 title: Archway
-description: Compose production-grade services from architecture patterns and 38 capabilities
+description: Architecture-aware service composer and enforcer for Go
 template: splash
 hero:
-  tagline: Stop writing boilerplate. Start composing production-grade services.
+  tagline: |
+    Architecture-aware service composer and enforcer
+    <p class="hero-description">Compose production-grade Go services from architecture patterns and 38 modular capabilities. Scaffold, analyze, and enforce — from first commit to production.</p>
   actions:
     - text: Get Started
       link: /archway/getting-started/quickstart/
@@ -16,26 +18,26 @@ hero:
 
 import { Card, CardGrid, Aside } from '@astrojs/starlight/components';
 
-Stop writing boilerplate. Compose production-grade services from architecture patterns and **38 modular capabilities**. Pick your structure, pick what your service needs — Archway wires it all together.
-
-You own the code. No runtime dependency. No lock-in.
-
 ```
 Architecture (hexagonal) + Capabilities (http-api, mysql, docker) = Your Service
 ```
 
+Pick an architecture, pick what your service needs — Archway wires it all together and enforces it stays true.
+
+**38 capabilities. Zero lock-in. You own every line of code.**
+
 <CardGrid>
-  <Card title="38 Capabilities" icon="puzzle">
-    Transport, data stores, security, resilience, observability, i18n, feature flags, CQRS, and more. Each is self-contained and composable.
+  <Card title="Compose" icon="puzzle">
+    Pick an architecture pattern and combine 38 modular capabilities — transport, data, security, resilience, observability, and more. Get a production-ready service in one command.
   </Card>
-  <Card title="Smart Wizard" icon="star">
-    The interactive wizard suggests what you're missing. Adding HTTP? You probably want rate limiting, CORS, and auth too.
+  <Card title="Analyze" icon="magnifier">
+    Scan any Go codebase. Archway detects the architecture pattern, maps dependencies, and reports what's there — deterministically, no LLM needed.
   </Card>
-  <Card title="Architecture Enforcement" icon="approve-check-circle">
-    `archway check` validates dependency rules, detects anti-patterns, and measures compliance — with 11 AST-based detectors.
+  <Card title="Enforce" icon="approve-check-circle">
+    Run `archway check` in CI. 11 AST-based detectors catch dependency violations, anti-patterns, and architecture drift before they ship.
   </Card>
   <Card title="Zero Lock-in" icon="open-book">
-    Generates plain Go code with no Archway runtime. Scaffold once, own the code forever.
+    Generates plain Go code with no Archway runtime. Scaffold once, own the code forever. The only artifact is `archway.yaml` — your architecture contract.
   </Card>
 </CardGrid>
 
@@ -63,7 +65,7 @@ You get a production-ready service with:
 - `archway.yaml` for architecture enforcement
 
 <Aside type="tip">
-Run `archway check` at any time to validate your project follows its own architecture rules. It catches dependency violations, missing directories, and function complexity issues.
+The smart wizard suggests what you're missing. Adding HTTP? You probably want rate limiting, CORS, and auth too. 18 suggestion rules help you build complete services.
 </Aside>
 
 ## Capabilities at a Glance

@@ -1,91 +1,171 @@
-/* Archway docs — custom Starlight overrides */
+/* ═══════════════════════════════════════════════════
+   Archway — Docs Theme
+   Aesthetic: Clean developer tool. Confident, not flashy.
+   ═══════════════════════════════════════════════════ */
+
+/* ── Tokens ── */
 
 :root {
 	--sl-color-accent-low: #1a1a2e;
 	--sl-color-accent: #6c63ff;
 	--sl-color-accent-high: #e0deff;
-	--sl-font-system: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 	--sl-text-h1: clamp(2rem, 4vw, 2.5rem);
 	--sl-text-h2: clamp(1.5rem, 3vw, 1.875rem);
-	/* Push content wider, right TOC gets whatever is left */
-	--sl-content-width: 70rem;
+	--sl-content-width: 65rem;
+	--archway-glow: rgba(108, 99, 255, 0.08);
 }
 
 :root[data-theme='light'] {
 	--sl-color-accent-low: #ede9ff;
 	--sl-color-accent: #5b52d9;
 	--sl-color-accent-high: #2d2678;
+	--archway-glow: rgba(91, 82, 217, 0.06);
 }
 
-/* ── Hero / splash page ── */
+/* ══════════════════════════════════════════════════
+   SPLASH / HOMEPAGE
+   ══════════════════════════════════════════════════ */
 
-.hero {
-	padding-block: 4rem 2rem;
+/* Hero: force single column, centered, no dead image column */
+[data-has-hero] .hero {
+	grid-template-columns: 1fr !important;
+	text-align: center;
+	padding-block: clamp(3rem, 8vmin, 6rem) clamp(2rem, 5vmin, 3rem) !important;
+	max-width: 56rem;
+	margin-inline: auto;
+}
+
+[data-has-hero] .hero .stack {
+	text-align: center !important;
+}
+
+[data-has-hero] .hero .copy {
+	align-items: center !important;
+}
+
+[data-has-hero] .hero .copy > * {
+	max-width: 60ch;
+}
+
+[data-has-hero] .hero .actions {
+	justify-content: center !important;
+}
+
+/* Title — large, confident */
+[data-has-hero] .hero h1 {
+	font-size: clamp(2.75rem, 7vw, 4rem) !important;
+	font-weight: 700;
+	letter-spacing: -0.035em;
+	line-height: 1.1;
+}
+
+/* Tagline — distinct italic serif, reads like a confident descriptor */
+[data-has-hero] .hero .tagline {
+	font-family: 'DM Serif Display', 'Georgia', serif !important;
+	font-size: clamp(1.3rem, 3vw, 1.65rem) !important;
+	font-style: italic;
+	font-weight: 400;
+	color: var(--sl-color-accent-high);
+	line-height: 1.4;
+	max-width: none;
+	white-space: nowrap;
+	margin-inline: auto;
+	letter-spacing: 0.01em;
+	opacity: 0.95;
+}
+
+/* Hero description — below the tagline, back to system sans-serif */
+p.hero-description {
+	all: unset !important;
+	display: block !important;
+	font-family: system-ui, -apple-system, sans-serif !important;
+	font-style: normal !important;
+	font-size: clamp(1rem, 2vw, 1.15rem) !important;
+	color: var(--sl-color-gray-2) !important;
+	font-weight: 400 !important;
+	line-height: 1.7 !important;
+	max-width: 52ch !important;
+	margin-inline: auto !important;
+	margin-top: 1rem !important;
+	white-space: normal !important;
+	letter-spacing: 0 !important;
+	text-align: center !important;
+}
+
+/* Splash body content: centered, generous width */
+[data-has-hero] .content-panel .sl-container {
+	max-width: 60rem;
+	margin-inline: auto;
+}
+
+/* Intro paragraphs below hero — centered, single line each */
+[data-has-hero] .sl-markdown-content > p:first-of-type,
+[data-has-hero] .sl-markdown-content > p:nth-of-type(2) {
+	font-size: 1.05rem;
+	line-height: 1.7;
+	color: var(--sl-color-gray-2);
+	max-width: none;
+	margin-inline: auto;
 	text-align: center;
 }
 
-.hero .tagline {
-	font-size: clamp(1.15rem, 2.5vw, 1.4rem) !important;
-	max-width: 52ch;
+/* Formula block — center it, no overflow */
+[data-has-hero] .sl-markdown-content > .expressive-code:first-of-type {
+	max-width: 48rem;
 	margin-inline: auto;
-	line-height: 1.7;
-	color: var(--sl-color-gray-2);
-	font-weight: 300;
-	letter-spacing: -0.01em;
 }
 
-/* Hero title — bigger, bolder */
-.hero h1 {
-	font-size: clamp(2.5rem, 6vw, 3.5rem) !important;
-	font-weight: 800;
-	letter-spacing: -0.03em;
+[data-has-hero] .sl-markdown-content > .expressive-code:first-of-type pre {
+	white-space: pre-wrap;
+	word-break: break-word;
+	overflow-x: hidden;
 }
 
-/* Stronger visual separation between hero and body content */
-.hero + .sl-markdown-content > h2:first-of-type {
-	margin-top: 3rem;
-	padding-top: 2.5rem;
-	border-top: 1px solid var(--sl-color-gray-6);
-}
+/* ══════════════════════════════════════════════════
+   INNER PAGES (with sidebar + TOC)
+   ══════════════════════════════════════════════════ */
 
-/* ── Cards ── */
+/* Nothing special needed — Starlight's default layout with
+   --sl-content-width: 65rem handles the proportions well. */
 
+/* ══════════════════════════════════════════════════
+   COMPONENTS
+   ══════════════════════════════════════════════════ */
+
+/* Cards — subtle lift on hover */
 .card {
-	transition: transform 0.15s ease, box-shadow 0.15s ease;
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	border-radius: 0.75rem;
 }
+
 .card:hover {
-	transform: translateY(-2px);
-	box-shadow: 0 4px 12px rgba(108, 99, 255, 0.15);
+	transform: translateY(-3px);
+	box-shadow: 0 8px 24px var(--archway-glow);
 }
 
-/* ── Asides / callouts ── */
-
+/* Asides — softer corners */
 .starlight-aside {
 	border-radius: 0.5rem;
 }
 
-/* ── Steps ── */
-
+/* Steps — tighter spacing */
 .sl-steps > li {
 	padding-bottom: 0.5rem;
 }
 
-/* ── Code blocks ── */
-
+/* Code blocks */
 pre {
 	font-size: 0.9rem;
 	border-radius: 0.5rem;
 }
 
-/* ── Badges ── */
-
+/* Badges */
 .sl-badge {
 	font-size: 0.75rem;
 	font-weight: 600;
 }
 
-/* ── Tables ── */
-
+/* Tables — compact, uppercase headers */
 table {
 	font-size: 0.9rem;
 }
@@ -94,4 +174,5 @@ th {
 	text-transform: uppercase;
 	font-size: 0.75rem;
 	letter-spacing: 0.05em;
+	font-weight: 600;
 }

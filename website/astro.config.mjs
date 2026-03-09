@@ -9,7 +9,7 @@ export default defineConfig({
 	integrations: [
 		starlight({
 			title: 'Archway',
-			tagline: 'Architecture-aware service composer',
+			tagline: 'Architecture-aware service composer and enforcer',
 			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/dcsg/archway' }],
 			editLink: {
 				baseUrl: 'https://github.com/dcsg/archway/edit/main/website/',
@@ -18,6 +18,9 @@ export default defineConfig({
 			head: [
 				{ tag: 'meta', attrs: { property: 'og:image', content: '/archway/og-image.png' } },
 				{ tag: 'meta', attrs: { property: 'og:type', content: 'website' } },
+				{ tag: 'link', attrs: { rel: 'preconnect', href: 'https://fonts.googleapis.com' } },
+				{ tag: 'link', attrs: { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: true } },
+				{ tag: 'link', attrs: { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@1&display=swap' } },
 			],
 			sidebar: [
 				{
