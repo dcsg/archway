@@ -3,7 +3,7 @@ title: How It Works
 description: Understanding Archway's composition model
 ---
 
-Archway builds your project from two types of building blocks that get composed together.
+import { Aside, Steps } from '@astrojs/starlight/components';
 
 ## The Composition Model
 
@@ -11,16 +11,16 @@ Archway builds your project from two types of building blocks that get composed 
 Architecture + Capabilities = Your Service
 ```
 
+Every Archway service is built from two types of building blocks that get composed together.
+
 ### Architecture
 
-An architecture defines your project's **structure and dependency rules**. It provides:
+An architecture defines your project's **structure and dependency rules**:
 
 - Directory layout (where domain, ports, adapters, etc. live)
 - Base files (go.mod, Makefile, Dockerfile, .gitignore)
 - Component definitions with dependency constraints
 - A fallback `main.go`
-
-Available architectures:
 
 | Architecture | Structure | Best For |
 |-------------|-----------|----------|
@@ -35,23 +35,33 @@ Capabilities are **modular features** that plug into your architecture. Each cap
 - **Partials** — code snippets that inject into the bootstrap wiring (imports, init, shutdown hooks)
 - A `capability.yaml` manifest with metadata, requirements, and suggestions
 
-For example, the `mysql` capability provides:
-- `adapter/mysqlrepo/connection.go` — connection pooling
-- Partials that inject MySQL initialization into `bootstrap.go`
-- Config struct fields for MySQL DSN, pool sizes
+<Aside type="note">
+Archway ships with **38 capabilities** across 8 categories: transport, data, security, resilience, patterns, observability, infrastructure, and cross-cutting.
+</Aside>
 
 ## How Composition Works
 
 When you run `archway new`, here's what happens:
 
+<Steps>
+
 1. **Load architecture** — Read the manifest, set up base variables
+
 2. **Load capabilities** — Read each capability manifest, validate requirements and conflicts
+
 3. **Collect partials** — Gather code snippets from each capability's `_partials/` directory
+
 4. **Render architecture files** — Lay down the base project structure
+
 5. **Render capability files** — Add capability-specific files (may overwrite architecture defaults)
+
 6. **Inject partials** — Capability partials get injected into `bootstrap.go` at marked points
+
 7. **Run hooks** — `go mod tidy`, `git init`, etc.
+
 8. **Generate metadata** — `archway.yaml` and `docs/PROJECT.md`
+
+</Steps>
 
 ### Partial Injection Points
 
@@ -74,14 +84,19 @@ Capabilities can declare relationships:
 
 ## Smart Suggestions
 
-After you select capabilities, Archway checks suggestion rules and recommends what you might be missing:
+After you select capabilities, Archway checks **18 suggestion rules** with cross-referencing and recommends what you might be missing:
 
 ```
 Based on your selections, you might also want:
   [x] platform        Production services need config, logging, and lifecycle management
   [x] bootstrap       Bootstrap pattern provides testable dependency wiring
   [ ] rate-limiting   HTTP APIs benefit from rate limiting to prevent abuse
+  [ ] cors            Cross-origin resource sharing for browser clients
 ```
+
+<Aside type="caution">
+Archway also warns about **problematic combinations** — like using MySQL without migrations, or running an HTTP API without health checks. These are warnings, not blockers.
+</Aside>
 
 ## Architecture Enforcement
 
@@ -103,4 +118,4 @@ components:
     may_depend_on: [ports, domain]
 ```
 
-Run `archway check` at any time to validate these rules. It catches dependency violations, missing directories, and function complexity issues.
+Run `archway check` at any time to validate these rules. It uses **11 AST-based detectors** to catch dependency violations, missing directories, function complexity issues, and anti-patterns.

@@ -3,6 +3,8 @@ title: Bootstrap Pattern
 description: Testable dependency wiring with a thin main.go
 ---
 
+import { Aside } from '@astrojs/starlight/components';
+
 The bootstrap pattern separates your application's entry point from its dependency wiring, making the wiring testable and the `main.go` trivially simple.
 
 ## The Problem
@@ -73,24 +75,11 @@ Each capability provides **partials** — small code snippets that inject into `
 | `main_register` | Register servers/consumers with the lifecycle manager |
 | `main_shutdown` | Cleanup hooks in reverse dependency order |
 
-For example, when you add `mysql` and `http-api`, the bootstrap file automatically includes:
-- MySQL connection initialization
-- HTTP server registration
-- Ordered shutdown (HTTP drains first, then MySQL closes)
+For example, when you add `mysql` and `http-api`, the bootstrap file automatically includes MySQL connection initialization, HTTP server registration, and ordered shutdown (HTTP drains first, then MySQL closes).
 
-## Architecture Independence
-
-The bootstrap pattern is a **capability**, not an architecture concern. It works with any architecture:
-
-```bash
-# Hexagonal with bootstrap
-archway new my-api --arch hexagonal --cap platform,bootstrap,http-api
-
-# Even flat could use it (if you add platform)
-archway new my-tool --arch flat --cap platform,bootstrap
-```
-
-Without the bootstrap capability, architectures provide a simple `main.go` with a TODO comment suggesting you add it.
+<Aside type="tip">
+The bootstrap pattern is a **capability**, not an architecture concern. It works with any architecture — even flat.
+</Aside>
 
 ## Why It Matters
 

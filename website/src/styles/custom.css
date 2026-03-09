@@ -1,0 +1,69 @@
+/* Archway docs — custom Starlight overrides */
+
+:root {
+	--sl-color-accent-low: #1a1a2e;
+	--sl-color-accent: #6c63ff;
+	--sl-color-accent-high: #e0deff;
+	--sl-font-system: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+	--sl-text-h1: clamp(2rem, 4vw, 2.5rem);
+	--sl-text-h2: clamp(1.5rem, 3vw, 1.875rem);
+}
+
+:root[data-theme='light'] {
+	--sl-color-accent-low: #ede9ff;
+	--sl-color-accent: #5b52d9;
+	--sl-color-accent-high: #2d2678;
+}
+
+/* Hero section polish */
+.hero {
+	padding-block: 3rem;
+}
+
+.hero .tagline {
+	font-size: clamp(1.1rem, 2.5vw, 1.35rem) !important;
+	max-width: 38ch;
+	line-height: 1.5;
+}
+
+/* Card grid — consistent heights with hover */
+.card {
+	transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(108, 99, 255, 0.15);
+}
+
+/* Aside/callout polish */
+.starlight-aside {
+	border-radius: 0.5rem;
+}
+
+/* Steps component — tighter spacing */
+.sl-steps > li {
+	padding-bottom: 0.5rem;
+}
+
+/* Code blocks — slightly larger */
+pre {
+	font-size: 0.9rem;
+	border-radius: 0.5rem;
+}
+
+/* Badge styling */
+.sl-badge {
+	font-size: 0.75rem;
+	font-weight: 600;
+}
+
+/* Table polish */
+table {
+	font-size: 0.9rem;
+}
+
+th {
+	text-transform: uppercase;
+	font-size: 0.75rem;
+	letter-spacing: 0.05em;
+}

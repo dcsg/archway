@@ -3,6 +3,8 @@ title: Adding Capabilities
 description: How to add new capabilities to an existing project
 ---
 
+import { Aside, Steps } from '@astrojs/starlight/components';
+
 Archway capabilities are designed to be composable at scaffold time. This guide explains how to understand and manually add capabilities to an existing project.
 
 ## At Scaffold Time
@@ -15,11 +17,10 @@ archway new my-service \
   --cap platform,bootstrap,http-api,mysql,redis,docker
 ```
 
-Use the interactive wizard to explore available capabilities:
+Use the interactive wizard to explore all 38 capabilities with descriptions and smart suggestions:
 
 ```bash
 archway new my-service
-# The wizard shows all capabilities with descriptions
 ```
 
 ## Understanding Capability Structure
@@ -47,71 +48,75 @@ capabilities/mysql/
 
 ## Manually Adding a Capability
 
-If you want to add a capability to an existing project, you need to:
+If you want to add a capability to an existing project:
 
-### 1. Add the source files
+<Steps>
 
-Look at the capability's `files/` directory for what to add. For example, adding Redis means creating `adapter/redisrepo/connection.go`.
+1. **Add the source files**
 
-### 2. Update config
+   Look at the capability's `files/` directory for what to add. For example, adding Redis means creating `adapter/redisrepo/connection.go`.
 
-Add the capability's config struct and fields to `config/config.go`:
+2. **Update config**
 
-```go
-type RedisConfig struct {
-    Addr     string `yaml:"addr"`
-    Password string `yaml:"password"`
-    DB       int    `yaml:"db"`
-}
-```
+   Add the capability's config struct and fields to `config/config.go`:
 
-### 3. Wire into bootstrap
+   ```go
+   type RedisConfig struct {
+       Addr     string `yaml:"addr"`
+       Password string `yaml:"password"`
+       DB       int    `yaml:"db"`
+   }
+   ```
 
-Add the initialization and shutdown code to `internal/bootstrap/bootstrap.go`:
+3. **Wire into bootstrap**
 
-```go
-// In imports
-import "github.com/myorg/my-service/adapter/redisrepo"
+   Add the initialization and shutdown code to `internal/bootstrap/bootstrap.go`:
 
-// In Run(), after config loading
-redisClient, err := redisrepo.NewConnection(redisrepo.ConnectionConfig{
-    Addr:     cfg.Redis.Addr,
-    Password: cfg.Redis.Password,
-    DB:       cfg.Redis.DB,
-}, logger)
-if err != nil {
-    return fmt.Errorf("connect redis: %w", err)
-}
+   ```go
+   // In imports
+   import "github.com/myorg/my-service/adapter/redisrepo"
 
-// Register shutdown
-app.OnShutdown("redis", lifecycle.ShutdownFunc(func(ctx context.Context) error {
-    return redisClient.Close()
-}))
-```
+   // In Run(), after config loading
+   redisClient, err := redisrepo.NewConnection(redisrepo.ConnectionConfig{
+       Addr:     cfg.Redis.Addr,
+       Password: cfg.Redis.Password,
+       DB:       cfg.Redis.DB,
+   }, logger)
+   if err != nil {
+       return fmt.Errorf("connect redis: %w", err)
+   }
 
-### 4. Update archway.yaml
+   // Register shutdown
+   app.OnShutdown("redis", lifecycle.ShutdownFunc(func(ctx context.Context) error {
+       return redisClient.Close()
+   }))
+   ```
 
-Add the capability to your project's capability list:
+4. **Update archway.yaml**
 
-```yaml
-capabilities:
-  - platform
-  - bootstrap
-  - http-api
-  - mysql
-  - redis  # Added
-```
+   Add the capability to your project's capability list:
 
-### 5. Update config.yaml.example
+   ```yaml
+   capabilities:
+     - platform
+     - bootstrap
+     - http-api
+     - mysql
+     - redis  # Added
+   ```
 
-Add the new configuration section:
+5. **Update config.yaml.example**
 
-```yaml
-redis:
-  addr: localhost:6379
-  password: ""
-  db: 0
-```
+   Add the new configuration section:
+
+   ```yaml
+   redis:
+     addr: localhost:6379
+     password: ""
+     db: 0
+   ```
+
+</Steps>
 
 ## Checking Compatibility
 
@@ -129,3 +134,7 @@ requires:
 suggests: []
 conflicts: []
 ```
+
+<Aside type="tip">
+Use `archway check` after adding a capability to make sure your project still passes all architecture rules.
+</Aside>

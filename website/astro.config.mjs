@@ -14,6 +14,11 @@ export default defineConfig({
 			editLink: {
 				baseUrl: 'https://github.com/dcsg/archway/edit/main/website/',
 			},
+			customCss: ['./src/styles/custom.css'],
+			head: [
+				{ tag: 'meta', attrs: { property: 'og:image', content: '/archway/og-image.png' } },
+				{ tag: 'meta', attrs: { property: 'og:type', content: 'website' } },
+			],
 			sidebar: [
 				{
 					label: 'Getting Started',

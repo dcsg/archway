@@ -3,6 +3,8 @@ title: archway.yaml
 description: Project configuration reference
 ---
 
+import { Aside } from '@astrojs/starlight/components';
+
 Every Archway project has an `archway.yaml` at its root. This file defines the architecture rules that `archway check` enforces.
 
 ## Full Example
@@ -16,6 +18,8 @@ capabilities:
   - bootstrap
   - http-api
   - mysql
+  - migrations
+  - health
 
 components:
   - name: domain
@@ -46,7 +50,7 @@ rules:
 
 ### `language`
 
-The project's programming language. Currently only `go` is supported.
+The project's programming language. Currently `go` is supported, with `typescript` planned.
 
 ### `architecture`
 
@@ -54,7 +58,7 @@ The architecture pattern used to scaffold the project (`hexagonal`, `flat`).
 
 ### `capabilities`
 
-List of capabilities that were composed into the project. Informational — used for documentation and future `archway update` support.
+List of capabilities composed into the project. Used for documentation and future `archway update` support.
 
 ### `components`
 
@@ -66,7 +70,9 @@ The core of architecture enforcement. Each component defines:
 | `in` | string[] | Glob patterns matching this component's packages |
 | `may_depend_on` | string[] | Other components this one is allowed to import from |
 
+<Aside type="caution">
 **Dependency rules are enforced transitively.** If `service` may depend on `domain` and `ports`, but not `adapters`, then any import from a `service/` package into an `adapter/` package is a violation.
+</Aside>
 
 ### `rules`
 
@@ -88,3 +94,7 @@ The configuration is validated when running `archway check`:
 - Components cannot depend on themselves
 - Dependencies must reference existing components
 - `in` patterns must be valid globs
+
+<Aside type="tip">
+You can add `archway check` to your CI pipeline to catch dependency violations before merge.
+</Aside>

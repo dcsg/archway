@@ -1,9 +1,9 @@
 ---
 title: Capabilities Matrix
-description: Complete reference of everything Archway can compose
+description: All 38 capabilities at a glance
 ---
 
-import { Tabs, TabItem } from '@astrojs/starlight/components';
+import { Tabs, TabItem, Aside, Badge } from '@astrojs/starlight/components';
 
 ## Architectures
 
@@ -12,24 +12,27 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
 | **Hexagonal** | `domain/` → `port/` → `service/` → `adapter/` | Production APIs, microservices |
 | **Flat** | Single package | CLIs, scripts, prototypes |
 
-## All Capabilities
+## All 38 Capabilities
 
 <Tabs>
   <TabItem label="Transport">
 
-| Capability | What You Get | Key Patterns |
-|-----------|-------------|--------------|
-| `http-api` | Chi router, middleware chain, OpenAPI spec | RFC 7807 errors, pagination, structured responses |
-| `grpc` | Protocol Buffers, buf tooling, interceptors | Unary/stream handlers, reflection for dev |
-| `kafka-consumer` | Consumer group, handler pattern | Graceful shutdown, message routing |
+| Capability | What You Get | Suggests |
+|-----------|-------------|----------|
+| `http-api` | Chi router, middleware, RFC 7807 errors, OpenAPI | `rate-limiting`, `auth-jwt`, `cors`, `health` |
+| `grpc` | Protocol Buffers, buf tooling, interceptors | `docker` |
+| `kafka-consumer` | Consumer group, handler pattern, graceful drain | `docker` |
+| `websocket` | WebSocket upgrader, connection management | `http-api` |
 
   </TabItem>
   <TabItem label="Data">
 
-| Capability | What You Get | Key Patterns |
-|-----------|-------------|--------------|
-| `mysql` | Connection pooling, health checks | Repository per aggregate, config-driven DSN |
-| `redis` | Connection management | Repository pattern, config-driven connection |
+| Capability | What You Get | Suggests |
+|-----------|-------------|----------|
+| `mysql` | Connection pooling, health checks, repository scaffold | `migrations`, `docker` |
+| `postgres` <Badge text="New" variant="success" /> | Connection pooling, health checks, repository scaffold | `migrations`, `docker` |
+| `redis` | Connection management, repository pattern | `docker` |
+| `migrations` | Migration runner, up/down files, version tracking | — |
 
   </TabItem>
   <TabItem label="Security">
@@ -37,66 +40,84 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
 | Capability | What You Get | Requires |
 |-----------|-------------|----------|
 | `auth-jwt` | JWT middleware, claims extraction | `http-api` |
-| `rate-limiting` | Token bucket limiter | `http-api` |
+| `rate-limiting` | Token bucket limiter, per-endpoint config | `http-api` |
+| `cors` | CORS middleware, configurable origins | `http-api` |
+
+  </TabItem>
+  <TabItem label="Resilience">
+
+| Capability | What You Get |
+|-----------|-------------|
+| `circuit-breaker` | Open/half-open/closed states, configurable thresholds |
+| `retry` | Exponential backoff with jitter, max attempts |
+| `idempotency` | Idempotency keys, duplicate detection (requires `http-api`) |
+| `outbox` | Transactional outbox, relay worker, at-least-once delivery |
+
+  </TabItem>
+  <TabItem label="Patterns">
+
+| Capability | What You Get |
+|-----------|-------------|
+| `cqrs` | Command/query bus, handler interfaces |
+| `event-bus` | Event publisher, subscriber interface |
+| `repository` | Generic repository, common CRUD operations |
+| `worker` | Worker pool, job interface, graceful shutdown |
+| `scheduler` | Cron-like scheduler, job registration |
+
+  </TabItem>
+  <TabItem label="Observability">
+
+| Capability | What You Get |
+|-----------|-------------|
+| `health` | `/health` + `/ready` endpoints, component registration |
+| `observability` | OpenTelemetry traces + metrics, OTLP export |
+| `request-id` | Request ID middleware, log correlation |
+| `audit-log` | Structured audit events, configurable retention |
 
   </TabItem>
   <TabItem label="Infrastructure">
 
-| Capability | What You Get | Key Patterns |
-|-----------|-------------|--------------|
-| `platform` | Config, lifecycle, logging, OTel, PII redaction | Structured logging, OTLP export, graceful shutdown |
-| `bootstrap` | Thin `main.go` + wiring | Composition root, testable DI. Requires `platform` |
-
-  </TabItem>
-  <TabItem label="Quality">
-
 | Capability | What You Get |
 |-----------|-------------|
-| `testing` | Test helpers, example table-driven tests |
-| `linting` | `.golangci.yaml` with curated linter set |
-| `pre-commit` | Pre-commit hook configuration |
-
-  </TabItem>
-  <TabItem label="DevOps">
-
-| Capability | What You Get |
-|-----------|-------------|
+| `platform` | Config, lifecycle, slog logging, PII redaction, live reload |
+| `bootstrap` | Thin `main.go` + wiring (requires `platform`) |
 | `docker` | `docker-compose.yml`, `.env.example` |
 | `ci-github` | Issue templates, PR template |
+| `validation` | Input validation rules, error formatting |
+| `uuid` | UUID v4 generation, type-safe ID wrappers |
 
   </TabItem>
-  <TabItem label="Integration">
+  <TabItem label="Cross-cutting">
 
 | Capability | What You Get |
 |-----------|-------------|
-| `email-gateway` | Email adapter with provider abstraction |
-| `http-client` | Resilient HTTP client with retry and observability |
+| `i18n` <Badge text="New" variant="success" /> | Message catalogs (YAML), locale middleware, context propagation |
+| `email-gateway` | Email gateway interface, provider abstraction |
+| `mailpit` <Badge text="New" variant="success" /> | Local SMTP testing, Docker service (Web UI :8025) |
+| `http-client` | Resilient HTTP client with retry + observability |
+| `api-versioning` | Header/path-based API versioning |
+| `feature-flags` <Badge text="New" variant="success" /> | Feature flag provider, env + in-memory backends |
 
   </TabItem>
 </Tabs>
 
-## Dependency Rules
-
-Capabilities can declare relationships with each other:
-
-| Field | Meaning | Example |
-|-------|---------|---------|
-| `requires` | Must be selected together | `bootstrap` requires `platform` |
-| `suggests` | Recommended but optional | `http-api` suggests `rate-limiting` |
-| `conflicts` | Cannot coexist | *(none currently)* |
-
 ## Smart Suggestions
 
-When you select capabilities, Archway suggests what you might be missing:
+When you select capabilities, Archway suggests what you might be missing — **18 rules** with cross-referencing:
 
 | If you select... | Archway suggests... | Why |
 |-----------------|--------------------|----|
-| `http-api`, `grpc`, `kafka-consumer`, `mysql`, or `redis` | `platform` | Production services need config, logging, lifecycle |
+| Any transport capability | `platform` | Config, logging, lifecycle management |
 | `platform` | `bootstrap` | Testable wiring with thin main.go |
-| `http-api` | `rate-limiting`, `auth-jwt`, `testing` | API security and reliability |
-| `mysql`, `redis` | `docker` | Local dev with dependencies |
+| `http-api` | `rate-limiting`, `auth-jwt`, `cors`, `health` | API security and reliability |
+| `mysql`, `postgres` | `migrations`, `docker` | Schema management and local dev |
+| `mysql`, `redis`, `postgres` | `docker` | Local dev with dependencies |
 | Any transport | `ci-github`, `linting` | Code quality and CI/CD |
-| `http-api`, `grpc` | `docker` | Containerized deployment |
+| `email-gateway` | `i18n`, `mailpit` | Translations and local testing |
+
+<Aside type="caution">
+Archway also warns about **problematic combinations** — like using MySQL without migrations, or running an HTTP API without health checks. These are warnings, not blockers.
+</Aside>
 
 ## Design Patterns Included
 
@@ -107,45 +128,36 @@ When you select capabilities, Archway suggests what you might be missing:
 | **DI** | Composition Root / Bootstrap | `internal/bootstrap/bootstrap.go` |
 | **Error Handling** | RFC 7807 Problem Detail | `adapter/httphandler/response.go` |
 | **Error Handling** | Sentinel Errors | `domain/errors.go` |
-| **Error Handling** | Typed Validation Errors | `domain/errors.go` |
 | **Data** | Repository Pattern | `adapter/*/` implements `port/outbound.go` |
 | **Middleware** | Chain of Responsibility | HTTP/gRPC middleware stacks |
 | **Observability** | Structured Logging | `slog` with JSON/text handlers |
 | **Observability** | Distributed Tracing | OpenTelemetry auto-instrumentation |
 | **Observability** | PII Redaction | Log handler that strips sensitive fields |
 | **Lifecycle** | Graceful Shutdown | Ordered shutdown hooks with timeout |
-| **Config** | File-based Config | YAML config with env-specific overrides |
+| **Resilience** | Circuit Breaker | Open/half-open/closed state machine |
+| **Resilience** | Transactional Outbox | At-least-once event delivery |
 | **Security** | Token-based Auth | JWT middleware with claims extraction |
 | **Security** | Rate Limiting | Token bucket per-endpoint limiting |
-
-## Language & Framework Specifics
-
-| Aspect | Choice | Notes |
-|--------|--------|-------|
-| Language | Go 1.23+ | Modules, generics available |
-| HTTP Router | Chi v5 | Lightweight, stdlib-compatible |
-| Logging | `log/slog` | Stdlib structured logging |
-| Tracing | OpenTelemetry | OTLP/gRPC export |
-| Config | `gopkg.in/yaml.v3` | YAML file loading |
-| Lifecycle | `golang.org/x/sync/errgroup` | Concurrent component management |
-| MySQL Driver | `go-sql-driver/mysql` | Standard `database/sql` |
-| Protobuf | `buf` | Modern protobuf tooling |
 
 ## Example Compositions
 
 ```bash
 # Full production API
 archway new my-api --arch hexagonal \
-  --cap platform,bootstrap,http-api,mysql,auth-jwt,rate-limiting,docker,linting,ci-github
+  --cap platform,bootstrap,http-api,mysql,migrations,auth-jwt,rate-limiting,cors,health,docker,linting,ci-github
 
 # gRPC microservice
 archway new my-grpc --arch hexagonal \
   --cap platform,bootstrap,grpc,redis,docker,linting
 
-# Simple CLI tool
-archway new my-cli --arch flat
-
 # Event-driven worker
 archway new my-worker --arch hexagonal \
-  --cap platform,bootstrap,kafka-consumer,mysql,docker
+  --cap platform,bootstrap,kafka-consumer,mysql,migrations,docker
+
+# Resilient API with circuit breaker
+archway new my-api --arch hexagonal \
+  --cap platform,bootstrap,http-api,postgres,circuit-breaker,retry,health,docker
+
+# Simple CLI tool
+archway new my-cli --arch flat
 ```

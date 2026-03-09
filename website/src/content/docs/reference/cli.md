@@ -3,6 +3,8 @@ title: CLI Commands
 description: Complete CLI reference
 ---
 
+import { Aside } from '@astrojs/starlight/components';
+
 ## `archway new`
 
 Scaffold a new project.
@@ -27,7 +29,7 @@ archway new [name] [flags]
 ### Examples
 
 ```bash
-# Interactive wizard
+# Interactive wizard — guides you through every choice
 archway new my-service
 
 # Non-interactive with all options
@@ -58,11 +60,14 @@ archway check [flags]
 
 ### What It Checks
 
+Archway runs **11 AST-based detectors**:
+
 - **Dependency violations** — imports that cross component boundaries
 - **Required directories** — components with missing directories
 - **Forbidden directories** — directories that shouldn't exist
 - **Function complexity** — functions exceeding line/param/return limits
 - **Component coverage** — percentage of components with source files
+- **Anti-patterns** — common architectural violations
 
 ### Exit Codes
 
@@ -103,3 +108,19 @@ archway analyze [flags]
 |------|------------|---------|
 | `--path` | Path to project | `.` |
 | `--output` | Output format (`terminal`, `json`) | `terminal` |
+
+<Aside type="tip">
+Use `archway analyze` on existing projects to understand their structure before adding an `archway.yaml` for enforcement.
+</Aside>
+
+## `archway init`
+
+Initialize an `archway.yaml` for an existing project.
+
+```bash
+archway init [flags]
+```
+
+<Aside type="note">
+This is useful for adding architecture enforcement to projects that weren't scaffolded with Archway.
+</Aside>

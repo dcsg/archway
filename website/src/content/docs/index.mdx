@@ -1,12 +1,12 @@
 ---
 title: Archway
-description: Architecture-aware service composer
+description: Compose production-grade services from architecture patterns and 38 capabilities
 template: splash
 hero:
-  tagline: Stop writing boilerplate. Start composing production-grade services.
+  tagline: "Stop writing boilerplate. Compose production-grade Go services from architecture patterns and 38 modular capabilities."
   actions:
     - text: Get Started
-      link: /archway/getting-started/introduction/
+      link: /archway/getting-started/quickstart/
       icon: right-arrow
     - text: View on GitHub
       link: https://github.com/dcsg/archway
@@ -14,36 +14,40 @@ hero:
       icon: github
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components';
+import { Card, CardGrid, Aside } from '@astrojs/starlight/components';
 
 ## What is Archway?
 
-Archway scaffolds services by composing an **architecture** with **capabilities**. Pick your language, pick your structure, pick what your service needs, and Archway wires it all together — config, logging, graceful shutdown, middleware, database connections, and more.
+Archway scaffolds services by composing an **architecture** with **capabilities**. You pick the structure, pick what your service needs, and Archway wires it all together — config, logging, graceful shutdown, middleware, database connections, and more.
 
-> **Go** is fully supported today. **TypeScript/Node** is next. Archway's provider model makes adding any language straightforward.
+You own the code. No runtime dependency. No lock-in.
+
+```
+Architecture (hexagonal) + Capabilities (http-api, mysql, docker) = Your Service
+```
 
 <CardGrid>
-  <Card title="Pick an Architecture" icon="puzzle">
-    Choose **hexagonal** for production APIs or **flat** for simple CLIs. Your architecture defines the structure and dependency rules.
+  <Card title="38 Capabilities" icon="puzzle">
+    Transport, data stores, security, resilience, observability, i18n, feature flags, CQRS, and more. Each is self-contained and composable.
   </Card>
-  <Card title="Add Capabilities" icon="add-document">
-    HTTP API, gRPC, MySQL, Redis, JWT auth, rate limiting — add what you need. Each capability is self-contained and composable.
+  <Card title="Smart Wizard" icon="star">
+    The interactive wizard suggests what you're missing. Adding HTTP? You probably want rate limiting, CORS, and auth too.
   </Card>
-  <Card title="Smart Suggestions" icon="star">
-    Archway suggests what you might be missing. Adding an HTTP API? You probably want rate limiting and auth too.
+  <Card title="Architecture Enforcement" icon="approve-check-circle">
+    `archway check` validates dependency rules, detects anti-patterns, and measures compliance — with 11 AST-based detectors.
   </Card>
-  <Card title="Enforce at Build Time" icon="approve-check-circle">
-    `archway check` validates your project against its architecture rules — dependency violations, structure checks, and compliance metrics.
+  <Card title="Zero Lock-in" icon="open-book">
+    Generates plain Go code with no Archway runtime. Scaffold once, own the code forever.
   </Card>
 </CardGrid>
 
-## Quick Example
+## See It in Action
 
 ```bash
-# Interactive wizard
+# Interactive wizard — guides you through every choice
 archway new my-service
 
-# Or non-interactive
+# Or go non-interactive
 archway new my-service \
   --arch hexagonal \
   --cap platform,bootstrap,http-api,mysql,docker \
@@ -51,11 +55,37 @@ archway new my-service \
   --no-wizard
 ```
 
-This gives you a production-ready service with:
-- Hexagonal architecture (domain, ports, adapters)
+You get a production-ready service with:
+- Hexagonal architecture with strict dependency rules
 - REST API with Chi router and RFC 7807 errors
-- MySQL with connection pooling
-- Structured logging and OpenTelemetry
+- MySQL with connection pooling and health checks
+- Structured logging, OpenTelemetry, PII redaction
 - Bootstrap pattern for testable dependency wiring
 - Docker Compose for local development
-- `docs/PROJECT.md` with a full anatomy of your project
+- `archway.yaml` for architecture enforcement
+
+<Aside type="tip">
+Run `archway check` at any time to validate your project follows its own architecture rules. It catches dependency violations, missing directories, and function complexity issues.
+</Aside>
+
+## Capabilities at a Glance
+
+| Category | Capabilities |
+|----------|-------------|
+| **Transport** | HTTP API, gRPC, Kafka consumer, WebSocket |
+| **Data** | MySQL, PostgreSQL, Redis, migrations |
+| **Security** | JWT auth, rate limiting, CORS |
+| **Resilience** | Circuit breaker, retry, idempotency, outbox |
+| **Patterns** | CQRS, event bus, repository, worker, scheduler |
+| **Observability** | Health checks, OpenTelemetry, request ID, audit log |
+| **Infrastructure** | Docker, CI/GitHub, validation, UUID, feature flags |
+| **Cross-cutting** | i18n, email gateway, Mailpit, API versioning |
+
+<CardGrid>
+  <Card title="Read the docs" icon="right-arrow">
+    [How It Works](/archway/concepts/how-it-works/) — understand the composition model
+  </Card>
+  <Card title="Try it now" icon="rocket">
+    [Quick Start](/archway/getting-started/quickstart/) — create your first service in 2 minutes
+  </Card>
+</CardGrid>

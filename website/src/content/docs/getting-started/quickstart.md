@@ -3,83 +3,97 @@ title: Quick Start
 description: Create your first service in 2 minutes
 ---
 
-## Interactive Mode
+import { Aside, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
-The fastest way to get started — the wizard guides you through every choice:
+<Steps>
 
-```bash
-archway new my-service
-```
+1. **Scaffold your service**
 
-You'll be asked:
-1. **Service name** and Go module path
-2. **Architecture** — hexagonal or flat
-3. **Capabilities** — multi-select what your service needs
-4. **Smart suggestions** — accept or skip recommended additions
-5. **Confirm** and scaffold
+   The wizard guides you through every choice:
 
-## Non-Interactive Mode
+   ```bash
+   archway new my-service
+   ```
 
-Know what you want? Skip the wizard:
+   You'll pick:
+   - Service name and Go module path
+   - Architecture — hexagonal or flat
+   - Capabilities — multi-select what your service needs
+   - Smart suggestions — accept or skip recommended additions
 
-```bash
-archway new my-service \
-  --arch hexagonal \
-  --cap platform,bootstrap,http-api,mysql \
-  --module github.com/myorg/my-service \
-  --no-wizard
-```
+   <Aside type="tip">
+   Know exactly what you want? Skip the wizard:
 
-## What You Get
+   ```bash
+   archway new my-service \
+     --arch hexagonal \
+     --cap platform,bootstrap,http-api,mysql,docker \
+     --module github.com/myorg/my-service \
+     --no-wizard
+   ```
+   </Aside>
 
-After scaffolding, your project contains:
+2. **Explore what you got**
 
-```
-my-service/
-├── cmd/my-service/main.go        # Thin entry point
-├── internal/bootstrap/bootstrap.go # Dependency wiring
-├── domain/                        # Business logic (no dependencies)
-│   ├── errors.go                 # Typed domain errors
-│   └── clock.go                  # Testable time abstraction
-├── port/                          # Interfaces
-│   ├── inbound.go                # Use case interfaces
-│   └── outbound.go               # Repository interfaces
-├── service/                       # Use case implementations
-├── adapter/                       # External integrations
-│   ├── httphandler/              # REST API (Chi router)
-│   └── mysqlrepo/                # MySQL repositories
-├── config/                        # YAML config loading
-├── platform/                      # Cross-cutting concerns
-│   ├── lifecycle/                # Graceful shutdown
-│   └── observability/            # Logging, OTel, PII redaction
-├── docs/PROJECT.md               # What's in your project
-├── archway.yaml                  # Architecture rules
-└── go.mod
-```
+   ```
+   my-service/
+   ├── cmd/my-service/main.go          # Thin entry point (15 lines)
+   ├── internal/bootstrap/bootstrap.go # All dependency wiring
+   ├── domain/                         # Business logic (zero deps)
+   │   ├── errors.go                   # Typed domain errors
+   │   └── clock.go                    # Testable time abstraction
+   ├── port/                           # Interfaces
+   │   ├── inbound.go                  # Use case interfaces
+   │   └── outbound.go                 # Repository interfaces
+   ├── service/                        # Use case implementations
+   ├── adapter/                        # External integrations
+   │   ├── httphandler/                # REST API (Chi router)
+   │   └── mysqlrepo/                  # MySQL repositories
+   ├── config/                         # YAML config loading
+   ├── platform/                       # Logging, OTel, lifecycle
+   ├── docs/PROJECT.md                 # Full project anatomy
+   ├── archway.yaml                    # Architecture rules
+   └── go.mod
+   ```
 
-## Run It
+3. **Run it**
 
-```bash
-cd my-service
-go run ./cmd/my-service
-```
+   ```bash
+   cd my-service
+   go run ./cmd/my-service
+   ```
 
-## Check Architecture
+4. **Validate the architecture**
 
-Validate your project follows its own rules:
+   ```bash
+   archway check
+   ```
 
-```bash
-archway check
-```
+   This catches dependency violations, missing directories, function complexity issues, and anti-patterns — with **11 AST-based detectors**.
 
-This catches:
-- Dependency violations (domain importing adapter code)
-- Missing required directories
-- Function complexity issues
-- Component coverage gaps
+</Steps>
 
-## Next Steps
+## What's Next
 
-- [How It Works](/archway/concepts/how-it-works/) — understand the composition model
-- [Capabilities Matrix](/archway/reference/capabilities-matrix/) — see everything available
-- [Building a REST API](/archway/guides/rest-api/) — step-by-step guide
+<Tabs>
+  <TabItem label="Learn">
+
+  - [How It Works](/archway/concepts/how-it-works/) — understand the composition model
+  - [Architectures](/archway/concepts/architectures/) — hexagonal vs flat
+  - [Capabilities](/archway/concepts/capabilities/) — all 38 capabilities explained
+
+  </TabItem>
+  <TabItem label="Build">
+
+  - [Building a REST API](/archway/guides/rest-api/) — step-by-step guide
+  - [Adding Capabilities](/archway/guides/adding-capabilities/) — extend an existing project
+
+  </TabItem>
+  <TabItem label="Reference">
+
+  - [Capabilities Matrix](/archway/reference/capabilities-matrix/) — everything at a glance
+  - [CLI Commands](/archway/reference/cli/) — full flag reference
+  - [archway.yaml](/archway/reference/archway-yaml/) — configuration spec
+
+  </TabItem>
+</Tabs>

@@ -36,8 +36,8 @@
       {
         "hooks": [
           {
-            "type": "prompt",
-            "prompt": "This is a hook evaluation — not a user message. Scan the preceding assistant response for signals, then reply with JSON only.\n\nSignals to detect:\n(1) ARCHITECTURE — significant technical choice with trade-offs, hard constraint, or well-defined new feature → output one line before JSON: '💡 ADR candidate — run /keel:adr to capture it.' or '💡 Invariant candidate — run /keel:invariant to capture it.' or '💡 PRD candidate — run /keel:prd to capture it.'\n(2) DOC GAP — new HTTP route, env var, CLI flag, infra component, or breaking API change → '📄 Doc gap: {specific thing} — run /keel:docs to review.' Do NOT flag refactors, bug fixes, or formatting.\n(3) SECURITY — auth, authorization, payments, PII, crypto, or token management was central → '🔒 Security-sensitive — run /keel:audit before shipping.'\n\nReply format: if no signals → {\"ok\": true} alone. If signals → signal lines then {\"ok\": true} on the last line. Never {\"ok\": false}."
+            "type": "command",
+            "command": "$HOME/.keel/hooks/stop-hook.sh"
           }
         ]
       }

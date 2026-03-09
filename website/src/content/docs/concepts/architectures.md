@@ -1,7 +1,9 @@
 ---
 title: Architectures
-description: Available architecture patterns
+description: Available architecture patterns and when to use them
 ---
+
+import { Aside } from '@astrojs/starlight/components';
 
 An architecture defines your project's structure, dependency rules, and base files.
 
@@ -10,14 +12,14 @@ An architecture defines your project's structure, dependency rules, and base fil
 The hexagonal architecture separates your application into layers with strict dependency direction — inner layers never import from outer layers.
 
 ```
-domain/          → Pure business logic, no external dependencies
-port/            → Interfaces (inbound use cases, outbound repositories)
-service/         → Use case implementations
-adapter/         → External integrations (HTTP, DB, messaging)
-config/          → Configuration loading (via platform capability)
-platform/        → Cross-cutting concerns (via platform capability)
-internal/bootstrap/ → Dependency wiring (via bootstrap capability)
-cmd/<name>/      → Entry point
+domain/              → Pure business logic, no external dependencies
+port/                → Interfaces (inbound use cases, outbound repositories)
+service/             → Use case implementations
+adapter/             → External integrations (HTTP, DB, messaging)
+config/              → Configuration loading (via platform capability)
+platform/            → Cross-cutting concerns (via platform capability)
+internal/bootstrap/  → Dependency wiring (via bootstrap capability)
+cmd/<name>/          → Entry point
 ```
 
 ### Dependency Rules
@@ -29,7 +31,11 @@ cmd/<name>/      → Entry point
 | service | domain, ports |
 | adapters | ports, domain |
 
-These rules are enforced by `archway check`. If your adapter code imports from another adapter, or your domain imports from service — it's caught.
+These rules are enforced by `archway check`. If your adapter code imports from another adapter, or your domain imports from service — it's caught immediately.
+
+<Aside type="tip">
+Every scaffolded project includes an `archway.yaml` with these rules defined. You can customize the rules, add required directories, or set function complexity limits.
+</Aside>
 
 ### When to Use
 
@@ -54,4 +60,6 @@ go.mod
 - Quick prototypes
 - Projects that don't need layered architecture
 
+<Aside type="note">
 You can still add capabilities to a flat architecture (e.g., `http-api` for a simple API server), but the project won't have the layered structure of hexagonal.
+</Aside>

@@ -3,164 +3,166 @@ title: Building a REST API
 description: Step-by-step guide to scaffolding a production REST API
 ---
 
+import { Aside, Steps } from '@astrojs/starlight/components';
+
 This guide walks you through creating a production-ready REST API with Archway.
 
-## 1. Scaffold the Project
+<Steps>
 
-```bash
-archway new orders-api \
-  --arch hexagonal \
-  --cap platform,bootstrap,http-api,mysql,docker,linting \
-  --module github.com/myorg/orders-api \
-  --no-wizard
-```
+1. **Scaffold the project**
 
-This creates a project with:
-- Hexagonal architecture with strict dependency rules
-- REST API on Chi with middleware
-- MySQL database with connection pooling
-- Bootstrap pattern for clean wiring
-- Docker Compose for local MySQL
-- Linting configuration
+   ```bash
+   archway new orders-api \
+     --arch hexagonal \
+     --cap platform,bootstrap,http-api,mysql,migrations,health,docker,linting \
+     --module github.com/myorg/orders-api \
+     --no-wizard
+   ```
 
-## 2. Explore the Structure
+   This creates a project with hexagonal architecture, REST API on Chi, MySQL with migrations, health checks, Docker Compose, and linting.
 
-```
-orders-api/
-├── cmd/orders-api/main.go           # Thin entry point (15 lines)
-├── internal/bootstrap/bootstrap.go  # All dependency wiring
-├── domain/
-│   ├── errors.go                    # ErrNotFound, ValidationError, etc.
-│   └── clock.go                     # Testable time
-├── port/
-│   ├── inbound.go                   # Use case interfaces
-│   └── outbound.go                  # Repository interfaces
-├── service/service.go               # Business logic
-├── adapter/
-│   ├── httphandler/
-│   │   ├── router.go                # Chi routes
-│   │   ├── handler.go               # HTTP handlers
-│   │   ├── response.go              # RFC 7807 errors
-│   │   ├── middleware.go            # Custom middleware
-│   │   └── pagination.go           # Cursor pagination
-│   └── mysqlrepo/
-│       └── connection.go            # MySQL setup
-├── config/config.go                 # Config loading
-├── docs/PROJECT.md                  # Project anatomy
-└── archway.yaml                     # Architecture rules
-```
+2. **Explore the structure**
 
-## 3. Define Your Domain
+   ```
+   orders-api/
+   ├── cmd/orders-api/main.go           # Thin entry point (15 lines)
+   ├── internal/bootstrap/bootstrap.go  # All dependency wiring
+   ├── domain/
+   │   ├── errors.go                    # ErrNotFound, ValidationError, etc.
+   │   └── clock.go                     # Testable time
+   ├── port/
+   │   ├── inbound.go                   # Use case interfaces
+   │   └── outbound.go                  # Repository interfaces
+   ├── service/service.go               # Business logic
+   ├── adapter/
+   │   ├── httphandler/
+   │   │   ├── router.go                # Chi routes
+   │   │   ├── handler.go               # HTTP handlers
+   │   │   ├── response.go              # RFC 7807 errors
+   │   │   ├── middleware.go            # Custom middleware
+   │   │   └── pagination.go           # Cursor pagination
+   │   └── mysqlrepo/
+   │       └── connection.go            # MySQL setup
+   ├── config/config.go                 # Config loading
+   ├── docs/PROJECT.md                  # Project anatomy
+   └── archway.yaml                     # Architecture rules
+   ```
 
-Start in `domain/` — this is your innermost layer with zero dependencies.
+3. **Define your domain**
 
-```go
-// domain/order.go
-package domain
+   Start in `domain/` — this is your innermost layer with zero dependencies.
 
-import "time"
+   ```go
+   // domain/order.go
+   package domain
 
-type OrderID string
+   import "time"
 
-type Order struct {
-    ID        OrderID
-    Customer  string
-    Items     []OrderItem
-    Total     Money
-    CreatedAt time.Time
-}
+   type OrderID string
 
-type OrderItem struct {
-    Product  string
-    Quantity int
-    Price    Money
-}
+   type Order struct {
+       ID        OrderID
+       Customer  string
+       Items     []OrderItem
+       Total     Money
+       CreatedAt time.Time
+   }
 
-type Money struct {
-    Amount   int64  // cents
-    Currency string
-}
-```
+   type OrderItem struct {
+       Product  string
+       Quantity int
+       Price    Money
+   }
 
-## 4. Define Ports
+   type Money struct {
+       Amount   int64  // cents
+       Currency string
+   }
+   ```
 
-Ports are interfaces that connect your domain to the outside world.
+4. **Define ports**
 
-```go
-// port/inbound.go — what the service offers
-type OrderService interface {
-    CreateOrder(ctx context.Context, cmd CreateOrderCommand) (*domain.Order, error)
-    GetOrder(ctx context.Context, id domain.OrderID) (*domain.Order, error)
-}
+   Ports are interfaces that connect your domain to the outside world.
 
-// port/outbound.go — what the service needs
-type OrderRepository interface {
-    Save(ctx context.Context, order *domain.Order) error
-    FindByID(ctx context.Context, id domain.OrderID) (*domain.Order, error)
-}
-```
+   ```go
+   // port/inbound.go — what the service offers
+   type OrderService interface {
+       CreateOrder(ctx context.Context, cmd CreateOrderCommand) (*domain.Order, error)
+       GetOrder(ctx context.Context, id domain.OrderID) (*domain.Order, error)
+   }
 
-## 5. Implement the Service
+   // port/outbound.go — what the service needs
+   type OrderRepository interface {
+       Save(ctx context.Context, order *domain.Order) error
+       FindByID(ctx context.Context, id domain.OrderID) (*domain.Order, error)
+   }
+   ```
 
-```go
-// service/order.go
-func (s *Service) CreateOrder(ctx context.Context, cmd CreateOrderCommand) (*domain.Order, error) {
-    order := &domain.Order{
-        ID:        domain.OrderID(uuid.New().String()),
-        Customer:  cmd.Customer,
-        Items:     cmd.Items,
-        CreatedAt: s.clock.Now(),
-    }
-    if err := s.orderRepo.Save(ctx, order); err != nil {
-        return nil, fmt.Errorf("save order: %w", err)
-    }
-    return order, nil
-}
-```
+5. **Implement the service**
 
-## 6. Wire the HTTP Handler
+   ```go
+   // service/order.go
+   func (s *Service) CreateOrder(ctx context.Context, cmd CreateOrderCommand) (*domain.Order, error) {
+       order := &domain.Order{
+           ID:        domain.OrderID(uuid.New().String()),
+           Customer:  cmd.Customer,
+           Items:     cmd.Items,
+           CreatedAt: s.clock.Now(),
+       }
+       if err := s.orderRepo.Save(ctx, order); err != nil {
+           return nil, fmt.Errorf("save order: %w", err)
+       }
+       return order, nil
+   }
+   ```
 
-```go
-// adapter/httphandler/handler.go
-func (h *Handler) CreateOrder(w http.ResponseWriter, r *http.Request) {
-    var req CreateOrderRequest
-    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-        MapError(w, r, h.logger, &domain.ValidationError{
-            Field: "body", Message: "invalid JSON",
-        })
-        return
-    }
+6. **Wire the HTTP handler**
 
-    order, err := h.orderSvc.CreateOrder(r.Context(), toCommand(req))
-    if err != nil {
-        MapError(w, r, h.logger, err)
-        return
-    }
+   ```go
+   // adapter/httphandler/handler.go
+   func (h *Handler) CreateOrder(w http.ResponseWriter, r *http.Request) {
+       var req CreateOrderRequest
+       if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+           MapError(w, r, h.logger, &domain.ValidationError{
+               Field: "body", Message: "invalid JSON",
+           })
+           return
+       }
 
-    JSON(w, http.StatusCreated, toResponse(order))
-}
-```
+       order, err := h.orderSvc.CreateOrder(r.Context(), toCommand(req))
+       if err != nil {
+           MapError(w, r, h.logger, err)
+           return
+       }
 
-Errors automatically map to RFC 7807 responses:
-- `domain.ErrNotFound` → `404`
-- `domain.ValidationError` → `400` with field details
-- `domain.ErrConflict` → `409`
-- Unknown errors → `500` (logged, not exposed)
+       JSON(w, http.StatusCreated, toResponse(order))
+   }
+   ```
 
-## 7. Run It
+   <Aside type="tip">
+   Errors automatically map to RFC 7807 responses:
+   - `domain.ErrNotFound` → `404`
+   - `domain.ValidationError` → `400` with field details
+   - `domain.ErrConflict` → `409`
+   - Unknown errors → `500` (logged, not exposed to clients)
+   </Aside>
 
-```bash
-# Start MySQL
-docker compose up -d
+7. **Run it**
 
-# Run the service
-go run ./cmd/orders-api
-```
+   ```bash
+   # Start MySQL
+   docker compose up -d
 
-## 8. Validate Architecture
+   # Run the service
+   go run ./cmd/orders-api
+   ```
 
-```bash
-archway check
-```
+8. **Validate architecture**
 
-This ensures your domain code doesn't import from adapters, your service doesn't bypass ports, and all components follow the dependency rules.
+   ```bash
+   archway check
+   ```
+
+   This ensures your domain code doesn't import from adapters, your service doesn't bypass ports, and all components follow the dependency rules.
+
+</Steps>

@@ -1,146 +1,255 @@
 ---
 title: Capabilities
-description: Modular features you can compose into your service
+description: 38 modular features you can compose into your service
 ---
 
+import { Aside, Tabs, TabItem, Badge } from '@astrojs/starlight/components';
+
 Capabilities are self-contained modules that add specific functionality to your project. Each provides template files, configuration, and wiring code.
+
+Archway ships with **38 capabilities** across **8 categories**.
 
 ## Transport
 
 ### `http-api`
 REST API built on [Chi](https://github.com/go-chi/chi) v5.
 
-**What you get:**
-- Router with middleware chain (RequestID, RealIP, Recoverer, OTel)
-- RFC 7807 Problem Detail error responses
-- Pagination helpers
-- OpenAPI spec (`api/openapi.yaml`)
-- Handler patterns with request/response types
+**What you get:** Chi router, middleware chain (RequestID, RealIP, Recoverer, OTel), RFC 7807 Problem Detail error responses, pagination helpers, OpenAPI spec, handler patterns with request/response types.
+
+**Suggests:** `rate-limiting`, `auth-jwt`, `cors`, `health`, `request-id`
 
 ### `grpc`
 gRPC service with [buf](https://buf.build/) tooling.
 
-**What you get:**
-- Protocol Buffer definitions
-- Buf configuration (`buf.yaml`, `buf.gen.yaml`)
-- Server setup with interceptors
-- Reflection enabled for development
+**What you get:** Protocol Buffer definitions, buf configuration, server setup with interceptors, reflection for development.
 
 ### `kafka-consumer`
 Kafka consumer with handler pattern.
 
-**What you get:**
-- Consumer group setup
-- Message handler interface
-- Graceful shutdown with drain
-- Config for brokers, topics, consumer group
+**What you get:** Consumer group setup, message handler interface, graceful shutdown with drain, config for brokers/topics/consumer group.
+
+### `websocket`
+WebSocket server support.
+
+**What you get:** WebSocket upgrader, connection management, message handling patterns.
 
 ## Data
 
 ### `mysql`
 MySQL database with connection pooling.
 
-**What you get:**
-- Connection setup with pool configuration
-- Health checks
-- Repository pattern scaffold
-- Config for DSN, pool sizes, connection lifetime
+**What you get:** Connection setup with pool configuration, health checks, repository pattern scaffold.
+
+**Suggests:** `migrations`, `docker`
+
+### `postgres` <Badge text="New" variant="success" />
+PostgreSQL database with connection pooling.
+
+**What you get:** Connection setup, pool configuration, health checks, repository scaffold.
+
+**Suggests:** `migrations`, `docker`
 
 ### `redis`
 Redis connection and repository pattern.
 
-**What you get:**
-- Connection management
-- Repository pattern scaffold
-- Config for address, password, DB number
+**What you get:** Connection management, repository pattern scaffold.
+
+**Suggests:** `docker`
+
+### `migrations`
+Database migration support.
+
+**What you get:** Migration runner, up/down migration files, version tracking.
 
 ## Security
 
 ### `auth-jwt`
-JWT authentication middleware for HTTP APIs.
+JWT authentication middleware.
 
-**What you get:**
-- Middleware that validates JWT tokens
-- Claims extraction into request context
-- Route-level authentication
+**What you get:** Middleware that validates JWT tokens, claims extraction into request context, route-level authentication.
 
 **Requires:** `http-api`
 
 ### `rate-limiting`
-Token bucket rate limiter for HTTP endpoints.
+Token bucket rate limiter.
 
-**What you get:**
-- Rate limiting middleware
-- Per-endpoint configuration
+**What you get:** Rate limiting middleware, per-endpoint configuration.
 
 **Requires:** `http-api`
+
+### `cors`
+Cross-Origin Resource Sharing middleware.
+
+**What you get:** CORS middleware with configurable origins, methods, and headers.
+
+**Requires:** `http-api`
+
+## Resilience
+
+### `circuit-breaker`
+Circuit breaker pattern for external service calls.
+
+**What you get:** Circuit breaker wrapper with open/half-open/closed states, configurable thresholds and timeouts.
+
+### `retry`
+Retry logic with backoff strategies.
+
+**What you get:** Retry wrapper with exponential backoff, jitter, max attempts configuration.
+
+### `idempotency`
+Idempotency key support for safe retries.
+
+**What you get:** Idempotency middleware, key storage, duplicate detection.
+
+**Requires:** `http-api`
+
+### `outbox`
+Transactional outbox pattern for reliable event publishing.
+
+**What you get:** Outbox table, publisher, relay worker for at-least-once delivery.
+
+## Patterns
+
+### `cqrs`
+Command Query Responsibility Segregation.
+
+**What you get:** Command/query bus, handler interfaces, separation of read and write models.
+
+### `event-bus`
+In-process event bus for domain events.
+
+**What you get:** Event publisher, subscriber interface, async event dispatch.
+
+### `repository`
+Generic repository pattern.
+
+**What you get:** Repository interface, base implementation with common CRUD operations.
+
+### `worker`
+Background worker/job processing.
+
+**What you get:** Worker pool, job interface, graceful shutdown support.
+
+### `scheduler`
+Periodic task scheduling.
+
+**What you get:** Cron-like scheduler, job registration, configurable intervals.
+
+## Observability
+
+### `health`
+Health check endpoint.
+
+**What you get:** `/health` and `/ready` endpoints, component health registration.
+
+**Suggests:** `http-api`
+
+### `observability`
+OpenTelemetry traces and metrics.
+
+**What you get:** OTLP/gRPC export, trace propagation, metric collection.
+
+### `request-id`
+Request ID propagation.
+
+**What you get:** Request ID middleware, context propagation, log correlation.
+
+### `audit-log`
+Audit logging for sensitive operations.
+
+**What you get:** Audit log writer, structured audit events, configurable retention.
 
 ## Infrastructure
 
 ### `platform`
 The production infrastructure layer.
 
-**What you get:**
-- **Config** — YAML config loading with capability-aware struct fields
-- **Lifecycle** — `lifecycle.App` with ordered startup/shutdown of components
-- **Logging** — Structured logging via `slog` (JSON in prod, text in dev)
-- **OpenTelemetry** — Traces and metrics via OTLP/gRPC
-- **PII Redaction** — Log handler that redacts sensitive fields
-- **Live Reload** — `.air.toml` for hot reload during development
+**What you get:** YAML config loading with capability-aware struct fields, `lifecycle.App` with ordered startup/shutdown, structured logging via `slog`, PII redaction log handler, live reload with `.air.toml`.
 
 **Suggests:** `docker`, `bootstrap`
 
 ### `bootstrap`
-The bootstrap / composition root pattern.
+The composition root pattern.
 
-**What you get:**
-- Thin `main.go` that just calls `bootstrap.Run(version)`
-- `internal/bootstrap/bootstrap.go` with all dependency wiring
-- Partial injection points for other capabilities to wire into
-
-The bootstrap pattern keeps your `main.go` clean and makes dependency wiring testable.
+**What you get:** Thin `main.go` that calls `bootstrap.Run(version)`, `internal/bootstrap/bootstrap.go` with all dependency wiring, partial injection points.
 
 **Requires:** `platform`
 
-## Integration
+### `docker`
+Local development environment.
+
+**What you get:** `docker-compose.yml` with service dependencies, `.env.example` for environment variables.
+
+### `ci-github`
+GitHub workflow and templates.
+
+**What you get:** Issue templates (bug report, feature request), pull request template.
+
+### `validation`
+Input validation.
+
+**What you get:** Validation rules, error formatting, field-level validation messages.
+
+### `uuid`
+UUID generation.
+
+**What you get:** UUID v4 generation, type-safe ID wrappers.
+
+## Cross-cutting
+
+### `i18n` <Badge text="New" variant="success" />
+Internationalization support.
+
+**What you get:** Message catalog system (YAML per locale), locale middleware (Accept-Language + query param), context-based locale propagation, fallback to default locale.
+
+**Suggests:** `http-api`, `email-gateway`
 
 ### `email-gateway`
 Email sending with provider abstraction.
 
+**What you get:** Email gateway interface, provider implementation, template support.
+
+**Suggests:** `i18n`, `mailpit`
+
+### `mailpit` <Badge text="New" variant="success" />
+Local email testing with [Mailpit](https://mailpit.axe.email/).
+
+**What you get:** SMTP provider implementing email gateway interface, Docker Compose service (SMTP :1025, Web UI :8025).
+
+**Suggests:** `email-gateway`, `docker`
+
 ### `http-client`
-Resilient HTTP client with retry, timeout, and observability.
+Resilient HTTP client.
+
+**What you get:** HTTP client with retry, timeout, and observability built in.
+
+### `api-versioning`
+API versioning support.
+
+**What you get:** Version routing, header/path-based versioning strategies.
+
+### `feature-flags` <Badge text="New" variant="success" />
+Feature flag support.
+
+**What you get:** Feature flag provider interface, env-based and in-memory providers.
 
 ## Quality
 
 ### `testing`
 Test utilities and example tests.
 
-**What you get:**
-- Test helper functions
-- Example table-driven tests
-- Test fixtures pattern
+**What you get:** Test helper functions, example table-driven tests, test fixtures pattern.
 
 ### `linting`
 Go linting configuration.
 
-**What you get:**
-- `.golangci.yaml` with curated linter set (errcheck, govet, staticcheck, bodyclose, noctx, and more)
+**What you get:** `.golangci.yaml` with curated linter set (errcheck, govet, staticcheck, bodyclose, noctx, and more).
 
 ### `pre-commit`
-Pre-commit hook configuration for automated checks.
+Pre-commit hook configuration.
 
-## DevOps
+**What you get:** Pre-commit hooks for formatting, linting, and test execution.
 
-### `docker`
-Local development environment.
-
-**What you get:**
-- `docker-compose.yml` with service dependencies
-- `.env.example` for environment variables
-
-### `ci-github`
-GitHub workflow templates.
-
-**What you get:**
-- Issue templates (bug report, feature request)
-- Pull request template
+<Aside type="tip">
+Use the interactive wizard (`archway new my-service`) to explore capabilities with descriptions and smart suggestions. Or see the [Capabilities Matrix](/archway/reference/capabilities-matrix/) for a condensed overview.
+</Aside>
