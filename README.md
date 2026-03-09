@@ -1,6 +1,6 @@
 # Archway
 
-**Architecture-aware service composer.**
+**Architecture-aware service composer and enforcer.**
 
 Stop writing boilerplate. Compose production-grade services from an architecture and capabilities — config, logging, graceful shutdown, middleware, database connections, and more — wired correctly from day one.
 
@@ -34,7 +34,7 @@ Architecture  +  Capabilities  =  Your Service
 | Hexagonal | `domain/` → `port/` → `service/` → `adapter/` | Production APIs, microservices |
 | Flat | Single package | CLIs, scripts, prototypes |
 
-**Capabilities** are modular features you compose in — **36 and growing:**
+**Capabilities** are modular features you compose in — **38 and growing:**
 
 | Transport | Data | Resilience | Patterns |
 |-----------|------|------------|----------|
@@ -259,7 +259,7 @@ Archway is built on a **provider model** — each language is a self-contained p
 
 | Language | Status | Architectures | Capabilities |
 |----------|--------|---------------|-------------|
-| **Go** | Stable | hexagonal, flat | 36 capabilities |
+| **Go** | Stable | hexagonal, flat | 38 capabilities |
 | **TypeScript/Node** | Planned | — | — |
 
 Want to add a language? See the [provider guide](https://dcsg.github.io/archway/) in the docs.

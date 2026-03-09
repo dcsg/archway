@@ -2,7 +2,7 @@
 ## Keel
 
 ### Project
-"Terraform for Code Architecture" — Go CLI for scaffolding, analyzing, and governing code architecture.
+"Architecture-aware service composer and enforcer" — Go CLI for scaffolding, analyzing, and governing code architecture.
 
 ### Before Writing Code
 1. Read `docs/soul.md` for project context

@@ -2,7 +2,7 @@
 
 ## Identity
 
-"Terraform for Code Architecture" — a Go CLI for scaffolding, analyzing, and governing code architecture.
+"Architecture-aware service composer and enforcer" — a Go CLI for scaffolding, analyzing, and governing code architecture.
 
 ## Users
 

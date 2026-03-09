@@ -28,7 +28,7 @@ func newRootCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "archway",
-		Short: "Architecture-aware service composer",
+		Short: "Architecture-aware service composer and enforcer",
 		Long: `Archway composes production-ready services from architecture patterns and capability modules.
 
 Use archway new to scaffold projects, archway check to validate architecture rules, and archway analyze to understand existing codebases.`,

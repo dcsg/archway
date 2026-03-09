@@ -2,7 +2,7 @@
 
 ## What This Is
 
-Architecture-aware service composer. Scaffolds production-ready services by composing architecture patterns (hexagonal, flat) with capability modules (http-api, grpc, mysql, redis, kafka, etc.), generating both code AND architectural DNA (archway.yaml) that AI agents and `archway check` can enforce. Standalone CLI: `archway new`, `archway check`, `archway analyze`, `archway init`.
+Architecture-aware service composer and enforcer. Scaffolds production-ready services by composing architecture patterns (hexagonal, flat) with capability modules (http-api, grpc, mysql, redis, kafka, etc.), generating both code AND architectural DNA (archway.yaml) that AI agents and `archway check` can enforce. Standalone CLI: `archway new`, `archway check`, `archway analyze`, `archway init`.
 
 ## Stack
 
