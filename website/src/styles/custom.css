@@ -7,27 +7,14 @@
 	--sl-font-system: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 	--sl-text-h1: clamp(2rem, 4vw, 2.5rem);
 	--sl-text-h2: clamp(1.5rem, 3vw, 1.875rem);
-	/* Widen content area — shrink the right sidebar */
-	--sl-content-width: 55rem;
-	--sl-sidebar-width: 16rem;
+	/* Push content wider, right TOC gets whatever is left */
+	--sl-content-width: 70rem;
 }
 
 :root[data-theme='light'] {
 	--sl-color-accent-low: #ede9ff;
 	--sl-color-accent: #5b52d9;
 	--sl-color-accent-high: #2d2678;
-}
-
-/* ── Layout: wider content, narrower right TOC ── */
-
-/* Shrink the "On this page" right sidebar */
-.right-sidebar {
-	width: 14rem !important;
-}
-
-/* Let the main content column breathe */
-.main-pane {
-	max-width: 55rem;
 }
 
 /* ── Hero / splash page ── */
@@ -59,17 +46,6 @@
 	margin-top: 3rem;
 	padding-top: 2.5rem;
 	border-top: 1px solid var(--sl-color-gray-6);
-}
-
-/* ── Splash page: center content ── */
-
-[data-has-hero] .sl-markdown-content {
-	max-width: 65rem;
-	margin-inline: auto;
-}
-
-[data-has-hero] .main-pane {
-	max-width: 100%;
 }
 
 /* ── Cards ── */
