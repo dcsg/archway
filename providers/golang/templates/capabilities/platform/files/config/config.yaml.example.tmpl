@@ -1,6 +1,9 @@
 app:
   name: {{.ServiceName}}
   environment: development
+  {{- if .HasI18n}}
+  default_locale: en
+  {{- end}}
 
 logger:
   level: info
@@ -47,6 +50,13 @@ redis:
   addr: localhost:6379
   password: ""
   db: 0
+{{- end}}
+{{- if .HasMailpit}}
+
+mailpit:
+  host: localhost
+  port: 1025
+  from: "noreply@{{.ServiceName}}.local"
 {{- end}}
 {{- if .HasFeatureFlags}}
 

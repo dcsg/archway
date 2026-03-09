@@ -29,6 +29,9 @@ type Config struct {
 	{{- if .HasRedis}}
 	Redis  RedisConfig  `yaml:"redis"`
 	{{- end}}
+	{{- if .HasMailpit}}
+	Mailpit MailpitConfig `yaml:"mailpit"`
+	{{- end}}
 	{{- if .HasFeatureFlags}}
 	FeatureFlags FeatureFlagsConfig `yaml:"feature_flags"`
 	{{- end}}
@@ -39,6 +42,9 @@ type AppConfig struct {
 	Name        string `yaml:"name"`
 	Version     string `yaml:"version"`
 	Environment string `yaml:"environment"`
+	{{- if .HasI18n}}
+	DefaultLocale string `yaml:"default_locale"`
+	{{- end}}
 }
 
 // LoggerConfig holds logging configuration.
@@ -105,6 +111,15 @@ type RedisConfig struct {
 	Addr     string `yaml:"addr"`
 	Password string `yaml:"password"`
 	DB       int    `yaml:"db"`
+}
+{{- end}}
+{{- if .HasMailpit}}
+
+// MailpitConfig holds Mailpit SMTP configuration for local email testing.
+type MailpitConfig struct {
+	Host string `yaml:"host"`
+	Port int    `yaml:"port"`
+	From string `yaml:"from"`
 }
 {{- end}}
 {{- if .HasFeatureFlags}}

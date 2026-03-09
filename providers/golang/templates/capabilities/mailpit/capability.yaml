@@ -1,0 +1,7 @@
+name: mailpit
+description: "Local email testing with Mailpit (SMTP + Web UI)"
+requires: []
+suggests:
+  - email-gateway
+  - docker
+conflicts: []

@@ -1,0 +1,6 @@
+// Load i18n message catalogs.
+	i18nBundle, err := i18n.NewBundle("messages", cfg.App.DefaultLocale, logger)
+	if err != nil {
+		return fmt.Errorf("init i18n: %w", err)
+	}
+	logger.Info("i18n loaded", "locales", i18nBundle.Locales(), "default", i18nBundle.DefaultLocale())

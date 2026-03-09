@@ -1,0 +1,7 @@
+name: i18n
+description: "Internationalization with message catalogs and locale middleware"
+requires: []
+suggests:
+  - http-api
+  - email-gateway
+conflicts: []

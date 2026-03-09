@@ -1,0 +1,6 @@
+// Create Mailpit email provider (local dev).
+	mailpitProvider := mailpit.NewProvider(mailpit.ProviderConfig{
+		Host: cfg.Mailpit.Host,
+		Port: cfg.Mailpit.Port,
+		From: cfg.Mailpit.From,
+	}, logger)

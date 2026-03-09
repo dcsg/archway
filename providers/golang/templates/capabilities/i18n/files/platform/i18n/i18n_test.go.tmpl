@@ -1,0 +1,102 @@
+package i18n
+
+import (
+	"context"
+	"log/slog"
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func setupTestBundle(t *testing.T) *Bundle {
+	t.Helper()
+
+	dir := t.TempDir()
+
+	en := `
+greeting: "Hello, %s!"
+error.not_found: "Resource not found"
+error.validation: "Invalid input"
+`
+	pt := `
+greeting: "Olá, %s!"
+error.not_found: "Recurso não encontrado"
+error.validation: "Entrada inválida"
+`
+	if err := os.WriteFile(filepath.Join(dir, "en.yaml"), []byte(en), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "pt.yaml"), []byte(pt), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	b, err := NewBundle(dir, "en", slog.Default())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}
+
+func TestTranslate(t *testing.T) {
+	b := setupTestBundle(t)
+
+	tests := []struct {
+		name   string
+		locale string
+		key    string
+		args   []any
+		want   string
+	}{
+		{"english greeting", "en", "greeting", []any{"World"}, "Hello, World!"},
+		{"portuguese greeting", "pt", "greeting", []any{"Mundo"}, "Olá, Mundo!"},
+		{"fallback to default", "fr", "error.not_found", nil, "Resource not found"},
+		{"missing key returns key", "en", "unknown.key", nil, "unknown.key"},
+		{"no args", "en", "error.validation", nil, "Invalid input"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := b.Translate(tt.locale, tt.key, tt.args...)
+			if got != tt.want {
+				t.Errorf("Translate(%q, %q) = %q, want %q", tt.locale, tt.key, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestT_WithContext(t *testing.T) {
+	b := setupTestBundle(t)
+
+	ctx := WithLocale(context.Background(), "pt")
+	got := b.T(ctx, "error.not_found")
+	if got != "Recurso não encontrado" {
+		t.Errorf("T() = %q, want Portuguese translation", got)
+	}
+}
+
+func TestLocale_EmptyContext(t *testing.T) {
+	locale := Locale(context.Background())
+	if locale != "" {
+		t.Errorf("Locale() = %q, want empty string", locale)
+	}
+}
+
+func TestNewBundle_MissingDefaultLocale(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "fr.yaml"), []byte("key: value"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := NewBundle(dir, "en", slog.Default())
+	if err == nil {
+		t.Fatal("expected error for missing default locale")
+	}
+}
+
+func TestLocales(t *testing.T) {
+	b := setupTestBundle(t)
+	locales := b.Locales()
+	if len(locales) != 2 {
+		t.Errorf("Locales() = %v, want 2 locales", locales)
+	}
+}

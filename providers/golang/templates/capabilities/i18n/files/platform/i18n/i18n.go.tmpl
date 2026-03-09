@@ -1,0 +1,149 @@
+package i18n
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+
+	"gopkg.in/yaml.v3"
+)
+
+// localeKey is the context key for the current locale.
+type localeKey struct{}
+
+// Bundle holds message catalogs for all loaded locales.
+type Bundle struct {
+	catalogs      map[string]map[string]string // locale -> key -> message
+	defaultLocale string
+	logger        *slog.Logger
+	mu            sync.RWMutex
+}
+
+// NewBundle creates a new i18n bundle and loads message files from the given directory.
+// The directory should contain YAML files named by locale (e.g., en.yaml, pt.yaml).
+func NewBundle(messagesDir string, defaultLocale string, logger *slog.Logger) (*Bundle, error) {
+	b := &Bundle{
+		catalogs:      make(map[string]map[string]string),
+		defaultLocale: defaultLocale,
+		logger:        logger,
+	}
+
+	if err := b.loadMessages(messagesDir); err != nil {
+		return nil, fmt.Errorf("load i18n messages: %w", err)
+	}
+
+	return b, nil
+}
+
+// T translates a message key for the locale in the context.
+// Falls back to the default locale if the key is not found.
+func (b *Bundle) T(ctx context.Context, key string, args ...any) string {
+	locale := Locale(ctx)
+	return b.Translate(locale, key, args...)
+}
+
+// Translate returns the message for the given locale and key.
+// Falls back to the default locale, then returns the key itself if not found.
+func (b *Bundle) Translate(locale string, key string, args ...any) string {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	if msg := b.lookup(locale, key); msg != "" {
+		if len(args) > 0 {
+			return fmt.Sprintf(msg, args...)
+		}
+		return msg
+	}
+
+	// Fallback to default locale.
+	if locale != b.defaultLocale {
+		if msg := b.lookup(b.defaultLocale, key); msg != "" {
+			if len(args) > 0 {
+				return fmt.Sprintf(msg, args...)
+			}
+			return msg
+		}
+	}
+
+	// Return the key itself as last resort.
+	return key
+}
+
+// Locales returns the list of loaded locales.
+func (b *Bundle) Locales() []string {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	locales := make([]string, 0, len(b.catalogs))
+	for l := range b.catalogs {
+		locales = append(locales, l)
+	}
+	return locales
+}
+
+// DefaultLocale returns the configured default locale.
+func (b *Bundle) DefaultLocale() string {
+	return b.defaultLocale
+}
+
+// WithLocale returns a new context with the given locale.
+func WithLocale(ctx context.Context, locale string) context.Context {
+	return context.WithValue(ctx, localeKey{}, locale)
+}
+
+// Locale extracts the locale from the context. Returns empty string if not set.
+func Locale(ctx context.Context) string {
+	if v, ok := ctx.Value(localeKey{}).(string); ok {
+		return v
+	}
+	return ""
+}
+
+func (b *Bundle) lookup(locale string, key string) string {
+	catalog, ok := b.catalogs[locale]
+	if !ok {
+		return ""
+	}
+	return catalog[key]
+}
+
+func (b *Bundle) loadMessages(dir string) error {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return fmt.Errorf("read messages dir: %w", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		ext := filepath.Ext(entry.Name())
+		if ext != ".yaml" && ext != ".yml" {
+			continue
+		}
+
+		locale := strings.TrimSuffix(entry.Name(), ext)
+		data, err := os.ReadFile(filepath.Join(dir, entry.Name()))
+		if err != nil {
+			return fmt.Errorf("read messages file %s: %w", entry.Name(), err)
+		}
+
+		var messages map[string]string
+		if err := yaml.Unmarshal(data, &messages); err != nil {
+			return fmt.Errorf("parse messages file %s: %w", entry.Name(), err)
+		}
+
+		b.catalogs[locale] = messages
+		b.logger.Info("loaded i18n messages", "locale", locale, "keys", len(messages))
+	}
+
+	if _, ok := b.catalogs[b.defaultLocale]; !ok {
+		return fmt.Errorf("default locale %q not found in %s", b.defaultLocale, dir)
+	}
+
+	return nil
+}

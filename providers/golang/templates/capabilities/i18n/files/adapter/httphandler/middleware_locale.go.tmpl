@@ -1,0 +1,51 @@
+package httphandler
+
+import (
+	"net/http"
+	"strings"
+
+	"{{.ModulePath}}/platform/i18n"
+)
+
+// LocaleMiddleware extracts the locale from the request and sets it in the context.
+// Resolution order: ?lang= query param > Accept-Language header > default locale.
+func LocaleMiddleware(bundle *i18n.Bundle) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			locale := resolveLocale(r, bundle)
+			ctx := i18n.WithLocale(r.Context(), locale)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+func resolveLocale(r *http.Request, bundle *i18n.Bundle) string {
+	// 1. Query parameter.
+	if lang := r.URL.Query().Get("lang"); lang != "" {
+		return normalizeLocale(lang)
+	}
+
+	// 2. Accept-Language header (first match).
+	if accept := r.Header.Get("Accept-Language"); accept != "" {
+		for _, part := range strings.Split(accept, ",") {
+			tag := strings.TrimSpace(strings.SplitN(part, ";", 2)[0])
+			locale := normalizeLocale(tag)
+			if locale != "" {
+				return locale
+			}
+		}
+	}
+
+	// 3. Default.
+	return bundle.DefaultLocale()
+}
+
+func normalizeLocale(s string) string {
+	// Accept "en", "en-US", "pt-BR" — normalize to base language.
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return ""
+	}
+	parts := strings.SplitN(s, "-", 2)
+	return strings.ToLower(parts[0])
+}

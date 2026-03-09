@@ -1,0 +1,71 @@
+package mailpit
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"net/smtp"
+	"strings"
+)
+
+// Provider sends emails via Mailpit's SMTP interface.
+// Implements the email gateway Provider interface for local development.
+type Provider struct {
+	addr   string
+	from   string
+	logger *slog.Logger
+}
+
+// ProviderConfig holds Mailpit SMTP configuration.
+type ProviderConfig struct {
+	Host string // SMTP host (default: localhost)
+	Port int    // SMTP port (default: 1025)
+	From string // Default sender address
+}
+
+// NewProvider creates a Mailpit email provider.
+func NewProvider(cfg ProviderConfig, logger *slog.Logger) *Provider {
+	if cfg.Host == "" {
+		cfg.Host = "localhost"
+	}
+	if cfg.Port == 0 {
+		cfg.Port = 1025
+	}
+	if cfg.From == "" {
+		cfg.From = "noreply@localhost"
+	}
+
+	return &Provider{
+		addr:   fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
+		from:   cfg.From,
+		logger: logger,
+	}
+}
+
+// Send sends an email via Mailpit's SMTP server.
+func (p *Provider) Send(ctx context.Context, to string, subject string, htmlBody string) error {
+	msg := buildMessage(p.from, to, subject, htmlBody)
+
+	if err := smtp.SendMail(p.addr, nil, p.from, []string{to}, []byte(msg)); err != nil {
+		return fmt.Errorf("mailpit send to %s: %w", to, err)
+	}
+
+	p.logger.InfoContext(ctx, "email sent via mailpit",
+		"to", to,
+		"subject", subject,
+	)
+
+	return nil
+}
+
+func buildMessage(from string, to string, subject string, htmlBody string) string {
+	var sb strings.Builder
+	sb.WriteString("From: " + from + "\r\n")
+	sb.WriteString("To: " + to + "\r\n")
+	sb.WriteString("Subject: " + subject + "\r\n")
+	sb.WriteString("MIME-Version: 1.0\r\n")
+	sb.WriteString("Content-Type: text/html; charset=\"UTF-8\"\r\n")
+	sb.WriteString("\r\n")
+	sb.WriteString(htmlBody)
+	return sb.String()
+}
