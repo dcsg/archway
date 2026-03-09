@@ -7,6 +7,9 @@
 	--sl-font-system: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 	--sl-text-h1: clamp(2rem, 4vw, 2.5rem);
 	--sl-text-h2: clamp(1.5rem, 3vw, 1.875rem);
+	/* Widen content area — shrink the right sidebar */
+	--sl-content-width: 55rem;
+	--sl-sidebar-width: 16rem;
 }
 
 :root[data-theme='light'] {
@@ -15,18 +18,45 @@
 	--sl-color-accent-high: #2d2678;
 }
 
-/* Hero section polish */
+/* ── Layout: wider content, narrower right TOC ── */
+
+/* Shrink the "On this page" right sidebar */
+.right-sidebar {
+	width: 14rem !important;
+}
+
+/* Let the main content column breathe */
+.main-pane {
+	max-width: 55rem;
+}
+
+/* ── Hero / splash page ── */
+
 .hero {
-	padding-block: 3rem;
+	padding-block: 4rem 2rem;
+	text-align: center;
 }
 
 .hero .tagline {
-	font-size: clamp(1.1rem, 2.5vw, 1.35rem) !important;
-	max-width: 38ch;
-	line-height: 1.5;
+	font-size: clamp(1.15rem, 2.5vw, 1.4rem) !important;
+	max-width: 48ch;
+	margin-inline: auto;
+	line-height: 1.6;
+	color: var(--sl-color-gray-3);
+	opacity: 0.85;
+	font-weight: 400;
+	letter-spacing: -0.01em;
 }
 
-/* Card grid — consistent heights with hover */
+/* Stronger visual separation between hero tagline and body */
+[data-page-title="Archway"] .sl-markdown-content > h2:first-of-type {
+	margin-top: 3rem;
+	padding-top: 2rem;
+	border-top: 1px solid var(--sl-color-gray-6);
+}
+
+/* ── Cards ── */
+
 .card {
 	transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
@@ -35,29 +65,34 @@
 	box-shadow: 0 4px 12px rgba(108, 99, 255, 0.15);
 }
 
-/* Aside/callout polish */
+/* ── Asides / callouts ── */
+
 .starlight-aside {
 	border-radius: 0.5rem;
 }
 
-/* Steps component — tighter spacing */
+/* ── Steps ── */
+
 .sl-steps > li {
 	padding-bottom: 0.5rem;
 }
 
-/* Code blocks — slightly larger */
+/* ── Code blocks ── */
+
 pre {
 	font-size: 0.9rem;
 	border-radius: 0.5rem;
 }
 
-/* Badge styling */
+/* ── Badges ── */
+
 .sl-badge {
 	font-size: 0.75rem;
 	font-weight: 600;
 }
 
-/* Table polish */
+/* ── Tables ── */
+
 table {
 	font-size: 0.9rem;
 }
