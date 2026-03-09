@@ -64,6 +64,11 @@ func (r *Renderer) RenderTemplate(templateDir, outputDir string, vars map[string
 		}
 	}
 
+	absOutputDir, err := filepath.Abs(outputDir)
+	if err != nil {
+		return nil, fmt.Errorf("resolve output dir: %w", err)
+	}
+
 	filesRoot := path.Join(templateDir, "files")
 	result := &RenderResult{}
 	if err := fs.WalkDir(r.fs, filesRoot, func(current string, d fs.DirEntry, walkErr error) error {
@@ -80,6 +85,10 @@ func (r *Renderer) RenderTemplate(templateDir, outputDir string, vars map[string
 			return fmt.Errorf("render path %q: %w", rel, err)
 		}
 		dstPath := filepath.Join(outputDir, filepath.FromSlash(renderedRel))
+
+		if err := validatePathWithinDir(dstPath, absOutputDir); err != nil {
+			return err
+		}
 
 		if d.IsDir() {
 			return os.MkdirAll(dstPath, 0o755)
@@ -169,6 +178,11 @@ func (r *Renderer) renderFilesDir(filesRoot, outputDir string, vars map[string]i
 		return result, nil // no files directory
 	}
 
+	absOutputDir, err := filepath.Abs(outputDir)
+	if err != nil {
+		return nil, fmt.Errorf("resolve output dir: %w", err)
+	}
+
 	if err := fs.WalkDir(r.fs, filesRoot, func(current string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -183,6 +197,10 @@ func (r *Renderer) renderFilesDir(filesRoot, outputDir string, vars map[string]i
 			return fmt.Errorf("render path %q: %w", rel, err)
 		}
 		dstPath := filepath.Join(outputDir, filepath.FromSlash(renderedRel))
+
+		if err := validatePathWithinDir(dstPath, absOutputDir); err != nil {
+			return err
+		}
 
 		if d.IsDir() {
 			return os.MkdirAll(dstPath, 0o755)
@@ -256,6 +274,20 @@ func executeTemplate(content string, vars map[string]interface{}) ([]byte, error
 		return nil, err
 	}
 	return io.ReadAll(buf)
+}
+
+// validatePathWithinDir ensures the resolved path stays within the output directory.
+// Prevents path traversal via template variables containing "../".
+func validatePathWithinDir(target string, absDir string) error {
+	absTarget, err := filepath.Abs(target)
+	if err != nil {
+		return fmt.Errorf("resolve path: %w", err)
+	}
+	// Ensure the target is within the directory (equal to or a child of absDir).
+	if !strings.HasPrefix(absTarget, absDir+string(filepath.Separator)) && absTarget != absDir {
+		return fmt.Errorf("path traversal detected: %q escapes output directory", target)
+	}
+	return nil
 }
 
 func renderPath(rel string, vars map[string]interface{}) (string, error) {

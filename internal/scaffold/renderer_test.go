@@ -75,4 +75,47 @@ func TestRendererCopiesPlainFiles(t *testing.T) {
 	}
 }
 
+func TestValidatePathWithinDir(t *testing.T) {
+	base := t.TempDir()
+
+	tests := []struct {
+		name    string
+		target  string
+		wantErr bool
+	}{
+		{"child path ok", filepath.Join(base, "sub", "file.go"), false},
+		{"exact dir ok", base, false},
+		{"traversal blocked", filepath.Join(base, "..", "etc", "passwd"), true},
+		{"double traversal blocked", filepath.Join(base, "a", "..", "..", "evil"), true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validatePathWithinDir(tt.target, base)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validatePathWithinDir() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestRenderPath_TraversalBlocked(t *testing.T) {
+	// Verify that renderPath with a malicious variable produces a path
+	// that would be caught by validatePathWithinDir.
+	vars := map[string]interface{}{
+		"ServiceName": "../../etc",
+		"ModulePath":  "github.com/acme/orders",
+	}
+	rendered, err := renderPath("cmd/__ServiceName__/main.go", vars)
+	if err != nil {
+		t.Fatalf("renderPath() error = %v", err)
+	}
+	// The rendered path should contain ".." which validatePathWithinDir would catch.
+	outDir := t.TempDir()
+	absOut, _ := filepath.Abs(outDir)
+	dstPath := filepath.Join(outDir, filepath.FromSlash(rendered))
+	if err := validatePathWithinDir(dstPath, absOut); err == nil {
+		t.Fatal("expected path traversal to be blocked")
+	}
+}
+
 var _ fs.FS
