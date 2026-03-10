@@ -58,9 +58,3 @@ mailpit:
   port: 1025
   from: "noreply@{{.ServiceName}}.local"
 {{- end}}
-{{- if .HasFeatureFlags}}
-
-feature_flags:
-  provider: env        # "memory" or "env"
-  env_prefix: "FF_"    # prefix for environment variable flag names
-{{- end}}

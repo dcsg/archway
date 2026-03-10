@@ -32,10 +32,8 @@ type Config struct {
 	{{- if .HasMailpit}}
 	Mailpit MailpitConfig `yaml:"mailpit"`
 	{{- end}}
-	{{- if .HasFeatureFlags}}
-	FeatureFlags FeatureFlagsConfig `yaml:"feature_flags"`
-	{{- end}}
 }
+
 
 // AppConfig holds general application configuration.
 type AppConfig struct {
@@ -120,14 +118,6 @@ type MailpitConfig struct {
 	Host string `yaml:"host"`
 	Port int    `yaml:"port"`
 	From string `yaml:"from"`
-}
-{{- end}}
-{{- if .HasFeatureFlags}}
-
-// FeatureFlagsConfig holds feature flag provider configuration.
-type FeatureFlagsConfig struct {
-	Provider  string `yaml:"provider"`   // "memory" or "env"
-	EnvPrefix string `yaml:"env_prefix"` // prefix for env var provider (default: "FF_")
 }
 {{- end}}
 
