@@ -1,0 +1,5 @@
+id: no-scope
+engine: grep
+description: "Missing scope"
+severity: error
+pattern: "something"
