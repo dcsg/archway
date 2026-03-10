@@ -6,31 +6,34 @@ Architecture-aware service composer and enforcer.
 
 ## Vision
 
-Code architecture becomes a first-class artifact — declared, composed, and enforced. The gap between intended architecture and actual architecture is zero. Architecture drift becomes as unacceptable as infrastructure drift.
+Code architecture becomes a first-class artifact — declared, composed, and enforced. The gap between intended architecture and actual architecture is zero. Architecture drift becomes as unacceptable as infrastructure drift. AI agents write architecturally correct code from the first line.
 
 ## Mission
 
-Give developers the tools to declare their architecture, compose services from proven patterns, and enforce structural integrity — from first commit to production, across every service.
+Give developers the tools to declare their architecture, compose services from proven patterns, guide AI agents with architectural context, and enforce structural integrity — from first commit to production, across every service.
 
 ## Core Beliefs
 
 1. **Architecture is code** — declared in config, versioned in git, enforced in CI
 2. **Composition beats generation** — modular capabilities snap together; the rules travel with the code
 3. **The gap should be zero** — if you can describe your architecture, your tooling should enforce it
+4. **AI agents need architectural context** — prevention beats correction; feed the agent before it writes
+5. **Tool-agnostic, universally enforced** — Archway works with every AI coding tool. Rules go in `.cursorrules`, `AGENTS.md`, `.github/copilot-instructions.md` — wherever your tool reads. Pre-commit enforcement works regardless of which AI wrote the code. Claude Code gets real-time enforcement via hooks as a bonus.
 
 ## What This Is
 
-Architecture-aware service composer and enforcer. Scaffolds production-ready services by composing architecture patterns (hexagonal, flat) with capability modules (http-api, grpc, mysql, redis, kafka, etc.), generating both code AND architectural DNA (archway.yaml) that AI agents and `archway check` can enforce. Standalone CLI: `archway new`, `archway check`, `archway analyze`, `archway init`.
+Architecture-aware service composer and enforcer. Scaffolds production-ready services by composing architecture patterns (hexagonal, flat) with capability modules (http-api, grpc, mysql, redis, kafka, etc.), generating both code AND architectural DNA (archway.yaml). Proactively feeds AI agents with architectural context via `archway guide`, so agents write correct code from the first line. Standalone CLI: `archway guide`, `archway new`, `archway check`, `archway analyze`, `archway init`.
 
 ## Product Pillars
 
 | Belief | Pillar | CLI command |
 |---|---|---|
+| AI agents need context | **Guide** | `archway guide` |
 | Composition beats generation | **Compose** | `archway new` |
 | Architecture is code | **Analyze** | `archway analyze` |
 | The gap should be zero | **Enforce** | `archway check` |
 
-Future: `archway plan`, `archway apply`, `archway diff` complete the lifecycle.
+Guide (prevention) + Enforce (detection) = the gap is zero. Future: `archway plan`, `archway diff` complete the lifecycle.
 
 ## Stack
 
@@ -52,6 +55,7 @@ Active development. v1 CLI ships with composition-based scaffolding (`archway ne
 - Go developers working on new and existing projects
 - Tech leads enforcing architecture conventions
 - Teams adopting hexagonal/clean/DDD patterns
+- AI-powered development workflows (Claude Code, Cursor, Copilot, Windsurf)
 
 ## Critical Rules
 

@@ -18,6 +18,15 @@ archway new my-service \
 
 ---
 
+## The Four Pillars
+
+| Pillar | Command | What It Does |
+|--------|---------|-------------|
+| **Guide** | `archway guide` | Feeds AI agents your architecture context — prevention beats correction |
+| **Compose** | `archway new` | Scaffolds production-ready services from architecture + capabilities |
+| **Analyze** | `archway analyze` | Detects architecture patterns in existing codebases |
+| **Enforce** | `archway check` | Validates code against architecture rules in CI |
+
 ## How It Works
 
 Archway composes your project from two building blocks:
@@ -215,9 +224,24 @@ archway check              # Validate architecture
 
 | Command | Description |
 |---------|-------------|
+| `archway guide` | Generate architecture context for AI agents |
 | `archway new [name]` | Scaffold a new project (interactive or with flags) |
 | `archway check` | Validate project against architecture rules |
 | `archway analyze` | Analyze an existing project's architecture |
+
+## AI-Native
+
+Archway is built for AI-powered development workflows. The `archway guide` command generates architecture context that AI agents (Claude Code, Cursor, Copilot, Windsurf) consume before writing code — so they produce architecturally correct code from the first line.
+
+```bash
+# Generate context for Claude Code
+archway guide --target claude
+
+# Default: outputs context for any AI agent
+archway guide
+```
+
+Prevention beats correction. Instead of fixing architecture violations after the fact, feed your AI agent the rules upfront.
 
 ## Design Patterns Included (Go)
 

@@ -1,6 +1,6 @@
 # Capabilities Matrix
 
-> Everything Archway can compose into your Go service — **36 capabilities**.
+> Everything Archway can compose into your Go service — **38 capabilities**.
 
 Archway scaffolds projects by combining an **architecture** with **capabilities**. Pick what you need — Archway wires it all together.
 
@@ -88,6 +88,13 @@ Archway scaffolds projects by combining an **architecture** with **capabilities*
 | `linting` | `.golangci.yaml` config | Curated linter set for production Go |
 | `pre-commit` | Pre-commit hook config | Automated checks before every commit |
 | `ci-github` | Issue/PR templates | Standardized GitHub workflows |
+
+### Cross-cutting
+
+| Capability | What You Get | Key Patterns |
+|-----------|-------------|--------------|
+| `i18n` | Message catalogs (YAML), locale middleware | Context propagation, fallback locale |
+| `mailpit` | Local SMTP testing, Docker service | Web UI on :8025, docker-compose integration |
 
 ## Dependency & Suggestion Rules
 

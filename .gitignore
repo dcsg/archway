@@ -13,6 +13,9 @@ testservice/
 .vscode/
 *.swp
 
+# Internal docs (not public)
+docs/internal/
+
 # OS
 .DS_Store
 
