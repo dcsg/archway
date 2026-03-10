@@ -1,0 +1,7 @@
+name: sqlite
+description: "SQLite database with modernc.org/sqlite (pure Go, no CGO)"
+requires: []
+suggests:
+  - migrations
+  - config
+conflicts: []

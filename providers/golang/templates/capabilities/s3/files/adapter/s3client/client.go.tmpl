@@ -1,0 +1,79 @@
+package s3client
+
+import (
+	"context"
+	"fmt"
+	"io"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+)
+
+// S3Client wraps the AWS S3 client with bucket-scoped operations.
+type S3Client struct {
+	client *s3.Client
+	cfg    S3Config
+}
+
+// NewS3Client creates an S3Client using the ambient AWS configuration.
+func NewS3Client(ctx context.Context, cfg S3Config) (*S3Client, error) {
+	loadOpts := []func(*awsconfig.LoadOptions) error{
+		awsconfig.WithRegion(cfg.Region),
+	}
+
+	awsCfg, err := awsconfig.LoadDefaultConfig(ctx, loadOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("load aws config: %w", err)
+	}
+
+	var s3Opts []func(*s3.Options)
+	if cfg.Endpoint != "" {
+		s3Opts = append(s3Opts, func(o *s3.Options) {
+			o.BaseEndpoint = aws.String(cfg.Endpoint)
+			o.UsePathStyle = true
+		})
+	}
+
+	return &S3Client{
+		client: s3.NewFromConfig(awsCfg, s3Opts...),
+		cfg:    cfg,
+	}, nil
+}
+
+// Upload uploads the content from r to S3 under the given key.
+func (c *S3Client) Upload(ctx context.Context, key string, body io.Reader) error {
+	_, err := c.client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket: aws.String(c.cfg.Bucket),
+		Key:    aws.String(key),
+		Body:   body,
+	})
+	if err != nil {
+		return fmt.Errorf("upload object %q: %w", key, err)
+	}
+	return nil
+}
+
+// Download retrieves the object at key and returns its body. The caller must close it.
+func (c *S3Client) Download(ctx context.Context, key string) (io.ReadCloser, error) {
+	result, err := c.client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(c.cfg.Bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("download object %q: %w", key, err)
+	}
+	return result.Body, nil
+}
+
+// Delete removes the object at key from the bucket.
+func (c *S3Client) Delete(ctx context.Context, key string) error {
+	_, err := c.client.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: aws.String(c.cfg.Bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return fmt.Errorf("delete object %q: %w", key, err)
+	}
+	return nil
+}

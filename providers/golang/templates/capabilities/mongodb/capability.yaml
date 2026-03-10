@@ -1,0 +1,9 @@
+name: mongodb
+description: "MongoDB connection and repository pattern using official Go driver"
+requires: []
+suggests:
+  - docker
+  - health
+  - observability
+  - config
+conflicts: []

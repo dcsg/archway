@@ -1,0 +1,18 @@
+package dynamorepo
+
+import (
+	"context"
+	"fmt"
+
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+)
+
+// NewDynamoDBClient creates a DynamoDB client using the ambient AWS configuration.
+func NewDynamoDBClient(ctx context.Context, region string) (*dynamodb.Client, error) {
+	cfg, err := awsconfig.LoadDefaultConfig(ctx, awsconfig.WithRegion(region))
+	if err != nil {
+		return nil, fmt.Errorf("load aws config: %w", err)
+	}
+	return dynamodb.NewFromConfig(cfg), nil
+}

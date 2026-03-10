@@ -1,0 +1,9 @@
+name: graphql
+description: "GraphQL API with gqlgen code generation"
+requires: []
+suggests:
+  - auth-jwt
+  - observability
+  - health
+  - docker
+conflicts: []

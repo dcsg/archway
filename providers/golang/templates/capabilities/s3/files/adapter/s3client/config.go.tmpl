@@ -1,0 +1,8 @@
+package s3client
+
+// S3Config holds configuration for the S3 client.
+type S3Config struct {
+	Bucket   string
+	Region   string
+	Endpoint string // optional; set for S3-compatible services (e.g. MinIO)
+}

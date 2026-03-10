@@ -1,0 +1,8 @@
+name: sse
+description: "Server-Sent Events for real-time streaming"
+requires:
+  - http-api
+suggests:
+  - health
+  - observability
+conflicts: []

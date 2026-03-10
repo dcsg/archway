@@ -1,0 +1,63 @@
+package httphandler
+
+import (
+	"fmt"
+	"net/http"
+	"time"
+)
+
+// EventWriter wraps an http.ResponseWriter to send Server-Sent Events.
+type EventWriter struct {
+	w       http.ResponseWriter
+	flusher http.Flusher
+}
+
+// NewEventWriter creates an EventWriter from the given ResponseWriter.
+// It returns an error if the writer does not support flushing.
+func NewEventWriter(w http.ResponseWriter) (*EventWriter, error) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		return nil, fmt.Errorf("response writer does not support flushing")
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	return &EventWriter{w: w, flusher: flusher}, nil
+}
+
+// Send writes a named SSE event with the given data and flushes immediately.
+func (ew *EventWriter) Send(event, data string) error {
+	if _, err := fmt.Fprintf(ew.w, "event: %s\ndata: %s\n\n", event, data); err != nil {
+		return fmt.Errorf("write sse event: %w", err)
+	}
+	ew.flusher.Flush()
+	return nil
+}
+
+// SSEHandler streams server-sent events to connected clients.
+func SSEHandler(w http.ResponseWriter, r *http.Request) {
+	ew, err := NewEventWriter(w)
+	if err != nil {
+		http.Error(w, "streaming not supported", http.StatusInternalServerError)
+		return
+	}
+
+	ctx := r.Context()
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			// Send a keep-alive comment to prevent connection timeout.
+			if _, err := fmt.Fprintf(w, ": keep-alive\n\n"); err != nil {
+				return
+			}
+			ew.flusher.Flush()
+		}
+	}
+}

@@ -1,0 +1,25 @@
+package sqliterepo
+
+import (
+	"database/sql"
+	"fmt"
+
+	_ "modernc.org/sqlite"
+)
+
+// Open opens a SQLite database at the given path and verifies the connection.
+func Open(path string) (*sql.DB, error) {
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		return nil, fmt.Errorf("open sqlite database: %w", err)
+	}
+
+	if err := db.Ping(); err != nil {
+		return nil, fmt.Errorf("ping sqlite database: %w", err)
+	}
+
+	// SQLite does not support concurrent writes; serialize them.
+	db.SetMaxOpenConns(1)
+
+	return db, nil
+}
