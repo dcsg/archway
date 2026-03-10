@@ -19,14 +19,12 @@ linters:
     - bodyclose
     - noctx
     - prealloc
-
-issues:
-  exclude-use-default: false
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - errcheck
-        - gocritic
-    - text: "strings.Title is deprecated"
-      linters:
-        - staticcheck
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - errcheck
+          - gocritic
+      - text: "strings.Title is deprecated"
+        linters:
+          - staticcheck
