@@ -238,11 +238,12 @@ func printViolationSection(title string, violations []checker.Violation) {
 		return
 	}
 	for _, v := range violations {
-		if v.File != "" && v.Line > 0 {
+		switch {
+		case v.File != "" && v.Line > 0:
 			fmt.Printf("  ✗ %s:%d %s\n", v.File, v.Line, v.Message)
-		} else if v.File != "" {
+		case v.File != "":
 			fmt.Printf("  ✗ %s — %s\n", v.File, v.Message)
-		} else {
+		default:
 			fmt.Printf("  ✗ %s\n", v.Message)
 		}
 	}
@@ -259,11 +260,12 @@ func printAntiPatternSection(title string, violations []checker.AntiPattern) {
 		if v.Severity == "error" {
 			sev = "✗"
 		}
-		if v.File != "" && v.Line > 0 {
+		switch {
+		case v.File != "" && v.Line > 0:
 			fmt.Printf("  %s [%s] %s:%d %s\n", sev, v.Name, v.File, v.Line, v.Message)
-		} else if v.File != "" {
+		case v.File != "":
 			fmt.Printf("  %s [%s] %s — %s\n", sev, v.Name, v.File, v.Message)
-		} else {
+		default:
 			fmt.Printf("  %s [%s] %s\n", sev, v.Name, v.Message)
 		}
 	}
@@ -271,10 +273,10 @@ func printAntiPatternSection(title string, violations []checker.AntiPattern) {
 
 func printCombinedJSON(checkerResult *checker.CheckResult, ruleResult *rules.RunResult, hasErrors bool) error {
 	type jsonOutput struct {
-		Result         string                `json:"result"`
-		Violations     []checker.Violation   `json:"violations,omitempty"`
-		AntiPatterns   []checker.AntiPattern `json:"anti_patterns,omitempty"`
-		ProxyRules     *rules.RunResult      `json:"proxy_rules,omitempty"`
+		Result       string                `json:"result"`
+		Violations   []checker.Violation   `json:"violations,omitempty"`
+		AntiPatterns []checker.AntiPattern `json:"anti_patterns,omitempty"`
+		ProxyRules   *rules.RunResult      `json:"proxy_rules,omitempty"`
 	}
 
 	status := "pass"
