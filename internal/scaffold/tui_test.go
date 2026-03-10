@@ -75,13 +75,13 @@ func TestBuildWizardGroupsSkipsWhenFalse(t *testing.T) {
 
 func TestComputeDerived(t *testing.T) {
 	tests := []struct {
-		name           string
-		caps           []string
-		wantHasAPI     bool
-		wantHasWorker  bool
-		wantHasCLI     bool
-		wantCLIOnly    bool
-		wantHasAPIOr   bool
+		name          string
+		caps          []string
+		wantHasAPI    bool
+		wantHasWorker bool
+		wantHasCLI    bool
+		wantCLIOnly   bool
+		wantHasAPIOr  bool
 	}{
 		{
 			name:       "api only",
@@ -99,9 +99,9 @@ func TestComputeDerived(t *testing.T) {
 			wantHasAPI: true, wantHasCLI: true, wantHasAPIOr: true,
 		},
 		{
-			name:          "all three",
-			caps:          []string{"api", "worker", "cli"},
-			wantHasAPI:    true, wantHasWorker: true, wantHasCLI: true, wantHasAPIOr: true,
+			name:       "all three",
+			caps:       []string{"api", "worker", "cli"},
+			wantHasAPI: true, wantHasWorker: true, wantHasCLI: true, wantHasAPIOr: true,
 		},
 		{
 			name: "empty",

@@ -4,18 +4,18 @@ import "time"
 
 // Rule represents a proxy rule loaded from a YAML file.
 type Rule struct {
-	ID             string   `yaml:"id"`
-	Engine         string   `yaml:"engine"`
-	Description    string   `yaml:"description"`
-	Severity       string   `yaml:"severity"`
-	Ref            string   `yaml:"ref,omitempty"`
-	Pattern        string   `yaml:"pattern,omitempty"`
-	MustContain    string   `yaml:"must-contain,omitempty"`
-	MustNotContain string   `yaml:"must-not-contain,omitempty"`
-	FileMustContain string  `yaml:"file-must-contain,omitempty"`
-	Detector       string   `yaml:"detector,omitempty"`
-	Scope          []string `yaml:"scope"`
-	Exclude        []string `yaml:"exclude,omitempty"`
+	ID              string   `yaml:"id"`
+	Engine          string   `yaml:"engine"`
+	Description     string   `yaml:"description"`
+	Severity        string   `yaml:"severity"`
+	Ref             string   `yaml:"ref,omitempty"`
+	Pattern         string   `yaml:"pattern,omitempty"`
+	MustContain     string   `yaml:"must-contain,omitempty"`
+	MustNotContain  string   `yaml:"must-not-contain,omitempty"`
+	FileMustContain string   `yaml:"file-must-contain,omitempty"`
+	Detector        string   `yaml:"detector,omitempty"`
+	Scope           []string `yaml:"scope"`
+	Exclude         []string `yaml:"exclude,omitempty"`
 }
 
 // RuleViolation represents a single violation found by a rule.

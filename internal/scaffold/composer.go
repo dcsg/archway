@@ -164,13 +164,13 @@ func ComposeProject(templateFS fs.FS, architecture string, capabilities []string
 
 	// Set Has* boolean flags for backward compatibility with conditional templates.
 	capFlagMap := map[string]string{
-		"http-api":       "HasHTTP",
-		"grpc":           "HasGRPC",
-		"kafka-consumer": "HasKafka",
-		"mysql":          "HasMySQL",
-		"redis":          "HasRedis",
-		"platform":       "HasPlatform",
-		"bootstrap":      "HasBootstrap",
+		"http-api":        "HasHTTP",
+		"grpc":            "HasGRPC",
+		"kafka-consumer":  "HasKafka",
+		"mysql":           "HasMySQL",
+		"redis":           "HasRedis",
+		"platform":        "HasPlatform",
+		"bootstrap":       "HasBootstrap",
 		"postgres":        "HasPostgres",
 		"health":          "HasHealth",
 		"cors":            "HasCORS",

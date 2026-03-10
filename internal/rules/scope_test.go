@@ -21,7 +21,7 @@ func TestExpandScope_SimpleGlob(t *testing.T) {
 
 func TestExpandScope_DoublestarGlob(t *testing.T) {
 	dir := setupTestProject(t, map[string]string{
-		"main.go":            "package main\n",
+		"main.go":             "package main\n",
 		"internal/foo/bar.go": "package foo\n",
 		"internal/baz.go":     "package internal\n",
 	})
@@ -47,9 +47,9 @@ func TestExpandScope_WithExclude(t *testing.T) {
 
 func TestExpandScope_DirectoryPrefix(t *testing.T) {
 	dir := setupTestProject(t, map[string]string{
-		"domain/order.go":     "package domain\n",
-		"domain/user.go":      "package domain\n",
-		"adapter/handler.go":  "package adapter\n",
+		"domain/order.go":    "package domain\n",
+		"domain/user.go":     "package domain\n",
+		"adapter/handler.go": "package adapter\n",
 	})
 
 	files, err := ExpandScope([]string{"domain/**/*.go"}, nil, dir, nil)
@@ -61,9 +61,9 @@ func TestExpandScope_DirectoryPrefix(t *testing.T) {
 
 func TestExpandScope_SkipsGitAndVendor(t *testing.T) {
 	dir := setupTestProject(t, map[string]string{
-		"main.go":            "package main\n",
-		".git/config":        "[core]\n",
-		"vendor/dep/dep.go":  "package dep\n",
+		"main.go":           "package main\n",
+		".git/config":       "[core]\n",
+		"vendor/dep/dep.go": "package dep\n",
 	})
 
 	files, err := ExpandScope([]string{"**/*.go"}, nil, dir, nil)

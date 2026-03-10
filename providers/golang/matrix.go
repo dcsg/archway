@@ -32,7 +32,7 @@ var capabilityMeta = map[string]matrixEntry{
 	"redis": {Category: "Data", Pattern: "Redis Repository", Description: "Connection management, repository pattern"},
 
 	// Security
-	"auth-jwt":     {Category: "Security", Pattern: "JWT Authentication", Description: "Middleware-based JWT validation with claims extraction"},
+	"auth-jwt":      {Category: "Security", Pattern: "JWT Authentication", Description: "Middleware-based JWT validation with claims extraction"},
 	"rate-limiting": {Category: "Security", Pattern: "Rate Limiting", Description: "Token bucket rate limiter middleware for HTTP endpoints"},
 
 	// Integration

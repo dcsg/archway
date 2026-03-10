@@ -320,9 +320,9 @@ func templateFunctions() template.FuncMap {
 		"contains":   strings.Contains,
 		"hasPrefix":  strings.HasPrefix,
 		"hasSuffix":  strings.HasSuffix,
-		"join":  strings.Join,
-		"split": strings.Split,
-		"now":   time.Now,
+		"join":       strings.Join,
+		"split":      strings.Split,
+		"now":        time.Now,
 		"date": func(layout string, t time.Time) string {
 			return t.Format(layout)
 		},
