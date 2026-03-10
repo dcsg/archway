@@ -1,0 +1,31 @@
+name: layered
+description: "Layered architecture with handler, service, and repository layers"
+variables:
+  - name: ServiceName
+    type: string
+    required: true
+    description: "Name of the service"
+  - name: ModulePath
+    type: string
+    required: true
+    description: "Go module path"
+  - name: GoVersion
+    type: string
+    default: "1.24"
+    description: "Go version for go.mod"
+components:
+  - name: handler
+    in: ["internal/handler/**"]
+    may_depend_on: [service, model]
+  - name: service
+    in: ["internal/service/**"]
+    may_depend_on: [repository, model]
+  - name: repository
+    in: ["internal/repository/**"]
+    may_depend_on: [model]
+  - name: model
+    in: ["internal/model/**"]
+    may_depend_on: []
+hooks:
+  - "go mod tidy"
+  - "gofmt -w ."

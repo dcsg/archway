@@ -82,6 +82,10 @@ func writeArchitecture(b *strings.Builder, arch string) {
 		b.WriteString("This project uses hexagonal (ports & adapters) architecture.\n")
 		b.WriteString("Business logic lives in the center (domain + service layers),\n")
 		b.WriteString("isolated from infrastructure by ports (interfaces) and adapters (implementations).\n\n")
+	case "layered":
+		b.WriteString("This project uses layered architecture.\n")
+		b.WriteString("Code is organized into four layers: handler, service, repository, and model.\n")
+		b.WriteString("Dependencies flow strictly downward: handler → service → repository → model.\n\n")
 	case "flat":
 		b.WriteString("This project uses a flat architecture.\n")
 		b.WriteString("All code lives in a single package with no layer restrictions.\n\n")
@@ -155,6 +159,26 @@ func writeAddingCode(b *strings.Builder, arch string) {
 
 	if arch == "flat" {
 		b.WriteString("Add new files to the root package. No special placement rules.\n\n")
+		return
+	}
+
+	if arch == "layered" {
+		b.WriteString("### New model (shared entity)\n")
+		b.WriteString("1. Add to `internal/model/`\n")
+		b.WriteString("2. Model MUST NOT import from handler, service, or repository\n\n")
+
+		b.WriteString("### New repository\n")
+		b.WriteString("1. Add to `internal/repository/`\n")
+		b.WriteString("2. Repository may only import from `internal/model/`\n\n")
+
+		b.WriteString("### New service\n")
+		b.WriteString("1. Add to `internal/service/`\n")
+		b.WriteString("2. Service may import from `internal/repository/` and `internal/model/`\n\n")
+
+		b.WriteString("### New HTTP endpoint\n")
+		b.WriteString("1. Add handler function in `internal/handler/`\n")
+		b.WriteString("2. Register route in `internal/handler/router.go`\n")
+		b.WriteString("3. Handler calls service; NEVER calls repository directly\n\n")
 		return
 	}
 
@@ -234,6 +258,14 @@ func writeAntiPatterns(b *strings.Builder, arch string) {
 		b.WriteString("- NEVER depend on concrete implementations; use port interfaces\n")
 		b.WriteString("- NEVER let domain types reference database/transport concerns (SQL tags, JSON tags in domain)\n")
 		b.WriteString("- NEVER bypass the service layer; handlers must not call repositories directly\n")
+	}
+
+	if arch == "layered" {
+		b.WriteString("- NEVER put business logic in `internal/handler/`; that is transport only\n")
+		b.WriteString("- NEVER import `internal/handler/` or `internal/service/` from `internal/repository/`\n")
+		b.WriteString("- NEVER import `internal/handler/` or `internal/repository/` from each other directly\n")
+		b.WriteString("- NEVER let handler bypass service and call repository directly\n")
+		b.WriteString("- NEVER put data access (SQL, HTTP clients) in `internal/service/`\n")
 	}
 
 	b.WriteString("\n")

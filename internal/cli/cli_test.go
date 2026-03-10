@@ -136,6 +136,86 @@ func TestNewFlat(t *testing.T) {
 	}
 }
 
+func TestNewLayered(t *testing.T) {
+	tmp := t.TempDir()
+	chdir(t, tmp)
+
+	_, err := executeCommand(t,
+		"new", "test-layered",
+		"--arch", "layered",
+		"--no-wizard",
+		"--set", "skip_hooks=true",
+	)
+	if err != nil {
+		t.Fatalf("new command failed: %v", err)
+	}
+
+	svcDir := filepath.Join(tmp, "test-layered")
+
+	for _, p := range []string{
+		"go.mod",
+		"archway.yaml",
+		filepath.Join("internal", "handler"),
+		filepath.Join("internal", "service"),
+		filepath.Join("internal", "repository"),
+		filepath.Join("internal", "model"),
+	} {
+		full := filepath.Join(svcDir, p)
+		if _, err := os.Stat(full); os.IsNotExist(err) {
+			t.Errorf("expected %s to exist", p)
+		}
+	}
+
+	data, err := os.ReadFile(filepath.Join(svcDir, "archway.yaml"))
+	if err != nil {
+		t.Fatalf("failed to read archway.yaml: %v", err)
+	}
+	if !strings.Contains(string(data), "architecture: layered") {
+		t.Errorf("archway.yaml should contain 'architecture: layered', got:\n%s", string(data))
+	}
+}
+
+func scaffoldLayered(t *testing.T, dir, name string) string {
+	t.Helper()
+	chdir(t, dir)
+	_, err := executeCommand(t,
+		"new", name,
+		"--arch", "layered",
+		"--no-wizard",
+		"--set", "skip_hooks=true",
+	)
+	if err != nil {
+		t.Fatalf("scaffold layered failed: %v", err)
+	}
+	return filepath.Join(dir, name)
+}
+
+func TestGuide_LayeredArchitecture(t *testing.T) {
+	tmp := t.TempDir()
+	svcDir := scaffoldLayered(t, tmp, "guide-layered")
+
+	chdir(t, svcDir)
+	_, err := executeCommand(t, "guide", "--target", "claude")
+	if err != nil {
+		t.Fatalf("guide command failed: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(svcDir, ".claude", "rules", "archway.md"))
+	if err != nil {
+		t.Fatalf("failed to read archway.md: %v", err)
+	}
+
+	content := string(data)
+	for _, want := range []string{"layered", "handler", "service", "repository", "model"} {
+		if !strings.Contains(content, want) {
+			t.Errorf("guide content should contain %q", want)
+		}
+	}
+	if !strings.Contains(content, "NEVER let handler bypass service") {
+		t.Errorf("guide content should contain layered NEVER rules")
+	}
+}
+
 func TestNewInvalidArchitecture(t *testing.T) {
 	tmp := t.TempDir()
 	chdir(t, tmp)
