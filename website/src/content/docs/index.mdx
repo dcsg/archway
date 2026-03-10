@@ -5,7 +5,7 @@ template: splash
 hero:
   tagline: |
     Architecture-aware service composer and enforcer
-    <p class="hero-description">Compose production-grade Go services from architecture patterns and 38 modular capabilities. Scaffold, analyze, and enforce — from first commit to production.</p>
+    <p class="hero-description">Compose production-grade Go services from architecture patterns and 38 modular capabilities. Guide, compose, analyze, and enforce — from first commit to production.</p>
   actions:
     - text: Get Started
       link: /archway/getting-started/quickstart/
@@ -22,11 +22,14 @@ import { Card, CardGrid, Aside } from '@astrojs/starlight/components';
 Architecture (hexagonal) + Capabilities (http-api, mysql, docker) = Your Service
 ```
 
-Pick an architecture, pick what your service needs — Archway wires it all together and enforces it stays true.
+Pick an architecture, pick what your service needs — Archway wires it all together, feeds your AI agents the rules, and enforces it stays true.
 
 **38 capabilities. Zero lock-in. You own every line of code.**
 
 <CardGrid>
+  <Card title="Guide" icon="star">
+    Feed AI agents your architecture context with `archway guide`. Prevention beats correction — agents write correct code from the first line.
+  </Card>
   <Card title="Compose" icon="puzzle">
     Pick an architecture pattern and combine 38 modular capabilities — transport, data, security, resilience, observability, and more. Get a production-ready service in one command.
   </Card>
@@ -35,9 +38,6 @@ Pick an architecture, pick what your service needs — Archway wires it all toge
   </Card>
   <Card title="Enforce" icon="approve-check-circle">
     Run `archway check` in CI. 11 AST-based detectors catch dependency violations, anti-patterns, and architecture drift before they ship.
-  </Card>
-  <Card title="Zero Lock-in" icon="open-book">
-    Generates plain Go code with no Archway runtime. Scaffold once, own the code forever. The only artifact is `archway.yaml` — your architecture contract.
   </Card>
 </CardGrid>
 
@@ -78,7 +78,7 @@ The smart wizard suggests what you're missing. Adding HTTP? You probably want ra
 | **Resilience** | Circuit breaker, retry, idempotency, outbox |
 | **Patterns** | CQRS, event bus, repository, worker, scheduler |
 | **Observability** | Health checks, OpenTelemetry, request ID, audit log |
-| **Infrastructure** | Docker, CI/GitHub, validation, UUID, feature flags |
+| **Infrastructure** | Docker, CI/GitHub, validation, UUID |
 | **Cross-cutting** | i18n, email gateway, Mailpit, API versioning |
 
 <CardGrid>

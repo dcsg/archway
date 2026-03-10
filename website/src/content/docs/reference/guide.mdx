@@ -1,0 +1,99 @@
+---
+title: archway guide
+description: Generate architecture context for AI agents
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## Overview
+
+`archway guide` reads your project's `archway.yaml` and generates architecture context that AI coding agents can consume. Instead of fixing architecture violations after the fact, feed your agent the rules upfront.
+
+**Prevention beats correction.**
+
+```bash
+archway guide [flags]
+```
+
+## Flags
+
+| Flag | Description | Default |
+|------|------------|---------|
+| `--target` | AI tool target (`claude`, `cursor`, `copilot`, `windsurf`, `generic`) | `generic` |
+| `--path` | Path to project | `.` |
+| `--output` | Output format (`terminal`, `file`) | `terminal` |
+
+## Usage
+
+### Default (any AI agent)
+
+```bash
+archway guide
+```
+
+Outputs architecture context to stdout — paste it into any AI chat or system prompt.
+
+### Claude Code
+
+```bash
+archway guide --target claude
+```
+
+Generates context optimized for Claude Code's CLAUDE.md format.
+
+### Cursor
+
+```bash
+archway guide --target cursor
+```
+
+Generates context for Cursor's `.cursorrules` format.
+
+### Copilot
+
+```bash
+archway guide --target copilot
+```
+
+### Windsurf
+
+```bash
+archway guide --target windsurf
+```
+
+## Example Output
+
+```
+# Architecture: hexagonal
+# Components: domain, port, service, adapter
+
+## Dependency Rules
+- domain/ must NOT import from port/, service/, adapter/
+- port/ must NOT import from service/, adapter/
+- service/ must NOT import from adapter/
+
+## Capabilities
+- http-api: REST API with Chi router, RFC 7807 errors
+- mysql: MySQL with connection pooling
+- platform: Config, structured logging, graceful shutdown
+
+## Anti-patterns to Avoid
+- No SQL string concatenation (use parameterized queries)
+- No domain importing adapters
+- No fat HTTP handlers (delegate to service layer)
+- No global mutable state
+```
+
+<Aside type="tip">
+Run `archway guide` in your project root — it reads `archway.yaml` to generate context specific to your project's architecture and capabilities.
+</Aside>
+
+## Supported AI Tools
+
+| Tool | Target Flag | Output Format |
+|------|------------|---------------|
+| Claude Code | `--target claude` | CLAUDE.md rules |
+| Cursor | `--target cursor` | .cursorrules |
+| GitHub Copilot | `--target copilot` | Generic context |
+| Windsurf | `--target windsurf` | Generic context |
+| Any | `--target generic` | Plain text |
