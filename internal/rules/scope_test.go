@@ -133,4 +133,63 @@ func TestMatchGlob(t *testing.T) {
 	}
 }
 
+func TestExpandScope_EmptyProjectRoot(t *testing.T) {
+	// Empty string projectRoot — filepath.Walk should fail gracefully.
+	files, err := ExpandScope([]string{"**/*.go"}, nil, "", nil)
+	// On most systems, walking "" returns an error.
+	if err != nil {
+		return // graceful: returned error
+	}
+	// If no error, should return empty.
+	assert.Empty(t, files)
+}
+
+func TestExpandScope_AllowedFilesEmptySliceVsNil(t *testing.T) {
+	dir := setupTestProject(t, map[string]string{
+		"a.go": "package main\n",
+		"b.go": "package main\n",
+	})
+
+	// nil allowedFiles = all files allowed.
+	filesNil, err := ExpandScope([]string{"**/*.go"}, nil, dir, nil)
+	require.NoError(t, err)
+	assert.Len(t, filesNil, 2)
+
+	// Empty slice [] = treated same as nil (len check, not nil check).
+	filesEmpty, err := ExpandScope([]string{"**/*.go"}, nil, dir, []string{})
+	require.NoError(t, err)
+	assert.Len(t, filesEmpty, 2, "empty allowedFiles slice behaves like nil — no filtering")
+}
+
+func TestExpandScope_DeeplyNestedDoublestar(t *testing.T) {
+	dir := setupTestProject(t, map[string]string{
+		"a/b/c/d/e/deep.go": "package deep\n",
+	})
+
+	files, err := ExpandScope([]string{"**/*.go"}, nil, dir, nil)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"a/b/c/d/e/deep.go"}, files)
+}
+
+func TestExpandScope_ExcludeMatchesAll(t *testing.T) {
+	dir := setupTestProject(t, map[string]string{
+		"main.go": "package main\n",
+		"lib.go":  "package main\n",
+	})
+
+	files, err := ExpandScope([]string{"**/*.go"}, []string{"**/*.go"}, dir, nil)
+	require.NoError(t, err)
+	assert.Empty(t, files)
+}
+
+func TestExpandScope_NonExistentProjectRoot(t *testing.T) {
+	files, err := ExpandScope([]string{"**/*.go"}, nil, "/nonexistent/path/that/does/not/exist", nil)
+	// filepath.Walk returns an error for non-existent roots, but ExpandScope may
+	// propagate or swallow it. Either way, no files should be returned.
+	if err != nil {
+		return // error path is fine
+	}
+	assert.Empty(t, files, "non-existent root should yield no files")
+}
+
 // setupTestProject is defined in grep_test.go — reused here via same package.

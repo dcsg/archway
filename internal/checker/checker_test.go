@@ -93,6 +93,47 @@ func TestCheckResult_AllPassing(t *testing.T) {
 	}
 }
 
+func TestCheckResult_ZeroViolations(t *testing.T) {
+	result := &CheckResult{}
+	if !result.Passed() {
+		t.Error("Passed() should be true when there are zero violations")
+	}
+	if result.TotalViolations() != 0 {
+		t.Errorf("TotalViolations() = %d, want 0", result.TotalViolations())
+	}
+}
+
+func TestCheckResult_MixedViolations(t *testing.T) {
+	result := &CheckResult{
+		DependencyViolations: []Violation{{Category: "dependency"}, {Category: "dependency"}},
+		StructureViolations:  []Violation{{Category: "structure"}},
+		FunctionViolations:   []Violation{{Category: "function"}, {Category: "function"}, {Category: "function"}},
+		NamingViolations:     []Violation{{Category: "naming"}},
+		AntiPatternViolations: []AntiPattern{
+			{Category: "anti-pattern", Name: "test", Message: "test"},
+		},
+		RulesChecked: 20,
+		RulesPassing: 12,
+	}
+
+	if result.TotalViolations() != 8 {
+		t.Errorf("TotalViolations() = %d, want 8", result.TotalViolations())
+	}
+	if result.Passed() {
+		t.Error("Passed() should be false with violations")
+	}
+}
+
+func TestCheckResult_ComplianceZeroRulesChecked(t *testing.T) {
+	result := &CheckResult{
+		RulesChecked: 0,
+		RulesPassing: 0,
+	}
+	if result.Compliance() != 1.0 {
+		t.Errorf("Compliance() = %f, want 1.0 when no rules checked", result.Compliance())
+	}
+}
+
 func TestFunctionRuleCount(t *testing.T) {
 	tests := []struct {
 		name  string

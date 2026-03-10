@@ -253,6 +253,207 @@ func Worse() {
 	assert.Len(t, violations, 2)
 }
 
+func TestRunGrep_EmptyFile(t *testing.T) {
+	dir := setupTestProject(t, map[string]string{
+		"empty.go": "",
+	})
+
+	rule := Rule{
+		ID:       "test",
+		Engine:   "grep",
+		Severity: "error",
+		Pattern:  "package",
+		Scope:    []string{"**/*.go"},
+	}
+
+	violations, err := RunGrep(rule, dir, nil)
+	require.NoError(t, err)
+	assert.Empty(t, violations)
+}
+
+func TestRunGrep_FileWithOnlyNewlines(t *testing.T) {
+	dir := setupTestProject(t, map[string]string{
+		"newlines.go": "\n\n\n\n\n",
+	})
+
+	rule := Rule{
+		ID:       "test",
+		Engine:   "grep",
+		Severity: "error",
+		Pattern:  `\S`,
+		Scope:    []string{"**/*.go"},
+	}
+
+	violations, err := RunGrep(rule, dir, nil)
+	require.NoError(t, err)
+	assert.Empty(t, violations)
+}
+
+func TestRunGrep_BinaryDetectionAtBoundary(t *testing.T) {
+	dir := t.TempDir()
+	// Create a file with a null byte at position 511 (within the 512-byte check window).
+	data := make([]byte, 512)
+	for i := range data {
+		data[i] = 'a'
+	}
+	data[511] = 0
+	err := os.WriteFile(filepath.Join(dir, "boundary.go"), data, 0o644)
+	require.NoError(t, err)
+
+	rule := Rule{
+		ID:       "test",
+		Engine:   "grep",
+		Severity: "error",
+		Pattern:  "a",
+		Scope:    []string{"**/*.go"},
+	}
+
+	violations, err := RunGrep(rule, dir, nil)
+	require.NoError(t, err)
+	assert.Empty(t, violations, "file with null byte at position 511 should be detected as binary")
+}
+
+func TestRunGrep_EmptyScope(t *testing.T) {
+	dir := setupTestProject(t, map[string]string{
+		"main.go": "package main\n",
+	})
+
+	rule := Rule{
+		ID:       "test",
+		Engine:   "grep",
+		Severity: "error",
+		Pattern:  "package",
+		Scope:    []string{},
+	}
+
+	violations, err := RunGrep(rule, dir, nil)
+	require.NoError(t, err)
+	assert.Empty(t, violations)
+}
+
+func TestRunGrep_FileMustContainMissing(t *testing.T) {
+	dir := setupTestProject(t, map[string]string{
+		"handler.go": "package handler\n\nfunc Handle() {}\n",
+	})
+
+	rule := Rule{
+		ID:              "require-license",
+		Engine:          "grep",
+		Severity:        "error",
+		FileMustContain: `Copyright`,
+		Scope:           []string{"**/*.go"},
+	}
+
+	violations, err := RunGrep(rule, dir, nil)
+	require.NoError(t, err)
+	require.Len(t, violations, 1)
+	assert.Equal(t, "handler.go", violations[0].File)
+	assert.Equal(t, 0, violations[0].Line)
+	assert.Contains(t, violations[0].Match, "Copyright")
+}
+
+func TestRunGrep_FileMustContainPresent(t *testing.T) {
+	dir := setupTestProject(t, map[string]string{
+		"handler.go": "// Copyright 2026\npackage handler\n\nfunc Handle() {}\n",
+	})
+
+	rule := Rule{
+		ID:              "require-license",
+		Engine:          "grep",
+		Severity:        "error",
+		FileMustContain: `Copyright`,
+		Scope:           []string{"**/*.go"},
+	}
+
+	violations, err := RunGrep(rule, dir, nil)
+	require.NoError(t, err)
+	assert.Empty(t, violations)
+}
+
+func TestRunGrep_MustNotContainSuppresses(t *testing.T) {
+	dir := setupTestProject(t, map[string]string{
+		"handler.go": `package handler
+
+func Handle() {
+	log.Info("safe message", "key", "value")
+}
+`,
+	})
+
+	// Pattern matches log.Info, must-not-contain is "password".
+	// Since the line does NOT contain "password", no violation should be produced.
+	rule := Rule{
+		ID:             "no-sensitive-logs",
+		Engine:         "grep",
+		Severity:       "error",
+		Pattern:        `log\.Info`,
+		MustNotContain: `password`,
+		Scope:          []string{"**/*.go"},
+	}
+
+	violations, err := RunGrep(rule, dir, nil)
+	require.NoError(t, err)
+	assert.Empty(t, violations, "line matching pattern but NOT matching must-not-contain should not violate")
+}
+
+func TestRunGrep_PatternMustContainCombo_MustContainAbsent(t *testing.T) {
+	dir := setupTestProject(t, map[string]string{
+		"repo.go": `package repo
+
+func Get() {
+	db.Query("SELECT * FROM users WHERE id = ?", id)
+}
+`,
+	})
+
+	rule := Rule{
+		ID:          "tenant-required",
+		Engine:      "grep",
+		Severity:    "error",
+		Pattern:     `SELECT.*FROM`,
+		MustContain: `tenant_id`,
+		Scope:       []string{"**/*.go"},
+	}
+
+	violations, err := RunGrep(rule, dir, nil)
+	require.NoError(t, err)
+	require.Len(t, violations, 1)
+	assert.Equal(t, 4, violations[0].Line)
+}
+
+func TestRunGrep_LongLineTruncation(t *testing.T) {
+	longLine := "var x = " + string(make([]byte, 200)) // will have null bytes — use a real string
+	// Build a line > 120 chars of valid text.
+	longContent := "package main\n" + "var x = \"" + repeatChar('a', 200) + "\"\n"
+	dir := setupTestProject(t, map[string]string{
+		"long.go": longContent,
+	})
+
+	_ = longLine // unused
+
+	rule := Rule{
+		ID:       "test",
+		Engine:   "grep",
+		Severity: "error",
+		Pattern:  `var x`,
+		Scope:    []string{"**/*.go"},
+	}
+
+	violations, err := RunGrep(rule, dir, nil)
+	require.NoError(t, err)
+	require.Len(t, violations, 1)
+	assert.True(t, len(violations[0].Match) <= 123, "match should be truncated to 120 chars + '...'")
+	assert.True(t, len(violations[0].Match) > 120, "match should end with '...'")
+}
+
+func repeatChar(c byte, n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = c
+	}
+	return string(b)
+}
+
 // --- helpers ---
 
 func setupTestProject(t *testing.T, files map[string]string) string {

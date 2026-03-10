@@ -165,6 +165,82 @@ func TestResolveTargets(t *testing.T) {
 	}
 }
 
+func TestGenerate_EmptyProjectDir(t *testing.T) {
+	dir := t.TempDir()
+	emptyDir := filepath.Join(dir, "empty")
+	require.NoError(t, os.MkdirAll(emptyDir, 0o755))
+
+	opts := GenerateOptions{
+		ProjectDir:   emptyDir,
+		Target:       "claude",
+		Architecture: "flat",
+	}
+
+	err := Generate(opts)
+	require.NoError(t, err)
+
+	// Should create the guide file even in an empty dir.
+	path := filepath.Join(emptyDir, ".claude", "rules", "archway.md")
+	assert.FileExists(t, path)
+}
+
+func TestGenerateFromConfig_NilComponents(t *testing.T) {
+	dir := t.TempDir()
+	cfg := &config.ArchwayConfig{
+		Architecture: "flat",
+		Capabilities: nil,
+		Components:   nil,
+	}
+
+	err := GenerateFromConfig(dir, cfg, "claude")
+	require.NoError(t, err)
+
+	path := filepath.Join(dir, ".claude", "rules", "archway.md")
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+
+	content := string(data)
+	assert.Contains(t, content, "Architecture: flat")
+	assert.Contains(t, content, "No capabilities configured")
+}
+
+func TestBuildContent_UnknownArchitecture(t *testing.T) {
+	opts := GenerateOptions{
+		Architecture: "onion",
+		Components:   nil,
+	}
+
+	content := buildContent(opts)
+	assert.Contains(t, content, "Architecture type: onion")
+}
+
+func TestBuildContent_EmptyCapabilities(t *testing.T) {
+	opts := GenerateOptions{
+		Architecture: "flat",
+		Capabilities: []string{},
+	}
+
+	content := buildContent(opts)
+	assert.Contains(t, content, "No capabilities configured")
+}
+
+func TestForbiddenDeps_ComponentWithNoForbidden(t *testing.T) {
+	// Component that may depend on everything else.
+	comp := config.Component{
+		Name:        "adapters",
+		MayDependOn: []string{"domain", "ports", "service"},
+	}
+	all := []config.Component{
+		{Name: "domain"},
+		{Name: "ports"},
+		{Name: "service"},
+		{Name: "adapters"},
+	}
+
+	result := forbiddenDeps(comp, all)
+	assert.Empty(t, result)
+}
+
 func TestOutputTargetPaths(t *testing.T) {
 	dir := t.TempDir()
 	opts := GenerateOptions{

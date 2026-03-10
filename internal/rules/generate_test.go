@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/dcsg/archway/internal/config"
@@ -196,6 +197,124 @@ func TestGenerateRules_AllRulesAreValid(t *testing.T) {
 		status := ValidateRule(r, r.ID+".yaml", "")
 		assert.Equalf(t, "valid", status.Status, "rule %s invalid: %s", r.ID, status.Error)
 	}
+}
+
+func TestGenerateRules_ComponentWithEmptyName(t *testing.T) {
+	cfg := &config.ArchwayConfig{
+		Architecture: "hexagonal",
+		Components: []config.Component{
+			{Name: "", In: []string{"pkg/**"}, MayDependOn: []string{}},
+			{Name: "service", In: []string{"service/**"}, MayDependOn: []string{}},
+		},
+	}
+	rules := GenerateRules(cfg)
+
+	// Should still generate rules (empty name is treated as any other component).
+	require.NotEmpty(t, rules)
+}
+
+func TestGenerateRules_MayDependOnSelf(t *testing.T) {
+	cfg := &config.ArchwayConfig{
+		Architecture: "hexagonal",
+		Components: []config.Component{
+			{Name: "domain", In: []string{"domain/**"}, MayDependOn: []string{"domain"}},
+			{Name: "service", In: []string{"service/**"}, MayDependOn: []string{}},
+		},
+	}
+	rules := GenerateRules(cfg)
+	rulesByID := indexByID(rules)
+
+	// domain's forbidden list should contain service but not itself.
+	domainRule, ok := rulesByID["arch-domain-isolation"]
+	require.True(t, ok)
+	assert.Contains(t, domainRule.Pattern, "service")
+	// The forbidden names (in joinNames) should not include "domain" itself.
+	// Pattern uses forbidden names, so "domain" should not appear in the regex pattern.
+	assert.NotContains(t, domainRule.Pattern, "/domain/")
+}
+
+func TestGenerateRules_MayDependOnNonExistentComponent(t *testing.T) {
+	cfg := &config.ArchwayConfig{
+		Architecture: "hexagonal",
+		Components: []config.Component{
+			{Name: "domain", In: []string{"domain/**"}, MayDependOn: []string{"nonexistent"}},
+			{Name: "service", In: []string{"service/**"}, MayDependOn: []string{}},
+		},
+	}
+	rules := GenerateRules(cfg)
+
+	// Should still work; domain allows "nonexistent" (which doesn't exist) but
+	// service is still forbidden.
+	rulesByID := indexByID(rules)
+	domainRule, ok := rulesByID["arch-domain-isolation"]
+	require.True(t, ok)
+	assert.Contains(t, domainRule.Pattern, "service")
+}
+
+func TestGenerateRules_LargeForbiddenList(t *testing.T) {
+	components := make([]config.Component, 12)
+	for i := range components {
+		components[i] = config.Component{
+			Name: fmt.Sprintf("layer%d", i),
+			In:   []string{fmt.Sprintf("layer%d/**", i)},
+		}
+	}
+	// First component depends on nothing, so all 11 others are forbidden.
+	cfg := &config.ArchwayConfig{
+		Architecture: "hexagonal",
+		Components:   components,
+	}
+	rules := GenerateRules(cfg)
+	rulesByID := indexByID(rules)
+
+	rule, ok := rulesByID["arch-layer0-isolation"]
+	require.True(t, ok)
+	// Pattern should contain alternation of all 11 forbidden layers.
+	for i := 1; i < 12; i++ {
+		assert.Contains(t, rule.Pattern, fmt.Sprintf("layer%d", i))
+	}
+}
+
+func TestGenerateRules_DuplicateCapabilities(t *testing.T) {
+	cfg := &config.ArchwayConfig{
+		Architecture: "flat",
+		Capabilities: []string{"postgres", "postgres"},
+	}
+	rules := GenerateRules(cfg)
+
+	// Deduplication via seen map: should produce exactly 1 rule.
+	require.Len(t, rules, 1)
+	assert.Equal(t, "cap-sql-parameterized", rules[0].ID)
+}
+
+func TestBuildForbiddenPattern_EmptyList(t *testing.T) {
+	// Defensive: buildForbiddenPattern shouldn't be called with empty list,
+	// but test that it doesn't panic.
+	pattern := buildForbiddenPattern([]string{})
+	assert.NotEmpty(t, pattern) // Returns pattern with empty alternation.
+}
+
+func TestJoinNames_SingleName(t *testing.T) {
+	result := joinNames([]string{"domain"})
+	assert.Equal(t, "domain", result)
+}
+
+func TestJoinNames_EmptySlice(t *testing.T) {
+	result := joinNames([]string{})
+	assert.Equal(t, "", result)
+}
+
+func TestScopeFromPaths_EmptyPaths(t *testing.T) {
+	result := scopeFromPaths([]string{})
+	assert.Empty(t, result)
+}
+
+func TestGenerateCapRules_UnknownCapabilitiesOnly(t *testing.T) {
+	cfg := &config.ArchwayConfig{
+		Capabilities: []string{"unknown1", "unknown2", "unknown3"},
+	}
+	rules := generateCapRules(cfg)
+	assert.Empty(t, rules)
 }
 
 func indexByID(rules []Rule) map[string]Rule {

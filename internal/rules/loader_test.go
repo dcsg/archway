@@ -189,6 +189,86 @@ func TestValidateRule_DefaultSeverity(t *testing.T) {
 	assert.Equal(t, "valid", status.Status)
 }
 
+func TestLoadRules_NumericID(t *testing.T) {
+	dir := t.TempDir()
+	writeRule(t, dir, "numeric.yaml", `
+id: 123
+engine: grep
+description: "Numeric ID rule"
+severity: error
+pattern: "badPattern"
+scope:
+  - "**/*.go"
+`)
+	writeFile(t, dir, "main.go", "package main\n")
+
+	rules, statuses, err := LoadRules(dir, dir)
+	require.NoError(t, err)
+	assert.Len(t, rules, 1)
+	assert.Equal(t, "valid", statuses[0].Status)
+	assert.Equal(t, "123", rules[0].ID)
+}
+
+func TestValidateRule_EmptyScope(t *testing.T) {
+	r := Rule{
+		ID:      "test",
+		Engine:  "grep",
+		Pattern: "foo",
+		Scope:   []string{},
+	}
+	status := ValidateRule(r, "test.yaml", "")
+	assert.Equal(t, "invalid", status.Status)
+	assert.Contains(t, status.Error, "scope")
+}
+
+func TestValidateRule_PatternAndFileMustContain(t *testing.T) {
+	r := Rule{
+		ID:              "test",
+		Engine:          "grep",
+		Pattern:         `SELECT`,
+		FileMustContain: `package`,
+		Scope:           []string{"**/*.go"},
+	}
+	status := ValidateRule(r, "test.yaml", "")
+	assert.Equal(t, "valid", status.Status)
+}
+
+func TestValidateRule_ASTValidDetectorInvalidSeverity(t *testing.T) {
+	r := Rule{
+		ID:       "test",
+		Engine:   "ast",
+		Detector: "global-mutable-state",
+		Severity: "critical", // invalid
+		Scope:    []string{"**/*.go"},
+	}
+	status := ValidateRule(r, "test.yaml", "")
+	assert.Equal(t, "invalid", status.Status)
+	assert.Contains(t, status.Error, "severity")
+}
+
+func TestLoadRules_DirectoryWithNoYAML(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "readme.txt", "not a yaml file\n")
+	writeFile(t, dir, "config.json", "{}\n")
+
+	rules, statuses, err := LoadRules(dir, dir)
+	require.NoError(t, err)
+	assert.Empty(t, rules)
+	assert.Empty(t, statuses)
+}
+
+func TestValidateRule_EmptyProjectRootSkipsStaleCheck(t *testing.T) {
+	r := Rule{
+		ID:      "test",
+		Engine:  "grep",
+		Pattern: "foo",
+		Scope:   []string{"nonexistent/**/*.go"},
+	}
+	// With empty projectRoot, stale check is skipped → should be valid.
+	status := ValidateRule(r, "test.yaml", "")
+	assert.Equal(t, "valid", status.Status)
+}
+
 // --- helpers ---
 
 func writeRule(t *testing.T, dir, name, content string) {
