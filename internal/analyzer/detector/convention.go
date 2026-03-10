@@ -248,4 +248,3 @@ func detectTesting(pkgs []*packages.Package) provider.TestingFinding {
 		TotalGoFiles: totalGoFiles,
 	}
 }
-

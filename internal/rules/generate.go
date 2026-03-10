@@ -135,12 +135,12 @@ func joinNames(names []string) string {
 
 // capabilityRuleMap defines rule templates for known capabilities.
 var capabilityRuleMap = map[string]func() Rule{
-	"postgres": sqlRule,
-	"mysql":    sqlRule,
-	"http-api": httpHandlerContextRule,
-	"grpc":     grpcRule,
-	"auth-jwt": authRule,
-	"observability": observabilityRule,
+	"postgres":       sqlRule,
+	"mysql":          sqlRule,
+	"http-api":       httpHandlerContextRule,
+	"grpc":           grpcRule,
+	"auth-jwt":       authRule,
+	"observability":  observabilityRule,
 	"kafka-consumer": kafkaRule,
 }
 
@@ -193,11 +193,11 @@ func httpHandlerContextRule() Rule {
 
 func grpcRule() Rule {
 	return Rule{
-		ID:          "cap-grpc-proto",
-		Engine:      "grep",
-		Description: "gRPC services should have proto file definitions",
-		Severity:    "warning",
-		Ref:         "archway.yaml",
+		ID:              "cap-grpc-proto",
+		Engine:          "grep",
+		Description:     "gRPC services should have proto file definitions",
+		Severity:        "warning",
+		Ref:             "archway.yaml",
 		FileMustContain: `syntax\s*=\s*"proto3"`,
 		Scope:           []string{"**/*.proto"},
 	}
@@ -205,14 +205,14 @@ func grpcRule() Rule {
 
 func authRule() Rule {
 	return Rule{
-		ID:             "cap-auth-check",
-		Engine:         "grep",
-		Description:    "Handler files should reference auth middleware or JWT validation",
-		Severity:       "warning",
-		Ref:            "archway.yaml",
+		ID:              "cap-auth-check",
+		Engine:          "grep",
+		Description:     "Handler files should reference auth middleware or JWT validation",
+		Severity:        "warning",
+		Ref:             "archway.yaml",
 		FileMustContain: `(middleware|auth|jwt|token)`,
-		Scope:          []string{"adapter/httphandler/**/*.go", "internal/handler/**/*.go"},
-		Exclude:        []string{"*_test.go", "**/router.go"},
+		Scope:           []string{"adapter/httphandler/**/*.go", "internal/handler/**/*.go"},
+		Exclude:         []string{"*_test.go", "**/router.go"},
 	}
 }
 

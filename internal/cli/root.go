@@ -61,5 +61,3 @@ Use archway new to scaffold projects, archway check to validate architecture rul
 
 	return cmd
 }
-
-
