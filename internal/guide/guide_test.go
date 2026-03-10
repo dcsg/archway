@@ -36,6 +36,86 @@ func TestBuildContent_Hexagonal(t *testing.T) {
 	assert.Contains(t, content, "mysql")
 }
 
+func TestBuildContent_Layered(t *testing.T) {
+	opts := GenerateOptions{
+		Architecture: "layered",
+		Components: []config.Component{
+			{Name: "handler", In: []string{"internal/handler/**"}, MayDependOn: []string{"service", "model"}},
+			{Name: "service", In: []string{"internal/service/**"}, MayDependOn: []string{"repository", "model"}},
+			{Name: "repository", In: []string{"internal/repository/**"}, MayDependOn: []string{"model"}},
+			{Name: "model", In: []string{"internal/model/**"}, MayDependOn: []string{}},
+		},
+	}
+
+	content := buildContent(opts)
+
+	assert.Contains(t, content, "Architecture: layered")
+	assert.Contains(t, content, "handler → service → repository → model")
+	assert.Contains(t, content, "## Layer Rules")
+	assert.Contains(t, content, "Dependencies: none (innermost layer)")
+	assert.Contains(t, content, "## Anti-patterns to Avoid")
+	assert.Contains(t, content, "NEVER let handler bypass service and call repository directly")
+	assert.Contains(t, content, "NEVER put business logic in `internal/handler/`")
+	assert.NotContains(t, content, "NEVER import infrastructure packages from `domain/`")
+}
+
+func TestBuildContent_LayeredAddingCode(t *testing.T) {
+	opts := GenerateOptions{
+		Architecture: "layered",
+		Components:   nil,
+	}
+
+	content := buildContent(opts)
+
+	assert.Contains(t, content, "## Adding Code")
+	assert.Contains(t, content, "internal/model/")
+	assert.Contains(t, content, "internal/repository/")
+	assert.Contains(t, content, "internal/service/")
+	assert.Contains(t, content, "internal/handler/router.go")
+}
+
+func TestBuildContent_Clean(t *testing.T) {
+	opts := GenerateOptions{
+		Architecture: "clean",
+		Components: []config.Component{
+			{Name: "entity", In: []string{"internal/entity/**"}, MayDependOn: []string{}},
+			{Name: "usecase", In: []string{"internal/usecase/**"}, MayDependOn: []string{"entity"}},
+			{Name: "interface", In: []string{"internal/interface/**"}, MayDependOn: []string{"usecase", "entity"}},
+			{Name: "infrastructure", In: []string{"internal/infrastructure/**"}, MayDependOn: []string{"interface", "usecase", "entity"}},
+		},
+	}
+
+	content := buildContent(opts)
+
+	assert.Contains(t, content, "Architecture: clean")
+	assert.Contains(t, content, "Clean Architecture")
+	assert.Contains(t, content, "## Layer Rules")
+	assert.Contains(t, content, "entity")
+	assert.Contains(t, content, "usecase")
+	assert.Contains(t, content, "interface")
+	assert.Contains(t, content, "infrastructure")
+	assert.Contains(t, content, "Dependencies: none (innermost layer)")
+	assert.Contains(t, content, "## Anti-patterns to Avoid")
+	assert.Contains(t, content, "NEVER let `internal/entity/` import from usecase")
+	assert.Contains(t, content, "NEVER let `internal/usecase/` import from infrastructure")
+	assert.NotContains(t, content, "NEVER import infrastructure packages from `domain/`")
+}
+
+func TestBuildContent_CleanAddingCode(t *testing.T) {
+	opts := GenerateOptions{
+		Architecture: "clean",
+		Components:   nil,
+	}
+
+	content := buildContent(opts)
+
+	assert.Contains(t, content, "## Adding Code")
+	assert.Contains(t, content, "internal/entity/")
+	assert.Contains(t, content, "internal/usecase/")
+	assert.Contains(t, content, "internal/interface/handler/")
+	assert.Contains(t, content, "internal/infrastructure/")
+}
+
 func TestBuildContent_Flat(t *testing.T) {
 	opts := GenerateOptions{
 		Architecture: "flat",

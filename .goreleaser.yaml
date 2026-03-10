@@ -45,15 +45,33 @@ snapshot:
 changelog:
   use: git
   sort: asc
+  groups:
+    - title: Features
+      regexp: '^feat'
+      order: 0
+    - title: Bug Fixes
+      regexp: '^fix'
+      order: 1
+    - title: Refactoring
+      regexp: '^refactor'
+      order: 2
+    - title: Performance
+      regexp: '^perf'
+      order: 3
+    - title: Other
+      order: 999
   filters:
     exclude:
       - '^docs:'
       - '^test:'
+      - '^ci:'
+      - '^chore:'
 
 brews:
   - repository:
       owner: dcsg
       name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     folder: Formula
     homepage: https://github.com/dcsg/archway
     description: Terraform for Code Architecture

@@ -1,0 +1,17 @@
+package tenant
+
+import "context"
+
+type contextKey struct{}
+
+// WithTenant returns a new context that carries the given tenant ID.
+func WithTenant(ctx context.Context, id string) context.Context {
+	return context.WithValue(ctx, contextKey{}, id)
+}
+
+// TenantFromContext retrieves the tenant ID from ctx.
+// Returns an empty string if no tenant ID is present.
+func TenantFromContext(ctx context.Context) string {
+	id, _ := ctx.Value(contextKey{}).(string)
+	return id
+}

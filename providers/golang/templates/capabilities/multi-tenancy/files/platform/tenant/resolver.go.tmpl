@@ -1,0 +1,11 @@
+package tenant
+
+import (
+	"context"
+	"net/http"
+)
+
+// TenantResolver resolves a tenant ID from an incoming HTTP request.
+type TenantResolver interface {
+	Resolve(ctx context.Context, r *http.Request) (string, error)
+}

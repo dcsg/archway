@@ -1,0 +1,62 @@
+package mongorepo
+
+import (
+	"context"
+	"fmt"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+)
+
+// BaseRepository provides common MongoDB operations for a given collection.
+type BaseRepository struct {
+	collection *mongo.Collection
+}
+
+// NewBaseRepository creates a BaseRepository for the named collection.
+func NewBaseRepository(db *mongo.Database, collectionName string) *BaseRepository {
+	return &BaseRepository{collection: db.Collection(collectionName)}
+}
+
+// FindOne finds a single document matching the filter and decodes it into dst.
+func (r *BaseRepository) FindOne(ctx context.Context, filter bson.M, dst any) error {
+	result := r.collection.FindOne(ctx, filter)
+	if err := result.Err(); err != nil {
+		return fmt.Errorf("find one: %w", err)
+	}
+	if err := result.Decode(dst); err != nil {
+		return fmt.Errorf("decode document: %w", err)
+	}
+	return nil
+}
+
+// InsertOne inserts a single document and returns the inserted ID.
+func (r *BaseRepository) InsertOne(ctx context.Context, document any) (any, error) {
+	result, err := r.collection.InsertOne(ctx, document)
+	if err != nil {
+		return nil, fmt.Errorf("insert document: %w", err)
+	}
+	return result.InsertedID, nil
+}
+
+// Find returns all documents matching the filter, decoded into the slice pointed to by dst.
+func (r *BaseRepository) Find(ctx context.Context, filter bson.M, dst any) error {
+	cursor, err := r.collection.Find(ctx, filter)
+	if err != nil {
+		return fmt.Errorf("find documents: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	if err := cursor.All(ctx, dst); err != nil {
+		return fmt.Errorf("decode documents: %w", err)
+	}
+	return nil
+}
+
+// DeleteOne deletes a single document matching the filter.
+func (r *BaseRepository) DeleteOne(ctx context.Context, filter bson.M) error {
+	if _, err := r.collection.DeleteOne(ctx, filter); err != nil {
+		return fmt.Errorf("delete document: %w", err)
+	}
+	return nil
+}

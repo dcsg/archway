@@ -1,0 +1,13 @@
+package config
+
+// Config holds application configuration.
+type Config struct {
+	Addr string
+}
+
+// Default returns a Config with default values.
+func Default() Config {
+	return Config{
+		Addr: ":8080",
+	}
+}

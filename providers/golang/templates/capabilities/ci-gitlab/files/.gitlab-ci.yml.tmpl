@@ -1,0 +1,47 @@
+image: golang:{{.GoVersion}}
+
+stages:
+  - lint
+  - test
+  - build
+  - docker
+
+variables:
+  CGO_ENABLED: "0"
+  GOPROXY: "https://proxy.golang.org,direct"
+
+lint:
+  stage: lint
+  script:
+    - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
+    - golangci-lint run ./...
+
+test:
+  stage: test
+  script:
+    - go test -race -coverprofile=coverage.out ./...
+    - go tool cover -func=coverage.out
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.out
+
+build:
+  stage: build
+  script:
+    - go build -o bin/{{.ServiceName}} ./...
+  artifacts:
+    paths:
+      - bin/
+
+docker:
+  stage: docker
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA .
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+  only:
+    - main

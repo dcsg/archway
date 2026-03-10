@@ -1,0 +1,24 @@
+FROM golang:{{.GoVersion}}-bookworm
+
+ARG GOLANGCI_LINT_VERSION=v1.57.2
+ARG AIR_VERSION=v1.51.0
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    make \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install golangci-lint
+RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh \
+    | sh -s -- -b /usr/local/bin ${GOLANGCI_LINT_VERSION}
+
+# Install air (live reload)
+RUN go install github.com/air-verse/air@${AIR_VERSION}
+
+# Create non-root user
+RUN groupadd --gid 1000 vscode \
+    && useradd --uid 1000 --gid 1000 -m vscode
+
+USER vscode
+WORKDIR /workspace

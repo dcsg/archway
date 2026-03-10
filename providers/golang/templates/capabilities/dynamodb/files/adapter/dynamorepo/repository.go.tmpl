@@ -1,0 +1,55 @@
+package dynamorepo
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+)
+
+// DynamoRepository provides common DynamoDB operations for a single table.
+type DynamoRepository struct {
+	client    *dynamodb.Client
+	tableName string
+}
+
+// NewDynamoRepository creates a DynamoRepository for the given table.
+func NewDynamoRepository(client *dynamodb.Client, tableName string) *DynamoRepository {
+	return &DynamoRepository{client: client, tableName: tableName}
+}
+
+// PutItem writes an item to the table.
+func (r *DynamoRepository) PutItem(ctx context.Context, item map[string]types.AttributeValue) error {
+	_, err := r.client.PutItem(ctx, &dynamodb.PutItemInput{
+		TableName: &r.tableName,
+		Item:      item,
+	})
+	if err != nil {
+		return fmt.Errorf("put item in %q: %w", r.tableName, err)
+	}
+	return nil
+}
+
+// GetItem retrieves an item by its primary key.
+func (r *DynamoRepository) GetItem(ctx context.Context, key map[string]types.AttributeValue) (map[string]types.AttributeValue, error) {
+	result, err := r.client.GetItem(ctx, &dynamodb.GetItemInput{
+		TableName: &r.tableName,
+		Key:       key,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get item from %q: %w", r.tableName, err)
+	}
+	return result.Item, nil
+}
+
+// Query executes a key-condition query and returns matching items.
+func (r *DynamoRepository) Query(ctx context.Context, input *dynamodb.QueryInput) ([]map[string]types.AttributeValue, error) {
+	input.TableName = &r.tableName
+
+	result, err := r.client.Query(ctx, input)
+	if err != nil {
+		return nil, fmt.Errorf("query %q: %w", r.tableName, err)
+	}
+	return result.Items, nil
+}

@@ -1,0 +1,8 @@
+name: s3
+description: "AWS S3 object storage client"
+requires:
+  - config
+suggests:
+  - docker
+  - observability
+conflicts: []

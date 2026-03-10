@@ -1,0 +1,5 @@
+name: saga
+description: "Saga orchestrator for distributed transactions"
+requires: [event-bus]
+suggests: [observability, outbox]
+conflicts: []

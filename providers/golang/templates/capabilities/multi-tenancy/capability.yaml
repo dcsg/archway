@@ -1,0 +1,5 @@
+name: multi-tenancy
+description: "Row-level tenant isolation with tenant context middleware"
+requires: [http-api, config]
+suggests: [auth-jwt, observability]
+conflicts: []

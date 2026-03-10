@@ -11,6 +11,7 @@ import (
 
 	"github.com/dcsg/archway/internal/analyzer"
 	"github.com/dcsg/archway/internal/config"
+	"github.com/dcsg/archway/internal/guide"
 	"github.com/dcsg/archway/internal/provider"
 	"github.com/dcsg/archway/internal/scaffold"
 )
@@ -119,6 +120,11 @@ func (p *GoProvider) Scaffold(_ context.Context, req provider.ScaffoldRequest) (
 		files = append(files, matrixPath)
 	}
 
+	// Generate AI agent architecture guides.
+	if guideErr := guide.GenerateFromConfig(req.OutputDir, archwayCfg, "all", templatesFS); guideErr != nil {
+		return nil, fmt.Errorf("generate guide: %w", guideErr)
+	}
+
 	return &provider.ScaffoldResponse{FilesCreated: files, ArchwayYAML: archwayBytes}, nil
 }
 
@@ -147,7 +153,7 @@ func (p *GoProvider) GetInfo(_ context.Context) (*provider.ProviderInfo, error) 
 		Name:                   "archway-go-provider",
 		Version:                "v1",
 		Language:               "go",
-		SupportedArchitectures: []string{"hexagonal", "clean", "ddd", "layered", "flat"},
+		SupportedArchitectures: []string{"hexagonal", "flat", "layered", "clean"},
 		Templates:              templates,
 	}, nil
 }

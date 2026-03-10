@@ -1,0 +1,5 @@
+name: feature-flags
+description: "Feature flag evaluation with local config fallback"
+requires: [config]
+suggests: [observability]
+conflicts: []

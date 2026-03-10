@@ -1,0 +1,25 @@
+package middleware
+
+import (
+	"net/http"
+
+	"{{ .ModulePath }}/platform/tenant"
+)
+
+const tenantIDHeader = "X-Tenant-ID"
+
+// Tenant extracts the tenant ID from the X-Tenant-ID request header and
+// injects it into the request context. Requests without the header are
+// rejected with 400 Bad Request.
+func Tenant(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := r.Header.Get(tenantIDHeader)
+		if id == "" {
+			http.Error(w, "missing "+tenantIDHeader+" header", http.StatusBadRequest)
+			return
+		}
+
+		ctx := tenant.WithTenant(r.Context(), id)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}

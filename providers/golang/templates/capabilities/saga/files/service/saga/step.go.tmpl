@@ -1,0 +1,12 @@
+package saga
+
+import "context"
+
+// Step represents a single unit of work in a saga.
+// Each step must provide a compensation action to undo its effects.
+type Step interface {
+	// Execute performs the step's action.
+	Execute(ctx context.Context) error
+	// Compensate undoes the step's action on saga failure.
+	Compensate(ctx context.Context) error
+}

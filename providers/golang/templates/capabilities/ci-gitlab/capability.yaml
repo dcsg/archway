@@ -1,0 +1,5 @@
+name: ci-gitlab
+description: "GitLab CI/CD pipeline configuration"
+requires: []
+suggests: [docker, linting, testing]
+conflicts: [ci-github]

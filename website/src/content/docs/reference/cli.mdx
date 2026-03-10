@@ -5,6 +5,41 @@ description: Complete CLI reference
 
 import { Aside } from '@astrojs/starlight/components';
 
+## `archway guide`
+
+Generate architecture context for AI coding agents. Reads your `archway.yaml` and outputs rules, dependency constraints, and anti-patterns that AI agents consume before writing code.
+
+```bash
+archway guide [flags]
+```
+
+### Flags
+
+| Flag | Description | Default |
+|------|------------|---------|
+| `--target` | AI tool target (`claude`, `cursor`, `copilot`, `windsurf`, `generic`) | `generic` |
+| `--path` | Path to project | `.` |
+| `--output` | Output format (`terminal`, `file`) | `terminal` |
+
+### Examples
+
+```bash
+# Generate context for any AI agent
+archway guide
+
+# Target Claude Code specifically
+archway guide --target claude
+
+# Target Cursor
+archway guide --target cursor
+```
+
+<Aside type="tip">
+Prevention beats correction. Feed your AI agent the architecture rules before it writes code, and it produces correct code from the first line.
+</Aside>
+
+---
+
 ## `archway new`
 
 Scaffold a new project.

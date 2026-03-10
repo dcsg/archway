@@ -1,0 +1,5 @@
+name: makefile
+description: "Makefile with common development targets"
+requires: []
+suggests: []
+conflicts: []

@@ -1,0 +1,8 @@
+name: dynamodb
+description: "AWS DynamoDB document database client"
+requires:
+  - config
+suggests:
+  - docker
+  - observability
+conflicts: []

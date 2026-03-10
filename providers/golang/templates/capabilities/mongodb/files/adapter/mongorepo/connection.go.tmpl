@@ -1,0 +1,40 @@
+package mongorepo
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+)
+
+const connectTimeout = 10 * time.Second
+
+// ConnectionConfig holds MongoDB connection configuration.
+type ConnectionConfig struct {
+	URI      string
+	Database string
+}
+
+// NewMongoClient creates a connected MongoDB client and verifies connectivity.
+// Call the returned disconnect function when the client is no longer needed.
+func NewMongoClient(ctx context.Context, cfg ConnectionConfig) (*mongo.Database, func(context.Context), error) {
+	connectCtx, cancel := context.WithTimeout(ctx, connectTimeout)
+	defer cancel()
+
+	client, err := mongo.Connect(connectCtx, options.Client().ApplyURI(cfg.URI))
+	if err != nil {
+		return nil, nil, fmt.Errorf("connect to mongodb: %w", err)
+	}
+
+	if err := client.Ping(connectCtx, nil); err != nil {
+		return nil, nil, fmt.Errorf("ping mongodb: %w", err)
+	}
+
+	disconnect := func(ctx context.Context) {
+		_ = client.Disconnect(ctx)
+	}
+
+	return client.Database(cfg.Database), disconnect, nil
+}
