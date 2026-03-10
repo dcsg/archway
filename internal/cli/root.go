@@ -13,10 +13,8 @@ var (
 )
 
 type globalOptions struct {
-	ConfigPath string
-	Verbose    bool
-	NoColor    bool
-	Output     string
+	NoColor bool
+	Output  string
 }
 
 func Execute() error {
@@ -36,8 +34,6 @@ Use archway new to scaffold projects, archway check to validate architecture rul
 		SilenceErrors: true,
 	}
 
-	cmd.PersistentFlags().StringVar(&opts.ConfigPath, "config", "", "Path to config file")
-	cmd.PersistentFlags().BoolVar(&opts.Verbose, "verbose", false, "Enable verbose logging")
 	cmd.PersistentFlags().BoolVar(&opts.NoColor, "no-color", false, "Disable colored output")
 	cmd.PersistentFlags().StringVarP(&opts.Output, "output", "o", "terminal", "Output format: terminal|json|markdown")
 
@@ -59,20 +55,11 @@ Use archway new to scaffold projects, archway check to validate architecture rul
 		newInitCommand(opts),
 		newAnalyzeCommand(opts),
 		newCheckCommand(opts),
+		newGuideCommand(opts),
 		newVersionCommand(),
 	)
 
 	return cmd
 }
 
-func setVersionInfo(v, c, d string) {
-	if v != "" {
-		version = v
-	}
-	if c != "" {
-		commit = c
-	}
-	if d != "" {
-		date = d
-	}
-}
+

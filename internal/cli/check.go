@@ -223,9 +223,8 @@ func printProxyRuleSection(result *rules.RunResult) {
 
 	// Report invalid/stale rules.
 	for _, s := range result.Statuses {
-		if s.Status == "invalid" {
-			fmt.Printf("  ⚠ [%s] %s: %s\n", s.Filename, s.Status, s.Error)
-		} else if s.Status == "stale" {
+		switch s.Status {
+		case "invalid", "stale":
 			fmt.Printf("  ⚠ [%s] %s: %s\n", s.Filename, s.Status, s.Error)
 		}
 	}

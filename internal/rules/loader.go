@@ -18,8 +18,8 @@ func LoadRules(rulesDir, projectRoot string) ([]Rule, []RuleStatus, error) {
 		return nil, nil, fmt.Errorf("read rules directory %s: %w", rulesDir, err)
 	}
 
-	var allRules []Rule
-	var statuses []RuleStatus
+	allRules := make([]Rule, 0, len(entries))
+	statuses := make([]RuleStatus, 0, len(entries))
 
 	for _, entry := range entries {
 		if entry.IsDir() {

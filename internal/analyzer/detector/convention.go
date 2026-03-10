@@ -63,7 +63,7 @@ func detectErrorHandling(pkgs []*packages.Package) provider.ConventionFinding {
 		confidence = 0.8
 	}
 	if wrapped > max {
-		max = wrapped
+		_ = max // consumed by comparison above
 		pattern = "wrapped"
 		confidence = 0.8
 	}

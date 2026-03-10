@@ -356,7 +356,7 @@ func listArchitectures(tFS fs.FS) ([]archEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list architectures: %w", err)
 	}
-	var archs []archEntry
+	archs := make([]archEntry, 0, len(entries))
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
@@ -388,7 +388,7 @@ func listCapabilities(tFS fs.FS) ([]capEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list capabilities: %w", err)
 	}
-	var caps []capEntry
+	caps := make([]capEntry, 0, len(entries))
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue

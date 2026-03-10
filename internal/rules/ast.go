@@ -74,18 +74,18 @@ func RunAST(rule Rule, projectRoot string, allowedFiles []string) ([]RuleViolati
 
 // detectorRegistry maps detector names to their per-file implementations.
 var detectorRegistry = map[string]detectorFunc{
-	"global-mutable-state":         detectGlobalMutableStateRule,
-	"init-abuse":                   detectInitAbuseRule,
-	"init-side-effects":            detectInitSideEffectsRule,
-	"naked-goroutine":              detectNakedGoroutineRule,
-	"swallowed-error":              detectSwallowedErrorRule,
+	"global-mutable-state":          detectGlobalMutableStateRule,
+	"init-abuse":                    detectInitAbuseRule,
+	"init-side-effects":             detectInitSideEffectsRule,
+	"naked-goroutine":               detectNakedGoroutineRule,
+	"swallowed-error":               detectSwallowedErrorRule,
 	"context-background-in-handler": detectContextBackgroundRule,
-	"sql-concatenation":            detectSQLConcatenationRule,
-	"uuid-v4-as-key":               detectUUIDv4Rule,
-	"fat-handler":                  detectFatHandlerRule,
-	"god-package":                  unsupportedCrossPackage,
-	"domain-imports-adapter":       unsupportedCrossPackage,
-	"mvc-in-hexagonal":             unsupportedCrossPackage,
+	"sql-concatenation":             detectSQLConcatenationRule,
+	"uuid-v4-as-key":                detectUUIDv4Rule,
+	"fat-handler":                   detectFatHandlerRule,
+	"god-package":                   unsupportedCrossPackage,
+	"domain-imports-adapter":        unsupportedCrossPackage,
+	"mvc-in-hexagonal":              unsupportedCrossPackage,
 }
 
 func unsupportedCrossPackage(_ *ast.File, _ *token.FileSet, _ string) []RuleViolation {

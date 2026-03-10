@@ -26,15 +26,15 @@ type Violation struct {
 
 // CheckResult holds the outcome of all checks.
 type CheckResult struct {
-	DependencyViolations  []Violation    `json:"dependency_violations"`
-	StructureViolations   []Violation    `json:"structure_violations"`
-	FunctionViolations    []Violation    `json:"function_violations"`
-	NamingViolations      []Violation    `json:"naming_violations"`
-	AntiPatternViolations []AntiPattern  `json:"anti_pattern_violations"`
-	ComponentsCovered     int            `json:"components_covered"`
-	ComponentsTotal       int            `json:"components_total"`
-	RulesChecked          int            `json:"rules_checked"`
-	RulesPassing          int            `json:"rules_passing"`
+	DependencyViolations  []Violation   `json:"dependency_violations"`
+	StructureViolations   []Violation   `json:"structure_violations"`
+	FunctionViolations    []Violation   `json:"function_violations"`
+	NamingViolations      []Violation   `json:"naming_violations"`
+	AntiPatternViolations []AntiPattern `json:"anti_pattern_violations"`
+	ComponentsCovered     int           `json:"components_covered"`
+	ComponentsTotal       int           `json:"components_total"`
+	RulesChecked          int           `json:"rules_checked"`
+	RulesPassing          int           `json:"rules_passing"`
 }
 
 // TotalViolations returns the count of all violations.

@@ -259,7 +259,7 @@ func removeEmptyDirs(root string) {
 		}
 		entries, err := os.ReadDir(dirs[i])
 		if err == nil && len(entries) == 0 {
-			os.Remove(dirs[i])
+			_ = os.Remove(dirs[i])
 		}
 	}
 }
@@ -320,15 +320,9 @@ func templateFunctions() template.FuncMap {
 		"contains":   strings.Contains,
 		"hasPrefix":  strings.HasPrefix,
 		"hasSuffix":  strings.HasSuffix,
-		"join": func(parts []string, sep string) string {
-			return strings.Join(parts, sep)
-		},
-		"split": func(value, sep string) []string {
-			return strings.Split(value, sep)
-		},
-		"now": func() time.Time {
-			return time.Now()
-		},
+		"join":  strings.Join,
+		"split": strings.Split,
+		"now":   time.Now,
 		"date": func(layout string, t time.Time) string {
 			return t.Format(layout)
 		},

@@ -496,7 +496,7 @@ func detectMVCInHexagonal(pkgs []*packages.Package, projectPath string) []AntiPa
 		return nil
 	}
 
-	var results []AntiPattern
+	results := make([]AntiPattern, 0, len(mvcPackages))
 	for _, pkgPath := range mvcPackages {
 		relPath := pkgPath
 		if rel, err := filepath.Rel(projectPath, pkgPath); err == nil {
@@ -545,8 +545,7 @@ func isMutableType(expr ast.Expr) bool {
 
 func hasMutableValue(values []ast.Expr) bool {
 	for _, v := range values {
-		switch v.(type) {
-		case *ast.CompositeLit: // map[string]int{}, []int{}, MyStruct{}
+		if _, ok := v.(*ast.CompositeLit); ok {
 			return true
 		}
 		// Check for make() calls.

@@ -38,7 +38,7 @@ func hexagonalRules(cfg *config.ArchwayConfig) []Rule {
 
 	allowed := buildAllowedMap(cfg.Components)
 	allNames := componentNames(cfg.Components)
-	var rules []Rule
+	rules := make([]Rule, 0, len(cfg.Components))
 
 	for _, comp := range cfg.Components {
 		forbidden := forbiddenDeps(comp.Name, allNames, allowed[comp.Name])
@@ -147,7 +147,7 @@ var capabilityRuleMap = map[string]func() Rule{
 // generateCapRules creates best-practice rules for each enabled capability.
 func generateCapRules(cfg *config.ArchwayConfig) []Rule {
 	seen := make(map[string]bool)
-	var rules []Rule
+	rules := make([]Rule, 0, len(cfg.Capabilities))
 
 	for _, cap := range cfg.Capabilities {
 		fn, ok := capabilityRuleMap[cap]
