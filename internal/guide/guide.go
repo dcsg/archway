@@ -86,6 +86,11 @@ func writeArchitecture(b *strings.Builder, arch string) {
 		b.WriteString("This project uses layered architecture.\n")
 		b.WriteString("Code is organized into four layers: handler, service, repository, and model.\n")
 		b.WriteString("Dependencies flow strictly downward: handler → service → repository → model.\n\n")
+	case "clean":
+		b.WriteString("This project uses Clean Architecture (Uncle Bob).\n")
+		b.WriteString("Code is organized into four layers: entity, usecase, interface, and infrastructure.\n")
+		b.WriteString("Dependencies point inward: infrastructure → interface → usecase → entity.\n")
+		b.WriteString("The entity layer has no external dependencies — it is the innermost ring.\n\n")
 	case "flat":
 		b.WriteString("This project uses a flat architecture.\n")
 		b.WriteString("All code lives in a single package with no layer restrictions.\n\n")
@@ -159,6 +164,31 @@ func writeAddingCode(b *strings.Builder, arch string) {
 
 	if arch == "flat" {
 		b.WriteString("Add new files to the root package. No special placement rules.\n\n")
+		return
+	}
+
+	if arch == "clean" {
+		b.WriteString("### New entity (enterprise business rule)\n")
+		b.WriteString("1. Add to `internal/entity/`\n")
+		b.WriteString("2. Entity MUST NOT import from usecase, interface, or infrastructure\n\n")
+
+		b.WriteString("### New use case (application business rule)\n")
+		b.WriteString("1. Add to `internal/usecase/`\n")
+		b.WriteString("2. Use case may only import from `internal/entity/`\n")
+		b.WriteString("3. Use case MUST NOT import from infrastructure\n\n")
+
+		b.WriteString("### New interface adapter (handler, presenter, gateway)\n")
+		b.WriteString("1. Add to `internal/interface/`\n")
+		b.WriteString("2. Interface adapters may import from `internal/usecase/` and `internal/entity/`\n\n")
+
+		b.WriteString("### New HTTP endpoint\n")
+		b.WriteString("1. Add handler function in `internal/interface/handler/`\n")
+		b.WriteString("2. Register route in `internal/interface/handler/router.go`\n")
+		b.WriteString("3. Handler calls a use case; NEVER calls entity or infrastructure directly\n\n")
+
+		b.WriteString("### New infrastructure component (DB, web, config)\n")
+		b.WriteString("1. Add to `internal/infrastructure/`\n")
+		b.WriteString("2. Infrastructure may import from all inner layers\n\n")
 		return
 	}
 
@@ -258,6 +288,14 @@ func writeAntiPatterns(b *strings.Builder, arch string) {
 		b.WriteString("- NEVER depend on concrete implementations; use port interfaces\n")
 		b.WriteString("- NEVER let domain types reference database/transport concerns (SQL tags, JSON tags in domain)\n")
 		b.WriteString("- NEVER bypass the service layer; handlers must not call repositories directly\n")
+	}
+
+	if arch == "clean" {
+		b.WriteString("- NEVER let `internal/entity/` import from usecase, interface, or infrastructure\n")
+		b.WriteString("- NEVER let `internal/usecase/` import from infrastructure\n")
+		b.WriteString("- NEVER put business logic in `internal/interface/` adapters; that is transport only\n")
+		b.WriteString("- NEVER bypass use cases; interface adapters must not call entity methods directly for business operations\n")
+		b.WriteString("- NEVER let infrastructure concerns (SQL tags, HTTP headers) leak into entities or use cases\n")
 	}
 
 	if arch == "layered" {

@@ -1,0 +1,31 @@
+name: clean
+description: "Clean Architecture (Uncle Bob) — entity, usecase, interface, infrastructure"
+variables:
+  - name: ServiceName
+    type: string
+    required: true
+    description: "Name of the service"
+  - name: ModulePath
+    type: string
+    required: true
+    description: "Go module path"
+  - name: GoVersion
+    type: string
+    default: "1.24"
+    description: "Go version for go.mod"
+components:
+  - name: entity
+    in: ["internal/entity/**"]
+    may_depend_on: []
+  - name: usecase
+    in: ["internal/usecase/**"]
+    may_depend_on: [entity]
+  - name: interface
+    in: ["internal/interface/**"]
+    may_depend_on: [usecase, entity]
+  - name: infrastructure
+    in: ["internal/infrastructure/**"]
+    may_depend_on: [interface, usecase, entity]
+hooks:
+  - "go mod tidy"
+  - "gofmt -w ."

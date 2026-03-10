@@ -153,7 +153,7 @@ func (p *GoProvider) GetInfo(_ context.Context) (*provider.ProviderInfo, error) 
 		Name:                   "archway-go-provider",
 		Version:                "v1",
 		Language:               "go",
-		SupportedArchitectures: []string{"hexagonal", "flat", "layered"},
+		SupportedArchitectures: []string{"hexagonal", "flat", "layered", "clean"},
 		Templates:              templates,
 	}, nil
 }
