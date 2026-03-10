@@ -1,0 +1,6 @@
+id: bad-rule
+description: "Missing engine field"
+severity: error
+pattern: "something"
+scope:
+  - "**/*.go"

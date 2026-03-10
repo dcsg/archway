@@ -19,9 +19,9 @@ func parseSource(t *testing.T, src string) (*ast.File, *token.FileSet) {
 
 func TestDetectGlobalMutableState(t *testing.T) {
 	tests := []struct {
-		name    string
-		src     string
-		wantN   int
+		name  string
+		src   string
+		wantN int
 	}{
 		{
 			"mutable map",

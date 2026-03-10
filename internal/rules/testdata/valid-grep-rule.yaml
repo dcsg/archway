@@ -1,0 +1,10 @@
+id: test-sql-concat
+engine: grep
+description: "SQL queries must use parameterized queries"
+severity: error
+ref: docs/invariants/001-sql-safety.md
+pattern: 'fmt\.Sprintf.*SELECT'
+scope:
+  - "**/*.go"
+exclude:
+  - "*_test.go"
