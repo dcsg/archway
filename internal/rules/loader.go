@@ -143,6 +143,11 @@ func ValidateRule(r Rule, filename, projectRoot string) RuleStatus {
 			status.Error = "ast engine requires: detector"
 			return status
 		}
+		if !IsKnownDetector(r.Detector) {
+			status.Status = "invalid"
+			status.Error = fmt.Sprintf("unknown detector %q", r.Detector)
+			return status
+		}
 	}
 
 	// Check for stale scope (matches 0 files).

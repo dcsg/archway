@@ -57,9 +57,18 @@ func RunRules(rulesDir, projectRoot string, allowedFiles []string) (*RunResult, 
 			result.Violations = append(result.Violations, violations...)
 
 		case "ast":
-			// AST rules are handled by checker integration (Phase 2).
-			// For now, skip with no error.
-			continue
+			violations, err := RunAST(rule, projectRoot, allowedFiles)
+			if err != nil {
+				for i, s := range result.Statuses {
+					if s.Rule.ID == rule.ID {
+						result.Statuses[i].Status = "invalid"
+						result.Statuses[i].Error = fmt.Sprintf("execution error: %v", err)
+						break
+					}
+				}
+				continue
+			}
+			result.Violations = append(result.Violations, violations...)
 		}
 	}
 
