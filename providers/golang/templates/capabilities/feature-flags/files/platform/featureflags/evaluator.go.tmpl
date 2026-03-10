@@ -1,0 +1,23 @@
+package featureflags
+
+import "context"
+
+// Evaluator determines whether a feature flag is enabled.
+type Evaluator interface {
+	IsEnabled(ctx context.Context, flag string) bool
+}
+
+// LocalEvaluator evaluates feature flags from an in-memory map.
+type LocalEvaluator struct {
+	flags map[string]bool
+}
+
+// NewLocalEvaluator creates a LocalEvaluator backed by the provided flag map.
+func NewLocalEvaluator(flags map[string]bool) *LocalEvaluator {
+	return &LocalEvaluator{flags: flags}
+}
+
+// IsEnabled returns true if the named flag is present and set to true.
+func (e *LocalEvaluator) IsEnabled(_ context.Context, flag string) bool {
+	return e.flags[flag]
+}

@@ -272,7 +272,12 @@ func capabilityDir(cap string) string {
 		"config":        "config/",
 		"docker":        "Dockerfile, docker-compose.yml",
 		"ci-github":     ".github/workflows/",
-		"makefile":      "Makefile",
+		"makefile":       "Makefile",
+		"saga":           "service/saga/",
+		"feature-flags":  "platform/featureflags/",
+		"multi-tenancy":  "adapter/httphandler/middleware/",
+		"ci-gitlab":      ".gitlab-ci.yml",
+		"devcontainer":   ".devcontainer/",
 	}
 	if d, ok := dirs[cap]; ok {
 		return d

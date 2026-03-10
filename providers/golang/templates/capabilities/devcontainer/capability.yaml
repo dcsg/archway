@@ -1,0 +1,5 @@
+name: devcontainer
+description: "VS Code Dev Container for consistent development environments"
+requires: []
+suggests: [docker]
+conflicts: []

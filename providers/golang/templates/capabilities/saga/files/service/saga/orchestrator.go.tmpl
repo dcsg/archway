@@ -1,0 +1,44 @@
+package saga
+
+import (
+	"context"
+	"fmt"
+)
+
+// Orchestrator runs a saga by executing steps in order and compensating on failure.
+type Orchestrator struct {
+	steps []Step
+}
+
+// NewOrchestrator creates a new Orchestrator with the given steps.
+func NewOrchestrator(steps ...Step) *Orchestrator {
+	return &Orchestrator{steps: steps}
+}
+
+// Execute runs each step in order. On failure, it compensates all previously
+// completed steps in reverse order.
+func (o *Orchestrator) Execute(ctx context.Context) error {
+	completed := make([]Step, 0, len(o.steps))
+
+	for _, step := range o.steps {
+		if err := step.Execute(ctx); err != nil {
+			if cErr := o.compensate(ctx, completed); cErr != nil {
+				return fmt.Errorf("saga failed: %w; compensation error: %v", err, cErr)
+			}
+			return fmt.Errorf("saga failed: %w", err)
+		}
+		completed = append(completed, step)
+	}
+
+	return nil
+}
+
+// compensate runs compensation for completed steps in reverse order.
+func (o *Orchestrator) compensate(ctx context.Context, completed []Step) error {
+	for i := len(completed) - 1; i >= 0; i-- {
+		if err := completed[i].Compensate(ctx); err != nil {
+			return fmt.Errorf("compensate step %d: %w", i, err)
+		}
+	}
+	return nil
+}
