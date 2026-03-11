@@ -67,6 +67,8 @@ func buildContent(opts GenerateOptions) string {
 	if catalog, err := BuildCatalog(opts.TemplateFS, opts.Capabilities); err == nil && len(catalog) > 0 {
 		writeCatalog(&b, catalog, opts.Capabilities)
 	}
+	writeWarnings(&b, opts.Capabilities)
+	writeSuggestions(&b, opts.Capabilities)
 	writeAntiPatterns(&b, opts.Architecture)
 
 	return b.String()

@@ -258,17 +258,58 @@ func writeCatalog(b *strings.Builder, catalog []CatalogEntry, installedCaps []st
 		b.WriteString("\n")
 	}
 
-	// Suggestions section — top 5.
+}
+
+// writeWarnings writes capability interaction warnings to the guide.
+func writeWarnings(b *strings.Builder, installedCaps []string) {
+	warnings := scaffold.CapabilityWarnings(installedCaps)
+	if len(warnings) == 0 {
+		return
+	}
+
+	// Classify warnings into critical and regular.
+	var critical, regular []string
+	for _, w := range warnings {
+		msg := w.Message
+		if isCriticalWarning(msg) {
+			critical = append(critical, "CRITICAL: "+msg)
+		} else {
+			regular = append(regular, "WARNING: "+msg)
+		}
+	}
+
+	b.WriteString("## Interaction Warnings\n\n")
+	for _, w := range critical {
+		fmt.Fprintf(b, "- %s\n", w)
+	}
+	for _, w := range regular {
+		fmt.Fprintf(b, "- %s\n", w)
+	}
+	b.WriteString("\n")
+}
+
+// isCriticalWarning returns true if the warning message indicates a critical issue.
+func isCriticalWarning(msg string) bool {
+	lower := strings.ToLower(msg)
+	return strings.Contains(lower, "critical") ||
+		strings.Contains(lower, "auth") ||
+		strings.Contains(lower, "security") ||
+		strings.Contains(lower, "tenant")
+}
+
+// writeSuggestions writes architecture suggestions to the guide.
+func writeSuggestions(b *strings.Builder, installedCaps []string) {
 	suggestions := scaffold.ComputeSuggestions(installedCaps)
 	if len(suggestions) > 5 {
 		suggestions = suggestions[:5]
 	}
-	if len(suggestions) > 0 {
-		b.WriteString("### Suggestions for This Project\n")
-		b.WriteString("Based on your installed capabilities:\n")
-		for _, s := range suggestions {
-			fmt.Fprintf(b, "- Consider **%s** — %s\n", s.Capability, s.Reason)
-		}
-		b.WriteString("\n")
+	if len(suggestions) == 0 {
+		return
 	}
+
+	b.WriteString("## Architecture Suggestions\n\n")
+	for i, s := range suggestions {
+		fmt.Fprintf(b, "%d. **Add %s** — %s\n", i+1, s.Capability, s.Reason)
+	}
+	b.WriteString("\n")
 }
