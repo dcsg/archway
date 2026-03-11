@@ -92,6 +92,12 @@ func TestInstalledInCategory(t *testing.T) {
 			want:      nil,
 		},
 		{
+			name:      "bff in http category",
+			category:  "http",
+			installed: []string{"bff", "mysql"},
+			want:      []string{"bff"},
+		},
+		{
 			name:      "unknown category",
 			category:  "nonexistent",
 			installed: []string{"http-api"},

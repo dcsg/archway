@@ -117,6 +117,32 @@ func TestExtractPatterns_MultipleCapabilities(t *testing.T) {
 	assert.Contains(t, result, "MySQL Repository Pattern")
 }
 
+func TestExtractPatterns_BFFGateway(t *testing.T) {
+	tmplContent := `package bffgateway
+
+// Gateway aggregates responses from multiple backend services.
+type Gateway struct {
+	clients map[string]ServiceClient
+}
+
+func NewGateway(clients map[string]ServiceClient) *Gateway {
+	return &Gateway{clients: clients}
+}
+`
+	fs := fstest.MapFS{
+		"templates/capabilities/bff/files/adapter/bffgateway/gateway.go.tmpl": &fstest.MapFile{
+			Data: []byte(tmplContent),
+		},
+	}
+
+	result := ExtractPatterns(fs, []string{"bff"})
+	require.NotEmpty(t, result)
+	assert.Contains(t, result, "BFF Gateway Pattern")
+	assert.Contains(t, result, "type Gateway struct")
+	assert.Contains(t, result, "func NewGateway")
+	assert.Contains(t, result, "```go")
+}
+
 func TestCapabilityToTemplateMapping(t *testing.T) {
 	// Verify all mapped capabilities have labels.
 	for cap := range capabilityTemplateMap {

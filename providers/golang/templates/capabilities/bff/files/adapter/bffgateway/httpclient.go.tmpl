@@ -1,0 +1,63 @@
+package bffgateway
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+	"time"
+)
+
+// HTTPClient implements ServiceClient for HTTP-based backend services.
+type HTTPClient struct {
+	baseURL string
+	client  *http.Client
+}
+
+// NewHTTPClient creates a new HTTP service client.
+func NewHTTPClient(baseURL string) *HTTPClient {
+	return &HTTPClient{
+		baseURL: strings.TrimRight(baseURL, "/"),
+		client: &http.Client{
+			Timeout: 10 * time.Second,
+		},
+	}
+}
+
+// Call performs an HTTP request to the backend service.
+func (c *HTTPClient) Call(ctx context.Context, method, path string, body any) (any, error) {
+	url := fmt.Sprintf("%s%s", c.baseURL, path)
+
+	var bodyReader io.Reader
+	if body != nil {
+		data, err := json.Marshal(body)
+		if err != nil {
+			return nil, fmt.Errorf("marshal request body: %w", err)
+		}
+		bodyReader = strings.NewReader(string(data))
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, url, bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("call %s %s: %w", method, url, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("backend returned %d for %s %s", resp.StatusCode, method, path)
+	}
+
+	var result any
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("decode response: %w", err)
+	}
+	return result, nil
+}

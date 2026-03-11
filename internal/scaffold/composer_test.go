@@ -248,6 +248,58 @@ func TestSuggestions_AlreadySelected(t *testing.T) {
 	}
 }
 
+func TestComposeProject_BFFAutoResolvesHTTPAPI(t *testing.T) {
+	tfs := testCapabilityFS()
+	// Add BFF capability to test FS.
+	tfs.(fstest.MapFS)["templates/capabilities/bff/capability.yaml"] = &fstest.MapFile{
+		Data: []byte("name: bff\ndescription: \"BFF gateway\"\nrequires:\n  - http-api\nsuggests:\n  - circuit-breaker\nconflicts: []\n"),
+	}
+	tfs.(fstest.MapFS)["templates/capabilities/bff/files/gateway.go.tmpl"] = &fstest.MapFile{
+		Data: []byte("package bffgateway\n"),
+	}
+
+	vars := map[string]interface{}{
+		"ServiceName": "web-bff",
+		"ModulePath":  "github.com/acme/web-bff",
+	}
+
+	// Selecting only bff should auto-resolve http-api.
+	plan, err := ComposeProject(tfs, "hexagonal", []string{"bff"}, vars)
+	if err != nil {
+		t.Fatalf("ComposeProject() error = %v", err)
+	}
+
+	capSet := map[string]bool{}
+	for _, c := range plan.Capabilities {
+		capSet[c] = true
+	}
+	if !capSet["http-api"] {
+		t.Errorf("expected http-api auto-resolved, got: %v", plan.Capabilities)
+	}
+	if !capSet["bff"] {
+		t.Errorf("expected bff in capabilities, got: %v", plan.Capabilities)
+	}
+
+	// http-api (dependency) should come before bff (dependent).
+	httpIdx, bffIdx := -1, -1
+	for i, c := range plan.Capabilities {
+		if c == "http-api" {
+			httpIdx = i
+		}
+		if c == "bff" {
+			bffIdx = i
+		}
+	}
+	if httpIdx > bffIdx {
+		t.Errorf("http-api (idx %d) should come before bff (idx %d)", httpIdx, bffIdx)
+	}
+
+	// HasBFF flag should be set.
+	if !plan.Vars["HasBFF"].(bool) {
+		t.Error("expected HasBFF flag to be true")
+	}
+}
+
 func TestParseCapabilityManifest(t *testing.T) {
 	data := []byte(`name: http-api
 description: "HTTP API"

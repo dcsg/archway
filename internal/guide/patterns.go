@@ -17,6 +17,7 @@ var capabilityTemplateMap = map[string][]string{
 	"grpc":           {"adapter/grpchandler/server.go.tmpl"},
 	"kafka-consumer": {"adapter/kafkahandler/consumer.go.tmpl"},
 	"redis":          {"adapter/redisrepo/connection.go.tmpl"},
+	"bff":            {"adapter/bffgateway/gateway.go.tmpl"},
 }
 
 // patternLabel returns a human-readable label for a capability pattern.
@@ -27,6 +28,7 @@ var patternLabel = map[string]string{
 	"grpc":           "gRPC Server Pattern",
 	"kafka-consumer": "Kafka Consumer Pattern",
 	"redis":          "Redis Repository Pattern",
+	"bff":            "BFF Gateway Pattern",
 }
 
 // ExtractPatterns reads template files from the embedded FS for the given

@@ -1,0 +1,66 @@
+package bffgateway
+
+import (
+	"context"
+	"fmt"
+	"sync"
+)
+
+// ServiceClient defines the interface for calling a backend service.
+type ServiceClient interface {
+	// Call performs a request to the backend service and returns the response.
+	Call(ctx context.Context, method, path string, body any) (any, error)
+}
+
+// Gateway aggregates responses from multiple backend services.
+type Gateway struct {
+	clients map[string]ServiceClient
+}
+
+// NewGateway creates a new BFF gateway with the given service clients.
+func NewGateway(clients map[string]ServiceClient) *Gateway {
+	return &Gateway{clients: clients}
+}
+
+// Client returns the service client registered under the given name.
+func (g *Gateway) Client(name string) (ServiceClient, error) {
+	c, ok := g.clients[name]
+	if !ok {
+		return nil, fmt.Errorf("unknown service: %s", name)
+	}
+	return c, nil
+}
+
+// AggregateResult holds the result of a single service call in a fan-out.
+type AggregateResult struct {
+	Service string
+	Data    any
+	Err     error
+}
+
+// FanOut calls multiple backend services concurrently and collects results.
+// It waits for all calls to complete before returning.
+func (g *Gateway) FanOut(ctx context.Context, calls map[string]func(ctx context.Context, client ServiceClient) (any, error)) []AggregateResult {
+	results := make([]AggregateResult, 0, len(calls))
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+
+	for svc, fn := range calls {
+		client, err := g.Client(svc)
+		if err != nil {
+			results = append(results, AggregateResult{Service: svc, Err: err})
+			continue
+		}
+		wg.Add(1)
+		go func(svc string, client ServiceClient, fn func(context.Context, ServiceClient) (any, error)) {
+			defer wg.Done()
+			data, err := fn(ctx, client)
+			mu.Lock()
+			results = append(results, AggregateResult{Service: svc, Data: data, Err: err})
+			mu.Unlock()
+		}(svc, client, fn)
+	}
+
+	wg.Wait()
+	return results
+}

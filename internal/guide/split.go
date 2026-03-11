@@ -17,7 +17,7 @@ type SplitContent struct {
 
 // categoryCapabilities maps split categories to capability names.
 var categoryCapabilities = map[string][]string{
-	"http":       {"http-api", "grpc", "graphql", "websocket", "sse", "kafka-consumer", "api-versioning", "http-client"},
+	"http":       {"http-api", "grpc", "graphql", "websocket", "sse", "kafka-consumer", "api-versioning", "http-client", "bff"},
 	"data":       {"mysql", "postgres", "redis", "mongodb", "sqlite", "dynamodb", "s3", "repository", "migrations"},
 	"security":   {"auth-jwt", "cors", "multi-tenancy", "audit-log", "feature-flags"},
 	"resilience": {"circuit-breaker", "retry", "rate-limiting", "idempotency", "health"},
@@ -28,7 +28,7 @@ var categoryCapabilities = map[string][]string{
 
 // categoryGlobs maps split categories to file globs for Claude frontmatter.
 var categoryGlobs = map[string][]string{
-	"http":       {"internal/handler/**", "adapter/httphandler/**", "adapter/grpchandler/**", "adapter/graphql/**", "proto/**"},
+	"http":       {"internal/handler/**", "adapter/httphandler/**", "adapter/grpchandler/**", "adapter/graphql/**", "adapter/bffgateway/**", "proto/**"},
 	"data":       {"internal/repository/**", "adapter/*repo/**", "adapter/s3client/**", "migrations/**"},
 	"security":   {"internal/middleware/**", "internal/auth/**", "adapter/httphandler/middleware/**"},
 	"resilience": {"platform/resilience/**", "internal/circuit/**"},

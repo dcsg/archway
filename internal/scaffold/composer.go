@@ -193,6 +193,7 @@ func ComposeProject(templateFS fs.FS, architecture string, capabilities []string
 		"uuid":            "HasUUID",
 		"i18n":            "HasI18n",
 		"mailpit":         "HasMailpit",
+		"bff":             "HasBFF",
 	}
 	for _, c := range capabilities {
 		if flag, ok := capFlagMap[c]; ok {

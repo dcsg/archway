@@ -29,6 +29,7 @@ var capabilityCategories = map[string]string{
 	"websocket":      "transport",
 	"kafka-consumer": "transport",
 	"sse":            "transport",
+	"bff":            "transport",
 	// Data
 	"mysql":      "data",
 	"postgres":   "data",
@@ -96,6 +97,7 @@ var whenToUse = map[string]string{
 	"websocket":       "Real-time bidirectional communication (chat, live updates)",
 	"kafka-consumer":  "Event-driven architectures, async message processing",
 	"sse":             "Server-to-client streaming (live feeds, notifications)",
+	"bff":             "Backend-for-Frontend gateway (service aggregation, response shaping)",
 	"mysql":           "Relational data with SQL queries, transactional workloads",
 	"postgres":        "Advanced relational data, JSONB, full-text search",
 	"redis":           "Caching, session storage, pub/sub, rate limiting backend",
