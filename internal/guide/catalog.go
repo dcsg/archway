@@ -162,7 +162,7 @@ func BuildCatalog(templateFS fs.FS, installedCaps []string) ([]CatalogEntry, err
 		return nil, fmt.Errorf("read capabilities dir: %w", err)
 	}
 
-	var catalog []CatalogEntry
+	catalog := make([]CatalogEntry, 0, len(entries))
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
