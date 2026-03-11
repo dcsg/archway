@@ -20,20 +20,34 @@ type GenerateOptions struct {
 	Components   []config.Component
 	TemplateFS   fs.FS // optional: embedded FS for pattern extraction
 	CatalogOnly  bool  // when true, only output catalog-related sections
+	Decisions    []config.Decision
 }
 
 // Generate produces guide files for the specified target(s).
 func Generate(opts GenerateOptions) error {
-	content := buildContent(opts)
-
 	targets, err := resolveTargets(opts.Target)
 	if err != nil {
 		return err
 	}
 
+	// Monolithic content for non-Claude targets (built lazily).
+	var monolithic string
+	monolithicBuilt := false
+
 	for _, t := range targets {
-		if err := t.Write(opts.ProjectDir, content); err != nil {
-			return fmt.Errorf("write guide for %s: %w", t.Name(), err)
+		if ct, ok := t.(*claudeTarget); ok && !opts.CatalogOnly {
+			sc := buildSplitContent(opts)
+			if err := ct.WriteSplit(opts.ProjectDir, sc); err != nil {
+				return fmt.Errorf("write split guide: %w", err)
+			}
+		} else {
+			if !monolithicBuilt {
+				monolithic = buildContent(opts)
+				monolithicBuilt = true
+			}
+			if err := t.Write(opts.ProjectDir, monolithic); err != nil {
+				return fmt.Errorf("write guide for %s: %w", t.Name(), err)
+			}
 		}
 	}
 	return nil
@@ -48,6 +62,7 @@ func GenerateFromConfig(projectDir string, cfg *config.ArchwayConfig, target str
 		Architecture: cfg.Architecture,
 		Capabilities: cfg.Capabilities,
 		Components:   cfg.Components,
+		Decisions:    cfg.Decisions,
 	}
 	if len(templateFS) > 0 {
 		opts.TemplateFS = templateFS[0]
@@ -77,6 +92,10 @@ func buildContent(opts GenerateOptions) string {
 	}
 	writeWarnings(&b, opts.Capabilities)
 	writeSuggestions(&b, opts.Capabilities)
+
+	if len(opts.Decisions) > 0 {
+		writeDecisionStatus(&b, opts.Decisions)
+	}
 
 	if !opts.CatalogOnly {
 		writeAntiPatterns(&b, opts.Architecture)
