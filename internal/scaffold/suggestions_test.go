@@ -99,6 +99,85 @@ func TestCapabilityWarnings(t *testing.T) {
 	}
 }
 
+func TestComputeSuggestions_GraphQL(t *testing.T) {
+	suggestions := ComputeSuggestions([]string{"graphql"})
+	found := map[string]bool{}
+	for _, s := range suggestions {
+		found[s.Capability] = true
+	}
+	if !found["auth-jwt"] {
+		t.Error("expected auth-jwt suggestion for graphql")
+	}
+	if !found["observability"] {
+		t.Error("expected observability suggestion for graphql")
+	}
+}
+
+func TestComputeSuggestions_MongoDB(t *testing.T) {
+	suggestions := ComputeSuggestions([]string{"mongodb"})
+	found := map[string]bool{}
+	for _, s := range suggestions {
+		found[s.Capability] = true
+	}
+	if !found["health"] {
+		t.Error("expected health suggestion for mongodb")
+	}
+	if !found["config"] {
+		t.Error("expected config suggestion for mongodb")
+	}
+}
+
+func TestComputeSuggestions_Templ(t *testing.T) {
+	suggestions := ComputeSuggestions([]string{"templ"})
+	found := map[string]bool{}
+	for _, s := range suggestions {
+		found[s.Capability] = true
+	}
+	if !found["htmx"] {
+		t.Error("expected htmx suggestion for templ")
+	}
+	if !found["static-assets"] {
+		t.Error("expected static-assets suggestion for templ")
+	}
+}
+
+func TestComputeSuggestions_DeduplicationNewCaps(t *testing.T) {
+	// graphql already has auth-jwt — should not suggest it again.
+	suggestions := ComputeSuggestions([]string{"graphql", "auth-jwt"})
+	for _, s := range suggestions {
+		if s.Capability == "auth-jwt" {
+			t.Error("should not suggest auth-jwt when already selected")
+		}
+	}
+}
+
+func TestCapabilityWarnings_MultiTenancy(t *testing.T) {
+	warnings := CapabilityWarnings([]string{"multi-tenancy"})
+	if len(warnings) == 0 {
+		t.Error("expected warning for multi-tenancy without auth-jwt")
+	}
+	// No warning when auth-jwt is present.
+	warnings = CapabilityWarnings([]string{"multi-tenancy", "auth-jwt"})
+	for _, w := range warnings {
+		if w.Message == "multi-tenancy without auth-jwt: Multi-tenancy without authentication risks tenant data leaks" {
+			t.Error("should not warn when auth-jwt is present")
+		}
+	}
+}
+
+func TestCapabilityWarnings_Saga(t *testing.T) {
+	warnings := CapabilityWarnings([]string{"saga"})
+	if len(warnings) == 0 {
+		t.Error("expected warning for saga without observability")
+	}
+	warnings = CapabilityWarnings([]string{"saga", "observability"})
+	for _, w := range warnings {
+		if w.Message == "saga without observability: Sagas without tracing make distributed debugging very difficult" {
+			t.Error("should not warn when observability is present")
+		}
+	}
+}
+
 func TestComputeSuggestions(t *testing.T) {
 	tests := []struct {
 		name    string

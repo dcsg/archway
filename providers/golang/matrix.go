@@ -48,6 +48,34 @@ var capabilityMeta = map[string]matrixEntry{
 	"linting":    {Category: "DevOps", Pattern: "golangci-lint", Description: "Comprehensive Go linting with curated rule set"},
 	"pre-commit": {Category: "DevOps", Pattern: "Pre-commit Hooks", Description: "Automated code quality checks before every commit"},
 
+	// Resilience
+	"postgres": {Category: "Data", Pattern: "PostgreSQL Repository", Description: "Connection pooling, health checks, repository pattern"},
+
+	// Transport — additional
+	"graphql": {Category: "Transport", Pattern: "GraphQL (gqlgen)", Description: "Code-generated GraphQL server with resolver pattern"},
+	"sse":     {Category: "Transport", Pattern: "Server-Sent Events", Description: "HTTP streaming for real-time server-to-client updates"},
+
+	// Data — additional
+	"mongodb":  {Category: "Data", Pattern: "MongoDB Repository", Description: "Document database with repository pattern"},
+	"sqlite":   {Category: "Data", Pattern: "SQLite Repository", Description: "Embedded SQL database for lightweight persistence"},
+	"s3":       {Category: "Data", Pattern: "S3 Object Storage", Description: "AWS S3-compatible object storage adapter"},
+	"dynamodb": {Category: "Data", Pattern: "DynamoDB Repository", Description: "AWS DynamoDB NoSQL database with repository pattern"},
+
+	// Patterns
+	"saga":          {Category: "Design Patterns", Pattern: "Saga Orchestrator", Description: "Distributed transaction coordination with compensating actions"},
+	"feature-flags": {Category: "Design Patterns", Pattern: "Feature Flags", Description: "Runtime feature toggling for progressive rollouts"},
+	"multi-tenancy": {Category: "Design Patterns", Pattern: "Multi-Tenancy", Description: "Tenant isolation with per-tenant configuration and data separation"},
+
+	// DevOps — additional
+	"ci-gitlab":    {Category: "DevOps", Pattern: "GitLab CI", Description: "GitLab CI/CD pipeline with test, lint, and build stages"},
+	"makefile":     {Category: "DevOps", Pattern: "Makefile", Description: "Task automation with standard build, test, and lint targets"},
+	"devcontainer": {Category: "DevOps", Pattern: "Dev Container", Description: "VS Code dev container with Go toolchain and dependencies"},
+
+	// Frontend
+	"templ":         {Category: "Frontend", Pattern: "Templ Components", Description: "Type-safe HTML templating with Go templ"},
+	"htmx":          {Category: "Frontend", Pattern: "HTMX", Description: "Hypermedia-driven interactivity without JavaScript frameworks"},
+	"static-assets": {Category: "Frontend", Pattern: "Static Assets", Description: "Embedded static file serving for CSS, JS, and images"},
+
 	// Language
 	"go": {Category: "Language", Pattern: "Go", Description: "Idiomatic Go with modules, standard project layout"},
 }
@@ -64,7 +92,7 @@ func generateProjectMatrix(outputDir, architecture string, capabilities []string
 	}
 
 	// Build ordered entries by category.
-	categoryOrder := []string{"Architecture", "Design Patterns", "Language", "Transport", "Messaging", "Data", "Security", "Integration", "Testing", "DevOps"}
+	categoryOrder := []string{"Architecture", "Design Patterns", "Language", "Transport", "Messaging", "Data", "Security", "Integration", "Frontend", "Testing", "DevOps"}
 	categories := map[string][]matrixEntry{}
 
 	// Add architecture.

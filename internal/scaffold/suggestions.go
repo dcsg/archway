@@ -35,6 +35,24 @@ var defaultSuggestionRules = []SuggestionRule{
 	{IfAny: []string{"http-api"}, Missing: "health", Reason: "Health endpoints enable orchestrator readiness probes"},
 	{IfAny: []string{"http-api", "grpc", "kafka-consumer"}, Missing: "observability", Reason: "Distributed tracing and metrics for production debugging"},
 	{IfAny: []string{"http-api", "grpc"}, Missing: "request-id", Reason: "Request ID propagation enables end-to-end request tracing"},
+
+	// Transport — GraphQL
+	{IfAny: []string{"graphql"}, Missing: "auth-jwt", Reason: "GraphQL APIs need authentication"},
+	{IfAny: []string{"graphql"}, Missing: "observability", Reason: "GraphQL resolvers benefit from tracing"},
+
+	// Data — NoSQL and embedded databases
+	{IfAny: []string{"mongodb", "dynamodb"}, Missing: "health", Reason: "Database connections need health checks"},
+	{IfAny: []string{"mongodb", "sqlite", "dynamodb"}, Missing: "config", Reason: "Database connections need configuration"},
+
+	// Patterns
+	{IfAny: []string{"saga"}, Missing: "observability", Reason: "Distributed transactions need tracing"},
+	{IfAny: []string{"multi-tenancy"}, Missing: "auth-jwt", Reason: "Tenant isolation requires authentication"},
+	{IfAny: []string{"feature-flags"}, Missing: "observability", Reason: "Track feature flag usage"},
+
+	// Frontend
+	{IfAny: []string{"templ"}, Missing: "htmx", Reason: "templ + HTMX is the standard Go full-stack pattern"},
+	{IfAny: []string{"templ"}, Missing: "static-assets", Reason: "Server-rendered apps need CSS/JS serving"},
+	{IfAny: []string{"htmx"}, Missing: "static-assets", Reason: "HTMX needs the htmx.js library served"},
 }
 
 // ComputeSuggestions returns capabilities the user might want based on their selections.
@@ -87,6 +105,8 @@ var defaultWarningRules = []warningRule{
 	{ifHas: "http-client", missing: []string{"circuit-breaker", "retry"}, message: "http-client without resilience: External calls should have circuit breakers or retry logic"},
 	{ifHas: "kafka-consumer", missing: []string{"health"}, message: "kafka-consumer without health: Consumers need health checks for orchestrator readiness probes"},
 	{ifHas: "grpc", missing: []string{"health"}, message: "grpc without health: gRPC services should implement the health checking protocol"},
+	{ifHas: "multi-tenancy", missing: []string{"auth-jwt"}, message: "multi-tenancy without auth-jwt: Multi-tenancy without authentication risks tenant data leaks"},
+	{ifHas: "saga", missing: []string{"observability"}, message: "saga without observability: Sagas without tracing make distributed debugging very difficult"},
 }
 
 // CapabilityWarnings returns warnings about potentially problematic capability combinations.
