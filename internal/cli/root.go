@@ -56,6 +56,7 @@ Use archway new to scaffold projects, archway check to validate architecture rul
 		newAnalyzeCommand(opts),
 		newCheckCommand(opts),
 		newGuideCommand(opts),
+		newDecideCommand(opts),
 		newVersionCommand(),
 	)
 

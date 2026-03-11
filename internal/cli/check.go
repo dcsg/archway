@@ -19,6 +19,7 @@ type checkFlags struct {
 	projectPath string
 	proxyRules  bool
 	detectors   bool
+	decisions   bool
 	rule        string
 	staged      bool
 }
@@ -38,7 +39,8 @@ Exits with code 1 if any error-severity violations are found (useful in CI).`,
   archway check --path ./my-service
   archway check --proxy-rules
   archway check --staged
-  archway check --rule cap-sql-parameterized`,
+  archway check --rule cap-sql-parameterized
+  archway check --decisions`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runCheck(opts, flags)
 		},
@@ -49,6 +51,7 @@ Exits with code 1 if any error-severity violations are found (useful in CI).`,
 	cmd.Flags().BoolVar(&flags.detectors, "detectors", false, "Run only built-in detectors (skip proxy rules)")
 	cmd.Flags().StringVar(&flags.rule, "rule", "", "Run a single proxy rule by ID")
 	cmd.Flags().BoolVar(&flags.staged, "staged", false, "Only check files in git staging area")
+	cmd.Flags().BoolVar(&flags.decisions, "decisions", false, "Run only decision gate validation")
 
 	return cmd
 }
@@ -81,7 +84,29 @@ func runCheck(opts *globalOptions, flags *checkFlags) error {
 
 	var checkerResult *checker.CheckResult
 	var ruleResult *rules.RunResult
+	var decisionViolations []checker.DecisionViolation
 	hasErrors := false
+
+	// If --decisions is set, only check decisions.
+	if flags.decisions {
+		decisionViolations = checker.CheckDecisions(cfg.Decisions)
+		for _, v := range decisionViolations {
+			if v.Severity == "error" {
+				hasErrors = true
+				break
+			}
+		}
+
+		if opts.Output == "json" {
+			return printCombinedJSON(checkerResult, ruleResult, decisionViolations, hasErrors)
+		}
+		printCombinedTerminal(checkerResult, ruleResult, decisionViolations, cfg, flags)
+
+		if hasErrors {
+			os.Exit(1)
+		}
+		return nil
+	}
 
 	// Run built-in detectors unless --proxy-rules or --rule is set.
 	if !flags.proxyRules && flags.rule == "" {
@@ -112,10 +137,21 @@ func runCheck(opts *globalOptions, flags *checkFlags) error {
 		}
 	}
 
-	if opts.Output == "json" {
-		return printCombinedJSON(checkerResult, ruleResult, hasErrors)
+	// Include decision gates if decisions exist in config.
+	if len(cfg.Decisions) > 0 {
+		decisionViolations = checker.CheckDecisions(cfg.Decisions)
+		for _, v := range decisionViolations {
+			if v.Severity == "error" {
+				hasErrors = true
+				break
+			}
+		}
 	}
-	printCombinedTerminal(checkerResult, ruleResult, cfg, flags)
+
+	if opts.Output == "json" {
+		return printCombinedJSON(checkerResult, ruleResult, decisionViolations, hasErrors)
+	}
+	printCombinedTerminal(checkerResult, ruleResult, decisionViolations, cfg, flags)
 
 	if hasErrors {
 		os.Exit(1)
@@ -154,7 +190,7 @@ func filterRuleResult(r *rules.RunResult, ruleID string) *rules.RunResult {
 	return filtered
 }
 
-func printCombinedTerminal(checkerResult *checker.CheckResult, ruleResult *rules.RunResult, cfg *config.ArchwayConfig, flags *checkFlags) {
+func printCombinedTerminal(checkerResult *checker.CheckResult, ruleResult *rules.RunResult, decisionViolations []checker.DecisionViolation, cfg *config.ArchwayConfig, flags *checkFlags) {
 	projectName := cfg.Architecture
 	if projectName == "" {
 		projectName = "project"
@@ -182,6 +218,11 @@ func printCombinedTerminal(checkerResult *checker.CheckResult, ruleResult *rules
 	// Proxy rule results.
 	if ruleResult != nil {
 		printProxyRuleSection(ruleResult)
+	}
+
+	// Decision gate results.
+	if len(cfg.Decisions) > 0 {
+		printDecisionGateSection(cfg.Decisions, decisionViolations)
 	}
 
 	fmt.Println()
@@ -271,12 +312,62 @@ func printAntiPatternSection(title string, violations []checker.AntiPattern) {
 	}
 }
 
-func printCombinedJSON(checkerResult *checker.CheckResult, ruleResult *rules.RunResult, hasErrors bool) error {
+func printDecisionGateSection(decisions []config.Decision, violations []checker.DecisionViolation) {
+	fmt.Println("\nDECISION GATES")
+
+	// Build a set of undecided topics for quick lookup.
+	undecided := make(map[string]checker.DecisionViolation, len(violations))
+	for _, v := range violations {
+		undecided[v.Topic] = v
+	}
+
+	tier1Total, tier1Decided := 0, 0
+	tier2Total, tier2Decided := 0, 0
+
+	for _, d := range decisions {
+		if d.Tier == 1 {
+			tier1Total++
+		} else {
+			tier2Total++
+		}
+
+		if v, ok := undecided[d.Topic]; ok {
+			if v.Severity == "error" {
+				fmt.Printf("  ✗ %s: UNDECIDED (Tier %d)\n", d.Topic, d.Tier)
+			} else {
+				fmt.Printf("  ⚠ %s: UNDECIDED (Tier %d)\n", d.Topic, d.Tier)
+			}
+		} else {
+			if d.Tier == 1 {
+				tier1Decided++
+			} else {
+				tier2Decided++
+			}
+			fmt.Printf("  ✓ %s: %s (Tier %d)\n", d.Topic, d.Choice, d.Tier)
+		}
+	}
+
+	fmt.Println()
+	if tier1Total > 0 {
+		blocking := tier1Total - tier1Decided
+		if blocking > 0 {
+			fmt.Printf("  Tier 1: %d/%d decided (%d blocking)\n", tier1Decided, tier1Total, blocking)
+		} else {
+			fmt.Printf("  Tier 1: %d/%d decided\n", tier1Decided, tier1Total)
+		}
+	}
+	if tier2Total > 0 {
+		fmt.Printf("  Tier 2: %d/%d decided\n", tier2Decided, tier2Total)
+	}
+}
+
+func printCombinedJSON(checkerResult *checker.CheckResult, ruleResult *rules.RunResult, decisionViolations []checker.DecisionViolation, hasErrors bool) error {
 	type jsonOutput struct {
-		Result       string                `json:"result"`
-		Violations   []checker.Violation   `json:"violations,omitempty"`
-		AntiPatterns []checker.AntiPattern `json:"anti_patterns,omitempty"`
-		ProxyRules   *rules.RunResult      `json:"proxy_rules,omitempty"`
+		Result             string                      `json:"result"`
+		Violations         []checker.Violation         `json:"violations,omitempty"`
+		AntiPatterns       []checker.AntiPattern       `json:"anti_patterns,omitempty"`
+		ProxyRules         *rules.RunResult            `json:"proxy_rules,omitempty"`
+		DecisionViolations []checker.DecisionViolation `json:"decision_violations,omitempty"`
 	}
 
 	status := "pass"
@@ -285,8 +376,9 @@ func printCombinedJSON(checkerResult *checker.CheckResult, ruleResult *rules.Run
 	}
 
 	out := jsonOutput{
-		Result:     status,
-		ProxyRules: ruleResult,
+		Result:             status,
+		ProxyRules:         ruleResult,
+		DecisionViolations: decisionViolations,
 	}
 
 	if checkerResult != nil {

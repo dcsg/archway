@@ -56,7 +56,7 @@ func TestE2E_ScaffoldCheckAnalyzeGuide(t *testing.T) {
 	}
 
 	for _, p := range []string{
-		filepath.Join(".claude", "rules", "archway.md"),
+		filepath.Join(".claude", "rules", "archway-index.md"),
 		".cursorrules",
 		filepath.Join(".github", "copilot-instructions.md"),
 		".windsurfrules",
@@ -68,9 +68,9 @@ func TestE2E_ScaffoldCheckAnalyzeGuide(t *testing.T) {
 	}
 
 	// Verify guide content references capabilities.
-	data, err := os.ReadFile(filepath.Join(svcDir, ".claude", "rules", "archway.md"))
+	data, err := os.ReadFile(filepath.Join(svcDir, ".claude", "rules", "archway-index.md"))
 	if err != nil {
-		t.Fatalf("failed to read archway.md: %v", err)
+		t.Fatalf("failed to read archway-index.md: %v", err)
 	}
 	content := string(data)
 	for _, cap := range []string{"http-api"} {
@@ -111,12 +111,12 @@ func TestE2E_FlatPipeline(t *testing.T) {
 		t.Fatalf("guide command failed: %v", err)
 	}
 
-	data, err := os.ReadFile(filepath.Join(svcDir, ".claude", "rules", "archway.md"))
+	data, err := os.ReadFile(filepath.Join(svcDir, ".claude", "rules", "archway-index.md"))
 	if err != nil {
-		t.Fatalf("failed to read archway.md: %v", err)
+		t.Fatalf("failed to read archway-index.md: %v", err)
 	}
 	content := string(data)
-	for _, want := range []string{"flat", "No layer restrictions"} {
+	for _, want := range []string{"flat", "no layer restrictions"} {
 		if !strings.Contains(content, want) {
 			t.Errorf("guide content should contain %q", want)
 		}
@@ -160,15 +160,15 @@ func TestE2E_MultipleCapabilities(t *testing.T) {
 		t.Fatalf("guide command failed: %v", err)
 	}
 
-	data, err := os.ReadFile(filepath.Join(svcDir, ".claude", "rules", "archway.md"))
+	indexData, err := os.ReadFile(filepath.Join(svcDir, ".claude", "rules", "archway-index.md"))
 	if err != nil {
-		t.Fatalf("failed to read archway.md: %v", err)
+		t.Fatalf("failed to read archway-index.md: %v", err)
 	}
 
-	content := string(data)
+	content := string(indexData)
 	for _, cap := range []string{"http-api", "mysql", "docker", "observability", "health"} {
 		if !strings.Contains(content, cap) {
-			t.Errorf("guide content should mention capability %q", cap)
+			t.Errorf("guide index should mention capability %q", cap)
 		}
 	}
 }

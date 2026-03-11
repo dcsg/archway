@@ -199,7 +199,7 @@ func TestCheckPrintCombinedJSON_PassNoChecker(t *testing.T) {
 	}
 
 	out := captureStdout(t, func() {
-		err := printCombinedJSON(nil, ruleResult, false)
+		err := printCombinedJSON(nil, ruleResult, nil, false)
 		require.NoError(t, err)
 	})
 
@@ -231,7 +231,7 @@ func TestCheckPrintCombinedJSON_FailWithCheckerViolations(t *testing.T) {
 	}
 
 	out := captureStdout(t, func() {
-		err := printCombinedJSON(checkerResult, nil, true)
+		err := printCombinedJSON(checkerResult, nil, nil, true)
 		require.NoError(t, err)
 	})
 
@@ -260,7 +260,7 @@ func TestCheckPrintCombinedJSON_MultipleViolationTypes(t *testing.T) {
 	}
 
 	out := captureStdout(t, func() {
-		err := printCombinedJSON(checkerResult, nil, true)
+		err := printCombinedJSON(checkerResult, nil, nil, true)
 		require.NoError(t, err)
 	})
 
@@ -279,7 +279,7 @@ func TestCheckPrintCombinedTerminal_NilCheckerResult(t *testing.T) {
 	flags := &checkFlags{}
 
 	out := captureStdout(t, func() {
-		printCombinedTerminal(nil, nil, cfg, flags)
+		printCombinedTerminal(nil, nil, nil, cfg, flags)
 	})
 
 	assert.Contains(t, out, "Archway Check — hexagonal")
@@ -292,7 +292,7 @@ func TestCheckPrintCombinedTerminal_NilRuleResult(t *testing.T) {
 	flags := &checkFlags{}
 
 	out := captureStdout(t, func() {
-		printCombinedTerminal(nil, nil, cfg, flags)
+		printCombinedTerminal(nil, nil, nil, cfg, flags)
 	})
 
 	assert.Contains(t, out, "Archway Check — flat")
@@ -304,7 +304,7 @@ func TestCheckPrintCombinedTerminal_StagedModeTip(t *testing.T) {
 	flags := &checkFlags{staged: true}
 
 	out := captureStdout(t, func() {
-		printCombinedTerminal(nil, nil, cfg, flags)
+		printCombinedTerminal(nil, nil, nil, cfg, flags)
 	})
 
 	assert.Contains(t, out, "Tip: Add to .git/hooks/pre-commit:")
@@ -316,7 +316,7 @@ func TestCheckPrintCombinedTerminal_NoStagedTipByDefault(t *testing.T) {
 	flags := &checkFlags{staged: false}
 
 	out := captureStdout(t, func() {
-		printCombinedTerminal(nil, nil, cfg, flags)
+		printCombinedTerminal(nil, nil, nil, cfg, flags)
 	})
 
 	assert.NotContains(t, out, "pre-commit")
@@ -327,7 +327,7 @@ func TestCheckPrintCombinedTerminal_EmptyArchitectureFallback(t *testing.T) {
 	flags := &checkFlags{}
 
 	out := captureStdout(t, func() {
-		printCombinedTerminal(nil, nil, cfg, flags)
+		printCombinedTerminal(nil, nil, nil, cfg, flags)
 	})
 
 	assert.Contains(t, out, "Archway Check — project")
@@ -420,7 +420,7 @@ func TestCheckFilterRuleResult_EmptyRuleID(t *testing.T) {
 
 func TestCheckPrintCombinedJSON_NilBothResults(t *testing.T) {
 	out := captureStdout(t, func() {
-		err := printCombinedJSON(nil, nil, false)
+		err := printCombinedJSON(nil, nil, nil, false)
 		require.NoError(t, err)
 	})
 

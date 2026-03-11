@@ -206,6 +206,7 @@ func TestClaudeTarget_WritesCorrectPath(t *testing.T) {
 	dir := t.TempDir()
 	target := &claudeTarget{}
 
+	// Write (monolithic) still works for CatalogOnly mode.
 	err := target.Write(dir, "test content\n")
 	require.NoError(t, err)
 
@@ -259,8 +260,8 @@ func TestGenerate_EmptyProjectDir(t *testing.T) {
 	err := Generate(opts)
 	require.NoError(t, err)
 
-	// Should create the guide file even in an empty dir.
-	path := filepath.Join(emptyDir, ".claude", "rules", "archway.md")
+	// Should create the index file even in an empty dir.
+	path := filepath.Join(emptyDir, ".claude", "rules", "archway-index.md")
 	assert.FileExists(t, path)
 }
 
@@ -275,13 +276,13 @@ func TestGenerateFromConfig_NilComponents(t *testing.T) {
 	err := GenerateFromConfig(dir, cfg, "claude")
 	require.NoError(t, err)
 
-	path := filepath.Join(dir, ".claude", "rules", "archway.md")
+	// Split output: index file should exist.
+	path := filepath.Join(dir, ".claude", "rules", "archway-index.md")
 	data, err := os.ReadFile(path)
 	require.NoError(t, err)
 
 	content := string(data)
 	assert.Contains(t, content, "Architecture: flat")
-	assert.Contains(t, content, "No capabilities configured")
 }
 
 func TestBuildContent_UnknownArchitecture(t *testing.T) {
@@ -412,29 +413,37 @@ scope:
 	err := GenerateFromConfig(dir, cfg, "claude")
 	require.NoError(t, err)
 
-	data, err := os.ReadFile(filepath.Join(dir, ".claude", "rules", "archway.md"))
+	// Claude target now produces split files.
+	indexData, err := os.ReadFile(filepath.Join(dir, ".claude", "rules", "archway-index.md"))
 	require.NoError(t, err)
-	content := string(data)
+	indexContent := string(indexData)
 
-	// Architecture sections.
-	assert.Contains(t, content, "Architecture: hexagonal")
-	assert.Contains(t, content, "## Layer Rules")
-	assert.Contains(t, content, "## Dependency Direction")
-	assert.Contains(t, content, "## Adding Code")
-	assert.Contains(t, content, "## Capabilities")
-	assert.Contains(t, content, "## Anti-patterns to Avoid")
+	// Index has architecture summary.
+	assert.Contains(t, indexContent, "Architecture: hexagonal")
+	assert.Contains(t, indexContent, "## Layer Rules")
+	assert.Contains(t, indexContent, "## Active Capabilities")
+	assert.Contains(t, indexContent, "http-api")
+	assert.Contains(t, indexContent, "mysql")
+	assert.Contains(t, indexContent, "auth-jwt")
 
-	// Capabilities listed.
-	assert.Contains(t, content, "http-api")
-	assert.Contains(t, content, "mysql")
-	assert.Contains(t, content, "auth-jwt")
+	// Rule summaries in index.
+	assert.Contains(t, indexContent, "## Active Rules")
+	assert.Contains(t, indexContent, "domain-isolation")
 
-	// Warnings section (http-api without rate-limiting triggers one).
-	assert.Contains(t, content, "## Interaction Warnings")
+	// Category files exist.
+	assert.FileExists(t, filepath.Join(dir, ".claude", "rules", "archway-http.md"))
+	assert.FileExists(t, filepath.Join(dir, ".claude", "rules", "archway-data.md"))
+	assert.FileExists(t, filepath.Join(dir, ".claude", "rules", "archway-security.md"))
 
-	// Rule summaries.
-	assert.Contains(t, content, "## Active Rules")
-	assert.Contains(t, content, "domain-isolation")
+	// Old monolithic file should not exist.
+	assert.NoFileExists(t, filepath.Join(dir, ".claude", "rules", "archway.md"))
+
+	// HTTP category has adding code and warnings.
+	httpData, err := os.ReadFile(filepath.Join(dir, ".claude", "rules", "archway-http.md"))
+	require.NoError(t, err)
+	httpContent := string(httpData)
+	assert.Contains(t, httpContent, "## Adding Code")
+	assert.Contains(t, httpContent, "adapter/httphandler/")
 }
 
 func TestGuideIntegration_CatalogOnlyMode(t *testing.T) {
@@ -451,6 +460,7 @@ func TestGuideIntegration_CatalogOnlyMode(t *testing.T) {
 	err := Generate(opts)
 	require.NoError(t, err)
 
+	// CatalogOnly uses monolithic output even for Claude.
 	data, err := os.ReadFile(filepath.Join(dir, ".claude", "rules", "archway.md"))
 	require.NoError(t, err)
 	content := string(data)
@@ -508,6 +518,54 @@ func TestForbiddenDeps_ComponentWithNoForbidden(t *testing.T) {
 	assert.Empty(t, result)
 }
 
+func TestFullGuideWithDecisions(t *testing.T) {
+	dir := t.TempDir()
+	cfg := &config.ArchwayConfig{
+		Architecture: "hexagonal",
+		Capabilities: []string{"http-api", "mysql", "auth-jwt"},
+		Components: []config.Component{
+			{Name: "domain", In: []string{"domain/**"}, MayDependOn: []string{}},
+			{Name: "ports", In: []string{"port/**"}, MayDependOn: []string{"domain"}},
+			{Name: "service", In: []string{"service/**"}, MayDependOn: []string{"domain", "ports"}},
+			{Name: "adapters", In: []string{"adapter/**"}, MayDependOn: []string{"ports", "domain"}},
+		},
+		Decisions: []config.Decision{
+			{Topic: "architecture-pattern", Tier: 1, Status: "decided", Choice: "hexagonal"},
+			{Topic: "authentication-strategy", Tier: 1, Status: "decided", Choice: "jwt"},
+			{Topic: "tenant-isolation", Tier: 1, Status: "undecided"},
+			{Topic: "failure-strategy", Tier: 2, Status: "undecided"},
+		},
+	}
+
+	// Claude target: split files.
+	err := GenerateFromConfig(dir, cfg, "claude")
+	require.NoError(t, err)
+
+	// Index file exists.
+	indexData, err := os.ReadFile(filepath.Join(dir, ".claude", "rules", "archway-index.md"))
+	require.NoError(t, err)
+	indexContent := string(indexData)
+
+	assert.Contains(t, indexContent, "Architecture: hexagonal")
+
+	// Category files exist.
+	assert.FileExists(t, filepath.Join(dir, ".claude", "rules", "archway-http.md"))
+	assert.FileExists(t, filepath.Join(dir, ".claude", "rules", "archway-data.md"))
+	assert.FileExists(t, filepath.Join(dir, ".claude", "rules", "archway-security.md"))
+
+	// Monolithic output for non-Claude targets includes decisions.
+	err = GenerateFromConfig(dir, cfg, "cursor")
+	require.NoError(t, err)
+	cursorData, err := os.ReadFile(filepath.Join(dir, ".cursorrules"))
+	require.NoError(t, err)
+	cursorContent := string(cursorData)
+	assert.Contains(t, cursorContent, "hexagonal")
+	assert.Contains(t, cursorContent, "Decision Status")
+	assert.Contains(t, cursorContent, "architecture-pattern")
+	assert.Contains(t, cursorContent, "tenant-isolation")
+	assert.Contains(t, cursorContent, "UNDECIDED")
+}
+
 func TestOutputTargetPaths(t *testing.T) {
 	dir := t.TempDir()
 	opts := GenerateOptions{
@@ -519,7 +577,7 @@ func TestOutputTargetPaths(t *testing.T) {
 	require.NoError(t, Generate(opts))
 
 	expected := []string{
-		filepath.Join(dir, ".claude", "rules", "archway.md"),
+		filepath.Join(dir, ".claude", "rules", "archway-index.md"),
 		filepath.Join(dir, ".cursorrules"),
 		filepath.Join(dir, ".github", "copilot-instructions.md"),
 		filepath.Join(dir, ".windsurfrules"),

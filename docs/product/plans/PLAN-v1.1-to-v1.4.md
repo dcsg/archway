@@ -26,10 +26,10 @@
 | 14    | done   | 2026-03-11 |
 | 15    | done   | 2026-03-11 |
 | 16    | done   | 2026-03-11 |
-| 17    | -      | -       |
-| 18    | -      | -       |
-| 19    | -      | -       |
-| 20    | -      | -       |
+| 17    | done   | 2026-03-11 |
+| 18    | done   | 2026-03-11 |
+| 19    | done   | 2026-03-11 |
+| 20    | done   | 2026-03-11 |
 
 **IMPORTANT:** Update this table as phases complete. This table is the persistent state that survives context compaction.
 

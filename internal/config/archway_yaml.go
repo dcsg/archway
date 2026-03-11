@@ -17,6 +17,18 @@ type ArchwayConfig struct {
 	Rules        RulesConfig          `yaml:"rules,omitempty" json:"rules,omitempty"`
 	Extends      []string             `yaml:"extends,omitempty" json:"extends,omitempty"`
 	Templates    TemplateSourceConfig `yaml:"templates,omitempty" json:"templates,omitempty"`
+	Decisions    []Decision           `yaml:"decisions,omitempty" json:"decisions,omitempty"`
+}
+
+// Decision represents an architecture decision gate entry.
+type Decision struct {
+	Topic     string `yaml:"topic" json:"topic"`
+	Tier      int    `yaml:"tier" json:"tier"`
+	Status    string `yaml:"status" json:"status"`
+	Choice    string `yaml:"choice,omitempty" json:"choice,omitempty"`
+	Rationale string `yaml:"rationale,omitempty" json:"rationale,omitempty"`
+	DecidedBy string `yaml:"decided-by,omitempty" json:"decided_by,omitempty"`
+	DecidedAt string `yaml:"decided-at,omitempty" json:"decided_at,omitempty"`
 }
 
 // Component defines a named architectural component with dependency rules.

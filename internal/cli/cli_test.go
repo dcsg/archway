@@ -239,22 +239,19 @@ func TestGuide_CleanArchitecture(t *testing.T) {
 		t.Fatalf("guide command failed: %v", err)
 	}
 
-	data, err := os.ReadFile(filepath.Join(svcDir, ".claude", "rules", "archway.md"))
+	data, err := os.ReadFile(filepath.Join(svcDir, ".claude", "rules", "archway-index.md"))
 	if err != nil {
-		t.Fatalf("failed to read archway.md: %v", err)
+		t.Fatalf("failed to read archway-index.md: %v", err)
 	}
 
 	content := string(data)
-	for _, want := range []string{"clean", "entity", "usecase", "interface", "infrastructure"} {
+	for _, want := range []string{"clean", "entity", "usecase"} {
 		if !strings.Contains(content, want) {
-			t.Errorf("guide content should contain %q", want)
+			t.Errorf("guide index content should contain %q", want)
 		}
 	}
-	if !strings.Contains(content, "NEVER let `internal/entity/` import from usecase") {
-		t.Errorf("guide content should contain clean NEVER rules")
-	}
-	if !strings.Contains(content, "NEVER let `internal/usecase/` import from infrastructure") {
-		t.Errorf("guide content should contain clean usecase NEVER rule")
+	if !strings.Contains(content, "## Layer Rules") {
+		t.Errorf("guide index should contain layer rules")
 	}
 }
 
@@ -283,19 +280,19 @@ func TestGuide_LayeredArchitecture(t *testing.T) {
 		t.Fatalf("guide command failed: %v", err)
 	}
 
-	data, err := os.ReadFile(filepath.Join(svcDir, ".claude", "rules", "archway.md"))
+	data, err := os.ReadFile(filepath.Join(svcDir, ".claude", "rules", "archway-index.md"))
 	if err != nil {
-		t.Fatalf("failed to read archway.md: %v", err)
+		t.Fatalf("failed to read archway-index.md: %v", err)
 	}
 
 	content := string(data)
 	for _, want := range []string{"layered", "handler", "service", "repository", "model"} {
 		if !strings.Contains(content, want) {
-			t.Errorf("guide content should contain %q", want)
+			t.Errorf("guide index content should contain %q", want)
 		}
 	}
-	if !strings.Contains(content, "NEVER let handler bypass service") {
-		t.Errorf("guide content should contain layered NEVER rules")
+	if !strings.Contains(content, "## Layer Rules") {
+		t.Errorf("guide index should contain layer rules")
 	}
 }
 
@@ -402,7 +399,7 @@ func TestGuide_GeneratesAllTargets(t *testing.T) {
 	}
 
 	for _, p := range []string{
-		filepath.Join(".claude", "rules", "archway.md"),
+		filepath.Join(".claude", "rules", "archway-index.md"),
 		".cursorrules",
 		filepath.Join(".github", "copilot-instructions.md"),
 		".windsurfrules",
@@ -419,8 +416,14 @@ func TestGuide_SingleTarget(t *testing.T) {
 	svcDir := scaffoldHexagonal(t, tmp, "guide-single")
 
 	// Remove all guide files created by scaffold so we can verify single-target behavior.
+	rulesDir := filepath.Join(svcDir, ".claude", "rules")
+	entries, _ := os.ReadDir(rulesDir)
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), "archway-") {
+			_ = os.Remove(filepath.Join(rulesDir, e.Name()))
+		}
+	}
 	for _, p := range []string{
-		filepath.Join(".claude", "rules", "archway.md"),
 		".cursorrules",
 		".windsurfrules",
 		filepath.Join(".github", "copilot-instructions.md"),
@@ -434,10 +437,10 @@ func TestGuide_SingleTarget(t *testing.T) {
 		t.Fatalf("guide --target claude failed: %v", err)
 	}
 
-	// Claude target should exist.
-	claudePath := filepath.Join(svcDir, ".claude", "rules", "archway.md")
+	// Claude target should exist (split files).
+	claudePath := filepath.Join(svcDir, ".claude", "rules", "archway-index.md")
 	if _, err := os.Stat(claudePath); os.IsNotExist(err) {
-		t.Error("expected .claude/rules/archway.md to exist")
+		t.Error("expected .claude/rules/archway-index.md to exist")
 	}
 
 	// Other targets should NOT exist.
@@ -483,13 +486,13 @@ func TestGuide_ContentContainsArchitecture(t *testing.T) {
 		t.Fatalf("guide command failed: %v", err)
 	}
 
-	data, err := os.ReadFile(filepath.Join(svcDir, ".claude", "rules", "archway.md"))
+	data, err := os.ReadFile(filepath.Join(svcDir, ".claude", "rules", "archway-index.md"))
 	if err != nil {
-		t.Fatalf("failed to read archway.md: %v", err)
+		t.Fatalf("failed to read archway-index.md: %v", err)
 	}
 
 	content := string(data)
-	for _, want := range []string{"hexagonal", "Layer Rules", "Anti-patterns"} {
+	for _, want := range []string{"hexagonal", "Layer Rules", "Active Capabilities"} {
 		if !strings.Contains(content, want) {
 			t.Errorf("guide content should contain %q", want)
 		}
@@ -506,13 +509,13 @@ func TestGuide_FlatArchitecture(t *testing.T) {
 		t.Fatalf("guide command failed: %v", err)
 	}
 
-	data, err := os.ReadFile(filepath.Join(svcDir, ".claude", "rules", "archway.md"))
+	data, err := os.ReadFile(filepath.Join(svcDir, ".claude", "rules", "archway-index.md"))
 	if err != nil {
-		t.Fatalf("failed to read archway.md: %v", err)
+		t.Fatalf("failed to read archway-index.md: %v", err)
 	}
 
 	content := string(data)
-	for _, want := range []string{"flat", "No layer restrictions"} {
+	for _, want := range []string{"flat", "no layer restrictions"} {
 		if !strings.Contains(content, want) {
 			t.Errorf("guide content should contain %q", want)
 		}
