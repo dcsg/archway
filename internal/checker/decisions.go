@@ -17,7 +17,7 @@ type DecisionViolation struct {
 // CheckDecisions validates that all architecture decisions have been decided.
 // Tier 1 undecided decisions are errors (blocking), Tier 2 are warnings.
 func CheckDecisions(decisions []config.Decision) []DecisionViolation {
-	var violations []DecisionViolation
+	violations := make([]DecisionViolation, 0, len(decisions))
 	for _, d := range decisions {
 		if d.Status == "decided" {
 			continue

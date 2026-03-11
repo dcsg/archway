@@ -55,7 +55,7 @@ func AutoPopulateDecisions(arch string, capabilities []string) []config.Decision
 
 	hasDB := capSet["mysql"] || capSet["postgres"] || capSet["sqlite"] || capSet["mongodb"] || capSet["dynamodb"]
 
-	var decisions []config.Decision
+	decisions := make([]config.Decision, 0, len(standardDecisions))
 
 	// All Tier 1 decisions are always included.
 	for _, dt := range standardDecisions {
