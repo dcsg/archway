@@ -1,0 +1,7 @@
+name: static-assets
+description: "Static file serving with embedded assets and cache headers"
+requires:
+  - http-api
+suggests:
+  - templ
+conflicts: []

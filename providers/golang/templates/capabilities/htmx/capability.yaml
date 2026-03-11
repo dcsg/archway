@@ -1,0 +1,8 @@
+name: htmx
+description: "HTMX integration for server-driven interactivity without JavaScript"
+requires:
+  - http-api
+  - templ
+suggests:
+  - static-assets
+conflicts: []
