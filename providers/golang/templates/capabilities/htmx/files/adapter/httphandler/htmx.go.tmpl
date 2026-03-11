@@ -1,0 +1,32 @@
+package httphandler
+
+import (
+	"net/http"
+)
+
+// IsHTMXRequest checks if the request was made by HTMX.
+func IsHTMXRequest(r *http.Request) bool {
+	return r.Header.Get("HX-Request") == "true"
+}
+
+// HTMXMiddleware wraps a handler to support both full page and partial responses.
+// For HTMX requests, only the partial component is rendered.
+// For regular requests, the full page layout wraps the component.
+func HTMXMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if IsHTMXRequest(r) {
+			w.Header().Set("Vary", "HX-Request")
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// SetHTMXTrigger sets the HX-Trigger response header to trigger client-side events.
+func SetHTMXTrigger(w http.ResponseWriter, event string) {
+	w.Header().Set("HX-Trigger", event)
+}
+
+// SetHTMXRedirect tells HTMX to perform a client-side redirect.
+func SetHTMXRedirect(w http.ResponseWriter, url string) {
+	w.Header().Set("HX-Redirect", url)
+}

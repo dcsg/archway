@@ -1,0 +1,16 @@
+package partials
+
+import "fmt"
+
+templ Counter(count int) {
+    <div id="counter" class="counter">
+        <span>Count: { fmt.Sprintf("%d", count) }</span>
+        <button
+            hx-post="/counter/increment"
+            hx-target="#counter"
+            hx-swap="outerHTML"
+        >
+            Increment
+        </button>
+    </div>
+}

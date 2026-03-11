@@ -1,0 +1,10 @@
+package views
+
+templ Home(title string) {
+    @Layout(title) {
+        <main class="container">
+            <h1>{ title }</h1>
+            <p>Welcome to {{ .ServiceName }}.</p>
+        </main>
+    }
+}

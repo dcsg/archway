@@ -278,6 +278,9 @@ func capabilityDir(cap string) string {
 		"multi-tenancy": "adapter/httphandler/middleware/",
 		"ci-gitlab":     ".gitlab-ci.yml",
 		"devcontainer":  ".devcontainer/",
+		"templ":         "adapter/httphandler/views/",
+		"htmx":          "adapter/httphandler/",
+		"static-assets": "static/",
 	}
 	if d, ok := dirs[cap]; ok {
 		return d

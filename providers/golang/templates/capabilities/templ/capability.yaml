@@ -1,0 +1,8 @@
+name: templ
+description: "Type-safe Go HTML templating with templ — server-rendered components"
+requires:
+  - http-api
+suggests:
+  - htmx
+  - static-assets
+conflicts: []
