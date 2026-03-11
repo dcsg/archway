@@ -166,6 +166,57 @@ func TestResolveTemplate(t *testing.T) {
 	}
 }
 
+func TestParseWizard_InvalidYAML(t *testing.T) {
+	_, err := ParseWizard([]byte(":::invalid"))
+	if err == nil {
+		t.Fatal("expected error for invalid YAML")
+	}
+}
+
+func TestParseWizard_DefaultsQuestionType(t *testing.T) {
+	cfg, err := ParseWizard([]byte(`steps:
+  - id: test
+    questions:
+      - variable: Name
+        prompt: Name?
+      - variable: Lang
+        prompt: Language?
+        type: select
+`))
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if cfg.Steps[0].Questions[0].Type != "input" {
+		t.Errorf("default type = %q, want 'input'", cfg.Steps[0].Questions[0].Type)
+	}
+	if cfg.Steps[0].Questions[1].Type != "select" {
+		t.Errorf("explicit type = %q, want 'select'", cfg.Steps[0].Questions[1].Type)
+	}
+}
+
+func TestParseProviderWizard_InvalidYAML(t *testing.T) {
+	_, err := ParseProviderWizard([]byte(":::invalid"))
+	if err == nil {
+		t.Fatal("expected error for invalid YAML")
+	}
+}
+
+func TestParseProviderWizard_DefaultsQuestionType(t *testing.T) {
+	cfg, err := ParseProviderWizard([]byte(`steps:
+  - id: test
+    questions:
+      - variable: Name
+        prompt: Name?
+routing: []
+`))
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if cfg.Steps[0].Questions[0].Type != "input" {
+		t.Errorf("type = %q, want 'input'", cfg.Steps[0].Questions[0].Type)
+	}
+}
+
 func TestResolveFastPath(t *testing.T) {
 	cfg := &ProviderWizardConfig{
 		FastPaths: []FastPath{

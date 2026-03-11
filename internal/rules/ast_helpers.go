@@ -32,6 +32,9 @@ func hasMutableValueAST(values []ast.Expr) bool {
 }
 
 func countStatementsAST(body *ast.BlockStmt) int {
+	if body == nil {
+		return 0
+	}
 	count := 0
 	ast.Inspect(body, func(n ast.Node) bool {
 		switch n.(type) {

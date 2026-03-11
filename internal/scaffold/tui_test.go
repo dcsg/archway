@@ -170,6 +170,215 @@ func TestFlexOptionsForQuestion(t *testing.T) {
 	})
 }
 
+func TestBuildFieldInput(t *testing.T) {
+	q := WizardQuestion{
+		Variable: "Name",
+		Prompt:   "Service name?",
+		Type:     "input",
+	}
+	state := map[string]interface{}{"Name": "existing"}
+	field, err := buildField(q, VariableDefinition{Name: "Name", Type: "string"}, state)
+	if err != nil {
+		t.Fatalf("buildField() error = %v", err)
+	}
+	if field == nil {
+		t.Fatal("expected non-nil field")
+	}
+	// State should preserve existing value.
+	if state["Name"] != "existing" {
+		t.Errorf("state[Name] = %v, want 'existing'", state["Name"])
+	}
+}
+
+func TestBuildFieldInputWithValidation(t *testing.T) {
+	q := WizardQuestion{
+		Variable: "Name",
+		Prompt:   "Name?",
+		Type:     "input",
+		Validate: `^[a-z]+$`,
+	}
+	state := map[string]interface{}{}
+	field, err := buildField(q, VariableDefinition{Name: "Name", Type: "string"}, state)
+	if err != nil {
+		t.Fatalf("buildField() error = %v", err)
+	}
+	if field == nil {
+		t.Fatal("expected non-nil field")
+	}
+}
+
+func TestBuildFieldInputInvalidRegex(t *testing.T) {
+	q := WizardQuestion{
+		Variable: "Name",
+		Prompt:   "Name?",
+		Type:     "input",
+		Validate: `[invalid`,
+	}
+	_, err := buildField(q, VariableDefinition{}, map[string]interface{}{})
+	if err == nil {
+		t.Fatal("expected error for invalid regex")
+	}
+}
+
+func TestBuildFieldConfirm(t *testing.T) {
+	q := WizardQuestion{
+		Variable: "UseAuth",
+		Prompt:   "Enable auth?",
+		Type:     "confirm",
+	}
+	state := map[string]interface{}{"UseAuth": true}
+	field, err := buildField(q, VariableDefinition{Name: "UseAuth", Type: "bool"}, state)
+	if err != nil {
+		t.Fatalf("buildField() error = %v", err)
+	}
+	if field == nil {
+		t.Fatal("expected non-nil field")
+	}
+}
+
+func TestBuildFieldDefaultType(t *testing.T) {
+	// Empty type defaults to "input".
+	q := WizardQuestion{
+		Variable: "Name",
+		Prompt:   "Name?",
+		Type:     "",
+	}
+	state := map[string]interface{}{}
+	field, err := buildField(q, VariableDefinition{}, state)
+	if err != nil {
+		t.Fatalf("buildField() error = %v", err)
+	}
+	if field == nil {
+		t.Fatal("expected non-nil field (defaulting to input)")
+	}
+}
+
+func TestBuildFieldInputNilState(t *testing.T) {
+	q := WizardQuestion{
+		Variable: "Name",
+		Prompt:   "Name?",
+		Type:     "input",
+	}
+	state := map[string]interface{}{}
+	field, err := buildField(q, VariableDefinition{Name: "Name", Type: "string"}, state)
+	if err != nil {
+		t.Fatalf("buildField() error = %v", err)
+	}
+	if field == nil {
+		t.Fatal("expected non-nil field")
+	}
+	// state should have empty string for Name.
+	if state["Name"] != "" {
+		t.Errorf("state[Name] = %v, want ''", state["Name"])
+	}
+}
+
+func TestBuildFieldConfirmFalseDefault(t *testing.T) {
+	q := WizardQuestion{
+		Variable: "Flag",
+		Prompt:   "Enable?",
+		Type:     "confirm",
+	}
+	state := map[string]interface{}{} // no "Flag" key — should default to false
+	field, err := buildField(q, VariableDefinition{Name: "Flag", Type: "bool"}, state)
+	if err != nil {
+		t.Fatalf("buildField() error = %v", err)
+	}
+	if field == nil {
+		t.Fatal("expected non-nil field")
+	}
+	if state["Flag"] != false {
+		t.Errorf("state[Flag] = %v, want false", state["Flag"])
+	}
+}
+
+func TestBuildFieldSelectWithExistingValue(t *testing.T) {
+	q := WizardQuestion{
+		Variable: "Lang",
+		Prompt:   "Language?",
+		Type:     "select",
+		Options: []FlexOption{
+			{Label: "Go", Value: "go"},
+			{Label: "TypeScript", Value: "ts"},
+		},
+	}
+	state := map[string]interface{}{"Lang": "ts"} // pre-set to second option
+	field, err := buildField(q, VariableDefinition{}, state)
+	if err != nil {
+		t.Fatalf("buildField() error = %v", err)
+	}
+	if field == nil {
+		t.Fatal("expected non-nil field")
+	}
+	if state["Lang"] != "ts" {
+		t.Errorf("state[Lang] = %v, want 'ts'", state["Lang"])
+	}
+}
+
+func TestBuildFieldSelectEmptyOptions(t *testing.T) {
+	q := WizardQuestion{
+		Variable: "Choice",
+		Prompt:   "Pick",
+		Type:     "select",
+		Options:  []FlexOption{},
+	}
+	state := map[string]interface{}{}
+	field, err := buildField(q, VariableDefinition{}, state)
+	if err != nil {
+		t.Fatalf("buildField() error = %v", err)
+	}
+	if field == nil {
+		t.Fatal("expected non-nil field")
+	}
+}
+
+func TestBuildFieldMultiselectWithExisting(t *testing.T) {
+	q := WizardQuestion{
+		Variable: "Caps",
+		Prompt:   "Caps?",
+		Type:     "multiselect",
+		Options: []FlexOption{
+			{Label: "A", Value: "a"},
+			{Label: "B", Value: "b"},
+		},
+	}
+	state := map[string]interface{}{"Caps": []string{"a"}}
+	field, err := buildField(q, VariableDefinition{}, state)
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if field == nil {
+		t.Fatal("expected non-nil field")
+	}
+}
+
+func TestBuildFieldUnsupportedType(t *testing.T) {
+	q := WizardQuestion{
+		Variable: "X",
+		Prompt:   "X?",
+		Type:     "slider",
+	}
+	_, err := buildField(q, VariableDefinition{}, map[string]interface{}{})
+	if err == nil {
+		t.Fatal("expected error for unsupported type")
+	}
+}
+
+func TestEvaluateWhen_NonEmptyString(t *testing.T) {
+	// A non-empty string value should return true.
+	if !evaluateWhen("Foo", map[string]interface{}{"Foo": "bar"}) {
+		t.Fatal("expected true for non-empty string")
+	}
+	// An empty string should return false.
+	if evaluateWhen("Foo", map[string]interface{}{"Foo": ""}) {
+		t.Fatal("expected false for empty string")
+	}
+	// Whitespace-only string should return false.
+	if evaluateWhen("Foo", map[string]interface{}{"Foo": "  "}) {
+		t.Fatal("expected false for whitespace string")
+	}
+}
+
 func TestBuildFieldSelect(t *testing.T) {
 	q := WizardQuestion{
 		Variable: "Lang",

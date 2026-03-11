@@ -276,6 +276,199 @@ conflicts:
 	}
 }
 
+func TestComposeProject_UnknownArchitecture(t *testing.T) {
+	tfs := testCapabilityFS()
+	_, err := ComposeProject(tfs, "nonexistent", nil, map[string]interface{}{})
+	if err == nil {
+		t.Fatal("expected error for unknown architecture")
+	}
+}
+
+func TestComposeProject_InvalidCapabilityManifest(t *testing.T) {
+	tfs := fstest.MapFS{
+		"templates/architectures/hexagonal/manifest.yaml": &fstest.MapFile{
+			Data: []byte("name: hexagonal\n"),
+		},
+		"templates/capabilities/bad/capability.yaml": &fstest.MapFile{
+			Data: []byte(":::invalid"),
+		},
+	}
+	_, err := ComposeProject(tfs, "hexagonal", []string{"bad"}, map[string]interface{}{})
+	if err == nil {
+		t.Fatal("expected error for invalid capability manifest")
+	}
+}
+
+func TestComposeProject_UnknownCapability(t *testing.T) {
+	tfs := testCapabilityFS()
+	_, err := ComposeProject(tfs, "hexagonal", []string{"nonexistent"}, map[string]interface{}{
+		"ServiceName": "test",
+		"ModulePath":  "github.com/test/test",
+	})
+	if err == nil {
+		t.Fatal("expected error for unknown capability")
+	}
+}
+
+func TestComposeProject_NilVars(t *testing.T) {
+	tfs := testCapabilityFS()
+	_, err := ComposeProject(tfs, "hexagonal", []string{"http-api"}, nil)
+	if err == nil {
+		t.Fatal("expected error for missing required vars (ServiceName, ModulePath)")
+	}
+}
+
+func TestComposeProject_HasFlags(t *testing.T) {
+	tfs := testCapabilityFS()
+	vars := map[string]interface{}{
+		"ServiceName": "orders",
+		"ModulePath":  "github.com/acme/orders",
+	}
+	plan, err := ComposeProject(tfs, "hexagonal", []string{"http-api", "mysql"}, vars)
+	if err != nil {
+		t.Fatalf("ComposeProject() error = %v", err)
+	}
+	if plan.Vars["HasHTTP"] != true {
+		t.Error("expected HasHTTP = true")
+	}
+	if plan.Vars["HasMySQL"] != true {
+		t.Error("expected HasMySQL = true")
+	}
+}
+
+func TestComposeProject_CapabilityVariableDefaults(t *testing.T) {
+	tfs := fstest.MapFS{
+		"templates/architectures/simple/manifest.yaml": &fstest.MapFile{
+			Data: []byte("name: simple\ndescription: test\n"),
+		},
+		"templates/capabilities/with-vars/capability.yaml": &fstest.MapFile{
+			Data: []byte(`name: with-vars
+description: has variables
+variables:
+  - name: Port
+    type: string
+    default: "8080"
+  - name: Debug
+    type: bool
+    default: "true"
+`),
+		},
+	}
+	plan, err := ComposeProject(tfs, "simple", []string{"with-vars"}, map[string]interface{}{})
+	if err != nil {
+		t.Fatalf("ComposeProject() error = %v", err)
+	}
+	if plan.Vars["Port"] != "8080" {
+		t.Errorf("Port = %v, want '8080'", plan.Vars["Port"])
+	}
+	if plan.Vars["Debug"] != true {
+		t.Errorf("Debug = %v, want true", plan.Vars["Debug"])
+	}
+}
+
+func TestComposeProject_BoolCoercion(t *testing.T) {
+	tfs := fstest.MapFS{
+		"templates/architectures/boolarch/manifest.yaml": &fstest.MapFile{
+			Data: []byte(`name: boolarch
+description: test
+variables:
+  - name: EnableFeature
+    type: bool
+`),
+		},
+	}
+	// Pass a string "true" — should be coerced to bool.
+	vars := map[string]interface{}{"EnableFeature": "true"}
+	plan, err := ComposeProject(tfs, "boolarch", nil, vars)
+	if err != nil {
+		t.Fatalf("ComposeProject() error = %v", err)
+	}
+	if plan.Vars["EnableFeature"] != true {
+		t.Errorf("EnableFeature = %v (%T), want bool true", plan.Vars["EnableFeature"], plan.Vars["EnableFeature"])
+	}
+}
+
+func TestCollectPartials_NoPartialsDir(t *testing.T) {
+	tfs := fstest.MapFS{
+		"templates/capabilities/nop/capability.yaml": &fstest.MapFile{
+			Data: []byte("name: nop\ndescription: no partials\n"),
+		},
+	}
+	partials, err := collectPartials(tfs, []string{"templates/capabilities/nop"}, map[string]interface{}{})
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if len(partials) != 0 {
+		t.Errorf("expected 0 partials, got %d", len(partials))
+	}
+}
+
+func TestCollectPartials_SkipsDirectories(t *testing.T) {
+	// The collectPartials function skips directory entries in _partials.
+	tfs := testCapabilityFS()
+	partials, err := collectPartials(tfs, []string{"templates/capabilities/http-api"}, map[string]interface{}{
+		"ModulePath": "github.com/test/test",
+	})
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if _, ok := partials["main_imports"]; !ok {
+		t.Error("expected main_imports partial")
+	}
+}
+
+func TestSuggestions_NonexistentCapability(t *testing.T) {
+	tfs := testCapabilityFS()
+	// Should not error, just skip capabilities with no manifest.
+	suggestions := Suggestions(tfs, []string{"nonexistent"})
+	if len(suggestions) != 0 {
+		t.Errorf("expected 0 suggestions, got %d", len(suggestions))
+	}
+}
+
+func TestResolveCapabilityDeps_NonexistentDep(t *testing.T) {
+	tfs := testCapabilityFS()
+	capSet := map[string]bool{"nonexistent": true}
+	result := resolveCapabilityDeps(tfs, []string{"nonexistent"}, capSet)
+	if len(result) != 1 || result[0] != "nonexistent" {
+		t.Errorf("expected [nonexistent], got %v", result)
+	}
+}
+
+func TestCollectPartials_BadTemplate(t *testing.T) {
+	tfs := fstest.MapFS{
+		"templates/capabilities/badpartial/_partials/bad.go.tmpl": &fstest.MapFile{
+			Data: []byte("{{.X | nonexistent}}"),
+		},
+	}
+	_, err := collectPartials(tfs, []string{"templates/capabilities/badpartial"}, map[string]interface{}{})
+	if err == nil {
+		t.Fatal("expected error for bad partial template")
+	}
+}
+
+func TestCollectPartials_EmptyPartialSkipped(t *testing.T) {
+	tfs := fstest.MapFS{
+		"templates/capabilities/emptypartial/_partials/empty.go.tmpl": &fstest.MapFile{
+			Data: []byte("{{if .Include}}content{{end}}"),
+		},
+	}
+	partials, err := collectPartials(tfs, []string{"templates/capabilities/emptypartial"}, map[string]interface{}{"Include": false})
+	if err != nil {
+		t.Fatalf("error = %v", err)
+	}
+	if len(partials) != 0 {
+		t.Errorf("expected 0 partials for empty render, got %d", len(partials))
+	}
+}
+
+func TestParseCapabilityManifest_InvalidYAML(t *testing.T) {
+	_, err := ParseCapabilityManifest([]byte(":::bad"))
+	if err == nil {
+		t.Fatal("expected error for invalid YAML")
+	}
+}
+
 func TestParseCapabilityManifest_MissingName(t *testing.T) {
 	data := []byte(`description: "No name"`)
 	_, err := ParseCapabilityManifest(data)

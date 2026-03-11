@@ -3,6 +3,7 @@ package scaffold
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -67,6 +68,88 @@ func TestRunPostScaffoldHooks_AllowsSafeValues(t *testing.T) {
 				t.Fatalf("unexpected error: %v", err)
 			}
 		})
+	}
+}
+
+func TestRunPostScaffoldHooks_SkipsEmptyHooks(t *testing.T) {
+	// Empty/whitespace hooks should be skipped silently.
+	err := RunPostScaffoldHooks(t.TempDir(), []string{"", "  ", "echo ok"}, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRunPostScaffoldHooks_GitInitSkipsExisting(t *testing.T) {
+	dir := t.TempDir()
+	// Create a .git directory to simulate existing repo.
+	if err := os.MkdirAll(filepath.Join(dir, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// git init should be skipped when .git already exists.
+	err := RunPostScaffoldHooks(dir, []string{"git init"}, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRunPostScaffoldHooks_TemplatedHook(t *testing.T) {
+	dir := t.TempDir()
+	vars := map[string]interface{}{"ServiceName": "myapp"}
+	err := RunPostScaffoldHooks(dir, []string{"echo {{.ServiceName}} > name.txt"}, vars)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	content, err := os.ReadFile(filepath.Join(dir, "name.txt"))
+	if err != nil {
+		t.Fatalf("read output: %v", err)
+	}
+	if got := strings.TrimSpace(string(content)); got != "myapp" {
+		t.Errorf("got %q, want 'myapp'", got)
+	}
+}
+
+func TestRenderHook_NilVars(t *testing.T) {
+	got, err := renderHook("echo hello", nil)
+	if err != nil {
+		t.Fatalf("renderHook() error = %v", err)
+	}
+	if got != "echo hello" {
+		t.Errorf("got %q, want 'echo hello'", got)
+	}
+}
+
+func TestRenderHook_WithVars(t *testing.T) {
+	got, err := renderHook("echo {{.Name}}", map[string]interface{}{"Name": "world"})
+	if err != nil {
+		t.Fatalf("renderHook() error = %v", err)
+	}
+	if got != "echo world" {
+		t.Errorf("got %q, want 'echo world'", got)
+	}
+}
+
+func TestRenderHook_InvalidTemplate(t *testing.T) {
+	_, err := renderHook("echo {{.Invalid", nil)
+	if err == nil {
+		t.Fatal("expected error for invalid template")
+	}
+}
+
+func TestValidateHookVars_NilValue(t *testing.T) {
+	vars := map[string]interface{}{
+		"Foo": nil,
+	}
+	if err := validateHookVars(vars); err != nil {
+		t.Fatalf("should skip nil values: %v", err)
+	}
+}
+
+func TestValidateHookVars_EmptyStringValue(t *testing.T) {
+	vars := map[string]interface{}{
+		"Foo": "",
+	}
+	if err := validateHookVars(vars); err != nil {
+		t.Fatalf("should skip empty strings: %v", err)
 	}
 }
 

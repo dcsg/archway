@@ -1,10 +1,13 @@
 package checker
 
 import (
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"testing"
+
+	"golang.org/x/tools/go/packages"
 )
 
 func parseSource(t *testing.T, src string) (*ast.File, *token.FileSet) {
@@ -407,10 +410,6 @@ func Handle() {
 	}
 }
 
-func TestDetectGodPackages(t *testing.T) {
-	// Requires *packages.Package — covered via integration tests.
-}
-
 func TestIsDomainPackage(t *testing.T) {
 	tests := []struct {
 		path string
@@ -471,6 +470,402 @@ func f() {
 	if count != 2 {
 		t.Errorf("isErrNilCheck matched %d, want 2", count)
 	}
+}
+
+func TestHasHeavySideEffects(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		want bool
+	}{
+		{
+			"http.Get is heavy",
+			`package foo
+import "net/http"
+func f() { http.Get("http://example.com") }`,
+			true,
+		},
+		{
+			"sql.Open is heavy",
+			`package foo
+import "database/sql"
+func f() { sql.Open("postgres", "dsn") }`,
+			true,
+		},
+		{
+			"os.ReadFile is heavy",
+			`package foo
+import "os"
+func f() { os.ReadFile("file.txt") }`,
+			true,
+		},
+		{
+			"net.Dial is heavy",
+			`package foo
+import "net"
+func f() { net.Dial("tcp", "localhost:80") }`,
+			true,
+		},
+		{
+			"no heavy calls",
+			`package foo
+func f() { x := 1; _ = x }`,
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			file, _ := parseSource(t, tt.src)
+			for _, decl := range file.Decls {
+				fn, ok := decl.(*ast.FuncDecl)
+				if !ok || fn.Body == nil {
+					continue
+				}
+				got := hasHeavySideEffects(fn.Body)
+				if got != tt.want {
+					t.Errorf("hasHeavySideEffects() = %v, want %v", got, tt.want)
+				}
+			}
+		})
+	}
+}
+
+func TestIsHTTPHandlerFunc(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		want bool
+	}{
+		{
+			"standard handler",
+			`package foo
+import "net/http"
+func Handle(w http.ResponseWriter, r *http.Request) {}`,
+			true,
+		},
+		{
+			"no params",
+			`package foo
+func Handle() {}`,
+			false,
+		},
+		{
+			"one param",
+			`package foo
+func Handle(x int) {}`,
+			false,
+		},
+		{
+			"non-handler two params",
+			`package foo
+func Handle(a int, b string) {}`,
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			file, _ := parseSource(t, tt.src)
+			for _, decl := range file.Decls {
+				fn, ok := decl.(*ast.FuncDecl)
+				if !ok {
+					continue
+				}
+				got := isHTTPHandlerFunc(fn)
+				if got != tt.want {
+					t.Errorf("isHTTPHandlerFunc() = %v, want %v", got, tt.want)
+				}
+			}
+		})
+	}
+}
+
+func TestTypeString(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		want string
+	}{
+		{
+			"ident",
+			`package foo; func f(x int) {}`,
+			"int",
+		},
+		{
+			"selector",
+			`package foo; import "net/http"; func f(w http.ResponseWriter) {}`,
+			"http.ResponseWriter",
+		},
+		{
+			"star expr",
+			`package foo; import "net/http"; func f(r *http.Request) {}`,
+			"*http.Request",
+		},
+		{
+			"unknown expr returns empty",
+			`package foo; func f(x []int) {}`,
+			"",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			file, _ := parseSource(t, tt.src)
+			for _, decl := range file.Decls {
+				fn, ok := decl.(*ast.FuncDecl)
+				if !ok || fn.Type.Params == nil {
+					continue
+				}
+				for _, param := range fn.Type.Params.List {
+					got := typeString(param.Type)
+					if got != tt.want {
+						t.Errorf("typeString() = %q, want %q", got, tt.want)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestDetectFatHandlers(t *testing.T) {
+	// Build a handler with > 40 statements.
+	var stmts string
+	for i := range 42 {
+		stmts += fmt.Sprintf("\tx%d := %d; _ = x%d\n", i, i, i)
+	}
+	src := fmt.Sprintf(`package foo
+import "net/http"
+func Handle(w http.ResponseWriter, r *http.Request) {
+%s}`, stmts)
+
+	file, fset := parseSource(t, src)
+	results := detectFatHandlers(file, fset, "handler.go", "github.com/acme/orders/adapter/httphandler")
+	if len(results) != 1 {
+		t.Errorf("expected 1 fat_handler violation, got %d", len(results))
+	}
+
+	// Non-handler package should not flag.
+	results = detectFatHandlers(file, fset, "handler.go", "github.com/acme/orders/service")
+	if len(results) != 0 {
+		t.Errorf("expected 0 violations for non-handler package, got %d", len(results))
+	}
+}
+
+func TestIsHandlerPackage(t *testing.T) {
+	tests := []struct {
+		path string
+		want bool
+	}{
+		{"github.com/acme/orders/adapter/httphandler", true},
+		{"github.com/acme/orders/controller", true},
+		{"github.com/acme/orders/transport", true},
+		{"github.com/acme/orders/api", true},
+		{"github.com/acme/orders/domain", false},
+	}
+	for _, tt := range tests {
+		if got := isHandlerPackage(tt.path); got != tt.want {
+			t.Errorf("isHandlerPackage(%q) = %v, want %v", tt.path, got, tt.want)
+		}
+	}
+}
+
+func TestCallName(t *testing.T) {
+	src := `package foo
+func f() {
+	println("hello")
+	http.Get("url")
+}
+`
+	file, _ := parseSource(t, src)
+	names := []string{}
+	ast.Inspect(file, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if ok {
+			names = append(names, callName(call))
+		}
+		return true
+	})
+	if len(names) < 2 {
+		t.Fatalf("expected at least 2 calls, got %d", len(names))
+	}
+}
+
+func TestDetectGodPackages(t *testing.T) {
+	// Build a package with > 40 exported symbols.
+	var decls string
+	for i := range 42 {
+		decls += fmt.Sprintf("func Exported%d() {}\n", i)
+	}
+	src := "package foo\n" + decls
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "big.go", src, 0)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	pkg := &packages.Package{
+		PkgPath: "example.com/app/bigpkg",
+		Name:    "foo",
+		Fset:    fset,
+		Syntax:  []*ast.File{file},
+	}
+	results := detectGodPackages([]*packages.Package{pkg}, "example.com/app")
+	if len(results) != 1 {
+		t.Errorf("expected 1 god_package violation, got %d", len(results))
+	}
+}
+
+func TestDetectGodPackages_Small(t *testing.T) {
+	src := `package foo
+func Exported1() {}
+func Exported2() {}
+`
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "small.go", src, 0)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	pkg := &packages.Package{
+		PkgPath: "example.com/app/smallpkg",
+		Name:    "foo",
+		Fset:    fset,
+		Syntax:  []*ast.File{file},
+	}
+	results := detectGodPackages([]*packages.Package{pkg}, "example.com/app")
+	if len(results) != 0 {
+		t.Errorf("expected 0 violations, got %d", len(results))
+	}
+}
+
+func TestDetectGodPackages_VendorSkipped(t *testing.T) {
+	src := `package foo
+func Exported1() {}
+`
+	fset := token.NewFileSet()
+	file, _ := parser.ParseFile(fset, "vendor.go", src, 0)
+	pkg := &packages.Package{
+		PkgPath: "example.com/app/vendor/lib",
+		Name:    "foo",
+		Fset:    fset,
+		Syntax:  []*ast.File{file},
+	}
+	results := detectGodPackages([]*packages.Package{pkg}, "example.com/app")
+	if len(results) != 0 {
+		t.Errorf("expected vendor to be skipped, got %d", len(results))
+	}
+}
+
+func TestDetectDomainImportingAdapters(t *testing.T) {
+	domainPkg := &packages.Package{
+		PkgPath: "example.com/app/domain/order",
+		Name:    "order",
+		Imports: map[string]*packages.Package{
+			"example.com/app/adapter/http": {PkgPath: "example.com/app/adapter/http"},
+		},
+	}
+	results := detectDomainImportingAdapters([]*packages.Package{domainPkg}, "example.com/app")
+	if len(results) != 1 {
+		t.Errorf("expected 1 domain_imports_adapter violation, got %d", len(results))
+	}
+}
+
+func TestDetectDomainImportingAdapters_Clean(t *testing.T) {
+	domainPkg := &packages.Package{
+		PkgPath: "example.com/app/domain/order",
+		Name:    "order",
+		Imports: map[string]*packages.Package{
+			"fmt": {PkgPath: "fmt"},
+		},
+	}
+	results := detectDomainImportingAdapters([]*packages.Package{domainPkg}, "example.com/app")
+	if len(results) != 0 {
+		t.Errorf("expected 0 violations, got %d", len(results))
+	}
+}
+
+func TestDetectDomainImportingAdapters_NonDomainSkipped(t *testing.T) {
+	servicePkg := &packages.Package{
+		PkgPath: "example.com/app/service",
+		Name:    "service",
+		Imports: map[string]*packages.Package{
+			"example.com/app/adapter/http": {PkgPath: "example.com/app/adapter/http"},
+		},
+	}
+	results := detectDomainImportingAdapters([]*packages.Package{servicePkg}, "example.com/app")
+	if len(results) != 0 {
+		t.Errorf("expected non-domain pkg to be skipped, got %d", len(results))
+	}
+}
+
+func TestDetectMVCInHexagonal(t *testing.T) {
+	pkgs := []*packages.Package{
+		{PkgPath: "example.com/app/domain/order"},
+		{PkgPath: "example.com/app/port/inbound"},
+		{PkgPath: "example.com/app/models"},
+		{PkgPath: "example.com/app/controllers"},
+	}
+	results := detectMVCInHexagonal(pkgs, "example.com/app")
+	if len(results) != 2 {
+		t.Errorf("expected 2 mvc_in_hexagonal violations, got %d", len(results))
+	}
+}
+
+func TestDetectMVCInHexagonal_NoHexagonal(t *testing.T) {
+	pkgs := []*packages.Package{
+		{PkgPath: "example.com/app/models"},
+		{PkgPath: "example.com/app/controllers"},
+	}
+	results := detectMVCInHexagonal(pkgs, "example.com/app")
+	if len(results) != 0 {
+		t.Errorf("expected 0 violations without hexagonal markers, got %d", len(results))
+	}
+}
+
+func TestDetectMVCInHexagonal_NoMVC(t *testing.T) {
+	pkgs := []*packages.Package{
+		{PkgPath: "example.com/app/domain/order"},
+		{PkgPath: "example.com/app/port/inbound"},
+		{PkgPath: "example.com/app/adapter/http"},
+	}
+	results := detectMVCInHexagonal(pkgs, "example.com/app")
+	if len(results) != 0 {
+		t.Errorf("expected 0 violations without MVC packages, got %d", len(results))
+	}
+}
+
+func TestIsContextBackgroundCall(t *testing.T) {
+	src := `package foo
+import "context"
+func f() {
+	context.Background()
+	context.TODO()
+}
+`
+	file, _ := parseSource(t, src)
+	bgCount := 0
+	ast.Inspect(file, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if ok && isContextBackgroundCall(call) {
+			bgCount++
+		}
+		return true
+	})
+	if bgCount != 1 {
+		t.Errorf("expected 1 context.Background call, got %d", bgCount)
+	}
+}
+
+func TestIsContextBackgroundCall_NotSelector(t *testing.T) {
+	src := `package foo
+func f() {
+	println("hello")
+}
+`
+	file, _ := parseSource(t, src)
+	ast.Inspect(file, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if ok && isContextBackgroundCall(call) {
+			t.Error("println should not be detected as context.Background")
+		}
+		return true
+	})
 }
 
 func TestIsMutableType(t *testing.T) {

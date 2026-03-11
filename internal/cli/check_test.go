@@ -448,6 +448,179 @@ func TestCheckPrintProxyRuleSection_ZeroCounts(t *testing.T) {
 	assert.Contains(t, out, "All proxy rules pass")
 }
 
+// --- printViolationSection ---
+
+func TestCheckPrintViolationSection_NoViolations(t *testing.T) {
+	out := captureStdout(t, func() {
+		printViolationSection("DEPENDENCY VIOLATIONS", nil)
+	})
+
+	assert.Contains(t, out, "DEPENDENCY VIOLATIONS (0)")
+	assert.Contains(t, out, "All checks pass")
+}
+
+func TestCheckPrintViolationSection_WithFileAndLine(t *testing.T) {
+	violations := []checker.Violation{
+		{File: "handler.go", Line: 42, Message: "illegal import of domain"},
+	}
+
+	out := captureStdout(t, func() {
+		printViolationSection("DEPENDENCY VIOLATIONS", violations)
+	})
+
+	assert.Contains(t, out, "DEPENDENCY VIOLATIONS (1)")
+	assert.Contains(t, out, "handler.go:42 illegal import of domain")
+	assert.NotContains(t, out, "All checks pass")
+}
+
+func TestCheckPrintViolationSection_WithFileNoLine(t *testing.T) {
+	violations := []checker.Violation{
+		{File: "service.go", Line: 0, Message: "missing interface"},
+	}
+
+	out := captureStdout(t, func() {
+		printViolationSection("STRUCTURE VIOLATIONS", violations)
+	})
+
+	assert.Contains(t, out, "STRUCTURE VIOLATIONS (1)")
+	assert.Contains(t, out, "service.go")
+	assert.Contains(t, out, "missing interface")
+	assert.NotContains(t, out, "service.go:0")
+}
+
+func TestCheckPrintViolationSection_NoFile(t *testing.T) {
+	violations := []checker.Violation{
+		{File: "", Line: 0, Message: "global rule violated"},
+	}
+
+	out := captureStdout(t, func() {
+		printViolationSection("NAMING VIOLATIONS", violations)
+	})
+
+	assert.Contains(t, out, "global rule violated")
+}
+
+func TestCheckPrintViolationSection_MultipleViolations(t *testing.T) {
+	violations := []checker.Violation{
+		{File: "a.go", Line: 10, Message: "msg1"},
+		{File: "b.go", Line: 0, Message: "msg2"},
+		{File: "", Line: 0, Message: "msg3"},
+	}
+
+	out := captureStdout(t, func() {
+		printViolationSection("FUNCTION VIOLATIONS", violations)
+	})
+
+	assert.Contains(t, out, "FUNCTION VIOLATIONS (3)")
+	assert.Contains(t, out, "a.go:10 msg1")
+	assert.Contains(t, out, "msg2")
+	assert.Contains(t, out, "msg3")
+}
+
+// --- printAntiPatternSection ---
+
+func TestCheckPrintAntiPatternSection_NoViolations(t *testing.T) {
+	out := captureStdout(t, func() {
+		printAntiPatternSection("ANTI-PATTERN VIOLATIONS", nil)
+	})
+
+	assert.Contains(t, out, "ANTI-PATTERN VIOLATIONS (0)")
+	assert.Contains(t, out, "All checks pass")
+}
+
+func TestCheckPrintAntiPatternSection_ErrorSeverityWithFileAndLine(t *testing.T) {
+	violations := []checker.AntiPattern{
+		{Name: "global_state", Severity: "error", File: "main.go", Line: 5, Message: "global var detected"},
+	}
+
+	out := captureStdout(t, func() {
+		printAntiPatternSection("ANTI-PATTERN VIOLATIONS", violations)
+	})
+
+	assert.Contains(t, out, "ANTI-PATTERN VIOLATIONS (1)")
+	assert.Contains(t, out, "[global_state]")
+	assert.Contains(t, out, "main.go:5")
+	assert.Contains(t, out, "global var detected")
+}
+
+func TestCheckPrintAntiPatternSection_WarningSeverityWithFileNoLine(t *testing.T) {
+	violations := []checker.AntiPattern{
+		{Name: "init_abuse", Severity: "warning", File: "init.go", Line: 0, Message: "init function detected"},
+	}
+
+	out := captureStdout(t, func() {
+		printAntiPatternSection("ANTI-PATTERN VIOLATIONS", violations)
+	})
+
+	assert.Contains(t, out, "[init_abuse]")
+	assert.Contains(t, out, "init.go")
+	assert.NotContains(t, out, "init.go:0")
+}
+
+func TestCheckPrintAntiPatternSection_NoFile(t *testing.T) {
+	violations := []checker.AntiPattern{
+		{Name: "god_object", Severity: "error", File: "", Line: 0, Message: "too many methods"},
+	}
+
+	out := captureStdout(t, func() {
+		printAntiPatternSection("ANTI-PATTERN VIOLATIONS", violations)
+	})
+
+	assert.Contains(t, out, "[god_object]")
+	assert.Contains(t, out, "too many methods")
+}
+
+func TestCheckPrintAntiPatternSection_MultipleMixedSeverity(t *testing.T) {
+	violations := []checker.AntiPattern{
+		{Name: "global_state", Severity: "error", File: "a.go", Line: 1, Message: "global"},
+		{Name: "init_abuse", Severity: "warning", File: "b.go", Line: 2, Message: "init"},
+	}
+
+	out := captureStdout(t, func() {
+		printAntiPatternSection("ANTI-PATTERN VIOLATIONS", violations)
+	})
+
+	assert.Contains(t, out, "ANTI-PATTERN VIOLATIONS (2)")
+	assert.Contains(t, out, "[global_state]")
+	assert.Contains(t, out, "[init_abuse]")
+}
+
+// --- printCombinedTerminal with checker results ---
+
+func TestCheckPrintCombinedTerminal_WithCheckerResult(t *testing.T) {
+	checkerResult := &checker.CheckResult{
+		ComponentsTotal:   10,
+		ComponentsCovered: 8,
+		DependencyViolations: []checker.Violation{
+			{File: "a.go", Line: 1, Message: "dep violation"},
+		},
+	}
+	cfg := &config.ArchwayConfig{Architecture: "hexagonal"}
+	flags := &checkFlags{}
+
+	out := captureStdout(t, func() {
+		printCombinedTerminal(checkerResult, nil, cfg, flags)
+	})
+
+	assert.Contains(t, out, "Components:  10 defined, 8 covered (80% coverage)")
+	assert.Contains(t, out, "DEPENDENCY VIOLATIONS (1)")
+}
+
+func TestCheckPrintCombinedTerminal_ZeroComponents(t *testing.T) {
+	checkerResult := &checker.CheckResult{
+		ComponentsTotal:   0,
+		ComponentsCovered: 0,
+	}
+	cfg := &config.ArchwayConfig{Architecture: "test"}
+	flags := &checkFlags{}
+
+	out := captureStdout(t, func() {
+		printCombinedTerminal(checkerResult, nil, cfg, flags)
+	})
+
+	assert.Contains(t, out, "0 defined, 0 covered (0% coverage)")
+}
+
 // helpers
 
 func initGitRepo(t *testing.T, dir string) {

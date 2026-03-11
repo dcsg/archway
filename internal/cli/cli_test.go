@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dcsg/archway/internal/provider"
 	_ "github.com/dcsg/archway/providers/golang"
 )
 
@@ -646,6 +647,27 @@ func TestInit_CreatesArchwayYAML(t *testing.T) {
 	}
 }
 
+func TestInit_WithPreset(t *testing.T) {
+	tmp := t.TempDir()
+
+	if err := os.WriteFile(filepath.Join(tmp, "go.mod"), []byte("module example.com/test\n\ngo 1.24\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := executeCommand(t, "init", "--path", tmp, "--no-wizard", "--preset", "archway/go-hexagonal-strict")
+	if err != nil {
+		t.Fatalf("init with preset should succeed: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(tmp, "archway.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "archway/go-hexagonal-strict") {
+		t.Errorf("archway.yaml should contain preset, got:\n%s", string(data))
+	}
+}
+
 func TestInit_ExistingArchwayYAML(t *testing.T) {
 	tmp := t.TempDir()
 
@@ -667,5 +689,302 @@ func TestInit_ExistingArchwayYAML(t *testing.T) {
 	_, err = executeCommand(t, "init", "--path", tmp, "--no-wizard", "--force")
 	if err != nil {
 		t.Fatalf("init --force should succeed: %v", err)
+	}
+}
+
+// --- Root command structure ---
+
+func TestRootCommand_HasExpectedSubcommands(t *testing.T) {
+	cmd := newRootCommand()
+
+	expectedNames := []string{"new", "init", "analyze", "check", "guide", "version"}
+	subNames := make([]string, 0, len(cmd.Commands()))
+	for _, sub := range cmd.Commands() {
+		subNames = append(subNames, sub.Name())
+	}
+
+	for _, name := range expectedNames {
+		found := false
+		for _, sub := range subNames {
+			if sub == name {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected subcommand %q not found; have: %v", name, subNames)
+		}
+	}
+}
+
+func TestRootCommand_ValidOutputFormats(t *testing.T) {
+	for _, format := range []string{"terminal", "json", "markdown"} {
+		_, err := executeCommand(t, "--output", format, "version")
+		if err != nil {
+			t.Errorf("output format %q should be valid, got: %v", format, err)
+		}
+	}
+}
+
+func TestRootCommand_PersistentFlags(t *testing.T) {
+	cmd := newRootCommand()
+
+	noColor := cmd.PersistentFlags().Lookup("no-color")
+	if noColor == nil {
+		t.Error("expected --no-color persistent flag")
+	}
+
+	output := cmd.PersistentFlags().Lookup("output")
+	if output == nil {
+		t.Error("expected --output persistent flag")
+	}
+	if output.DefValue != "terminal" {
+		t.Errorf("expected --output default 'terminal', got %q", output.DefValue)
+	}
+}
+
+// --- listArchitectures / listCapabilities ---
+
+func TestListArchitectures_ReturnsEntries(t *testing.T) {
+	p, err := provider.Get("go")
+	if err != nil {
+		t.Fatalf("failed to get go provider: %v", err)
+	}
+	tFS := p.GetTemplateFS()
+
+	archs, err := listArchitectures(tFS)
+	if err != nil {
+		t.Fatalf("listArchitectures failed: %v", err)
+	}
+
+	if len(archs) == 0 {
+		t.Fatal("expected at least one architecture")
+	}
+
+	// Verify each entry has required fields.
+	for _, a := range archs {
+		if a.name == "" {
+			t.Error("architecture entry has empty name")
+		}
+		if a.label == "" {
+			t.Error("architecture entry has empty label")
+		}
+	}
+
+	// Verify known architectures exist.
+	names := make(map[string]bool)
+	for _, a := range archs {
+		names[a.name] = true
+	}
+	for _, expected := range []string{"hexagonal", "flat"} {
+		if !names[expected] {
+			t.Errorf("expected architecture %q in list", expected)
+		}
+	}
+}
+
+func TestListCapabilities_ReturnsEntries(t *testing.T) {
+	p, err := provider.Get("go")
+	if err != nil {
+		t.Fatalf("failed to get go provider: %v", err)
+	}
+	tFS := p.GetTemplateFS()
+
+	caps, err := listCapabilities(tFS)
+	if err != nil {
+		t.Fatalf("listCapabilities failed: %v", err)
+	}
+
+	if len(caps) == 0 {
+		t.Fatal("expected at least one capability")
+	}
+
+	for _, c := range caps {
+		if c.name == "" {
+			t.Error("capability entry has empty name")
+		}
+		if c.description == "" {
+			t.Errorf("capability %q has empty description", c.name)
+		}
+	}
+
+	// Verify known capabilities exist.
+	names := make(map[string]bool)
+	for _, c := range caps {
+		names[c.name] = true
+	}
+	if !names["http-api"] {
+		t.Error("expected capability 'http-api' in list")
+	}
+}
+
+func TestListArchitectures_InvalidFS(t *testing.T) {
+	// An empty FS should return an error.
+	emptyFS := os.DirFS(t.TempDir())
+
+	_, err := listArchitectures(emptyFS)
+	if err == nil {
+		t.Fatal("expected error for FS missing templates/architectures")
+	}
+}
+
+func TestListCapabilities_InvalidFS(t *testing.T) {
+	emptyFS := os.DirFS(t.TempDir())
+
+	_, err := listCapabilities(emptyFS)
+	if err == nil {
+		t.Fatal("expected error for FS missing templates/capabilities")
+	}
+}
+
+// --- printEquivalentCommand ---
+
+func TestPrintEquivalentCommand_AllFields(t *testing.T) {
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	opts := &newCommandOptions{
+		Name:         "my-svc",
+		Architecture: "hexagonal",
+		Capabilities: "http-api,mysql",
+		ModulePath:   "github.com/org/my-svc",
+	}
+	printEquivalentCommand(opts)
+
+	_ = w.Close()
+	os.Stdout = old
+
+	buf := new(bytes.Buffer)
+	_, _ = buf.ReadFrom(r)
+	out := buf.String()
+
+	if !strings.Contains(out, "--arch hexagonal") {
+		t.Errorf("expected --arch flag, got: %s", out)
+	}
+	if !strings.Contains(out, "--cap http-api,mysql") {
+		t.Errorf("expected --cap flag, got: %s", out)
+	}
+	if !strings.Contains(out, "--module github.com/org/my-svc") {
+		t.Errorf("expected --module flag, got: %s", out)
+	}
+	if !strings.Contains(out, "--no-wizard") {
+		t.Errorf("expected --no-wizard flag, got: %s", out)
+	}
+}
+
+func TestPrintEquivalentCommand_TemplateInsteadOfArch(t *testing.T) {
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	opts := &newCommandOptions{
+		Name:     "my-svc",
+		Template: "custom",
+	}
+	printEquivalentCommand(opts)
+
+	_ = w.Close()
+	os.Stdout = old
+
+	buf := new(bytes.Buffer)
+	_, _ = buf.ReadFrom(r)
+	out := buf.String()
+
+	if !strings.Contains(out, "--template custom") {
+		t.Errorf("expected --template flag, got: %s", out)
+	}
+	if strings.Contains(out, "--arch") {
+		t.Errorf("should not contain --arch when using template, got: %s", out)
+	}
+}
+
+func TestPrintEquivalentCommand_ApiTemplateOmitted(t *testing.T) {
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	opts := &newCommandOptions{
+		Name:     "my-svc",
+		Template: "api",
+	}
+	printEquivalentCommand(opts)
+
+	_ = w.Close()
+	os.Stdout = old
+
+	buf := new(bytes.Buffer)
+	_, _ = buf.ReadFrom(r)
+	out := buf.String()
+
+	// "api" is the default template, so --template should not appear.
+	if strings.Contains(out, "--template") {
+		t.Errorf("should not contain --template for default api template, got: %s", out)
+	}
+}
+
+// --- New command path parsing ---
+
+func TestNewCommand_PathArgSetsOutputDirAndName(t *testing.T) {
+	tmp := t.TempDir()
+	chdir(t, tmp)
+
+	_, err := executeCommand(t,
+		"new", filepath.Join(tmp, "my-svc"),
+		"--arch", "flat",
+		"--no-wizard",
+		"--set", "skip_hooks=true",
+	)
+	if err != nil {
+		t.Fatalf("new with path arg failed: %v", err)
+	}
+
+	svcDir := filepath.Join(tmp, "my-svc")
+	if _, err := os.Stat(svcDir); os.IsNotExist(err) {
+		t.Fatal("expected service directory to exist")
+	}
+}
+
+func TestNewCommand_InvalidSetFlag(t *testing.T) {
+	tmp := t.TempDir()
+	chdir(t, tmp)
+
+	_, err := executeCommand(t,
+		"new", "test-bad-set",
+		"--arch", "flat",
+		"--no-wizard",
+		"--set", "invalid-no-equals",
+	)
+	if err == nil {
+		t.Fatal("expected error for invalid --set value")
+	}
+	if !strings.Contains(err.Error(), "invalid --set") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+// --- New command with --module flag ---
+
+func TestNewCommand_CustomModule(t *testing.T) {
+	tmp := t.TempDir()
+	chdir(t, tmp)
+
+	_, err := executeCommand(t,
+		"new", "mod-svc",
+		"--arch", "flat",
+		"--module", "github.com/custom/mod-svc",
+		"--no-wizard",
+		"--set", "skip_hooks=true",
+	)
+	if err != nil {
+		t.Fatalf("new with --module failed: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(tmp, "mod-svc", "go.mod"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "github.com/custom/mod-svc") {
+		t.Errorf("go.mod should contain custom module path, got:\n%s", string(data))
 	}
 }
