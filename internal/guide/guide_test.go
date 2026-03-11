@@ -518,6 +518,54 @@ func TestForbiddenDeps_ComponentWithNoForbidden(t *testing.T) {
 	assert.Empty(t, result)
 }
 
+func TestFullGuideWithDecisions(t *testing.T) {
+	dir := t.TempDir()
+	cfg := &config.ArchwayConfig{
+		Architecture: "hexagonal",
+		Capabilities: []string{"http-api", "mysql", "auth-jwt"},
+		Components: []config.Component{
+			{Name: "domain", In: []string{"domain/**"}, MayDependOn: []string{}},
+			{Name: "ports", In: []string{"port/**"}, MayDependOn: []string{"domain"}},
+			{Name: "service", In: []string{"service/**"}, MayDependOn: []string{"domain", "ports"}},
+			{Name: "adapters", In: []string{"adapter/**"}, MayDependOn: []string{"ports", "domain"}},
+		},
+		Decisions: []config.Decision{
+			{Topic: "architecture-pattern", Tier: 1, Status: "decided", Choice: "hexagonal"},
+			{Topic: "authentication-strategy", Tier: 1, Status: "decided", Choice: "jwt"},
+			{Topic: "tenant-isolation", Tier: 1, Status: "undecided"},
+			{Topic: "failure-strategy", Tier: 2, Status: "undecided"},
+		},
+	}
+
+	// Claude target: split files.
+	err := GenerateFromConfig(dir, cfg, "claude")
+	require.NoError(t, err)
+
+	// Index file exists.
+	indexData, err := os.ReadFile(filepath.Join(dir, ".claude", "rules", "archway-index.md"))
+	require.NoError(t, err)
+	indexContent := string(indexData)
+
+	assert.Contains(t, indexContent, "Architecture: hexagonal")
+
+	// Category files exist.
+	assert.FileExists(t, filepath.Join(dir, ".claude", "rules", "archway-http.md"))
+	assert.FileExists(t, filepath.Join(dir, ".claude", "rules", "archway-data.md"))
+	assert.FileExists(t, filepath.Join(dir, ".claude", "rules", "archway-security.md"))
+
+	// Monolithic output for non-Claude targets includes decisions.
+	err = GenerateFromConfig(dir, cfg, "cursor")
+	require.NoError(t, err)
+	cursorData, err := os.ReadFile(filepath.Join(dir, ".cursorrules"))
+	require.NoError(t, err)
+	cursorContent := string(cursorData)
+	assert.Contains(t, cursorContent, "hexagonal")
+	assert.Contains(t, cursorContent, "Decision Status")
+	assert.Contains(t, cursorContent, "architecture-pattern")
+	assert.Contains(t, cursorContent, "tenant-isolation")
+	assert.Contains(t, cursorContent, "UNDECIDED")
+}
+
 func TestOutputTargetPaths(t *testing.T) {
 	dir := t.TempDir()
 	opts := GenerateOptions{

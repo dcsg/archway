@@ -198,6 +198,42 @@ func TestBuildSplitContent_OnlyInstalledCategories(t *testing.T) {
 	assert.Contains(t, sc.Categories, "quality")
 }
 
+func TestSplitFileTokenCompliance(t *testing.T) {
+	dir := t.TempDir()
+	opts := GenerateOptions{
+		ProjectDir:   dir,
+		Target:       "claude",
+		Architecture: "hexagonal",
+		Capabilities: []string{
+			"http-api", "mysql", "redis", "auth-jwt", "cors",
+			"rate-limiting", "health", "observability", "docker", "testing",
+		},
+		Components: []config.Component{
+			{Name: "domain", In: []string{"domain/**"}, MayDependOn: []string{}},
+			{Name: "service", In: []string{"service/**"}, MayDependOn: []string{"domain"}},
+			{Name: "adapters", In: []string{"adapter/**"}, MayDependOn: []string{"domain"}},
+		},
+	}
+
+	require.NoError(t, Generate(opts))
+
+	entries, err := os.ReadDir(filepath.Join(dir, ".claude", "rules"))
+	require.NoError(t, err)
+
+	for _, e := range entries {
+		if !strings.HasPrefix(e.Name(), "archway-") {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(dir, ".claude", "rules", e.Name()))
+		require.NoError(t, err)
+		words := len(strings.Fields(string(data)))
+		approxTokens := int(float64(words) * 1.3)
+		if approxTokens > 1500 {
+			t.Errorf("file %s too large: ~%d tokens (%d words)", e.Name(), approxTokens, words)
+		}
+	}
+}
+
 func TestCategoryContent_HasGlobsFrontmatter(t *testing.T) {
 	opts := GenerateOptions{
 		Architecture: "hexagonal",
