@@ -1,6 +1,6 @@
 ---
 title: Capabilities Matrix
-description: All 38 capabilities at a glance
+description: All 53 capabilities at a glance
 ---
 
 import { Tabs, TabItem, Aside, Badge } from '@astrojs/starlight/components';
@@ -11,8 +11,10 @@ import { Tabs, TabItem, Aside, Badge } from '@astrojs/starlight/components';
 |-------------|-----------|----------|
 | **Hexagonal** | `domain/` → `port/` → `service/` → `adapter/` | Production APIs, microservices |
 | **Flat** | Single package | CLIs, scripts, prototypes |
+| **Layered** | `handler/` → `service/` → `repository/` → `model/` | Most common Go pattern, simpler services |
+| **Clean** | `entity/` → `usecase/` → `interface/` → `infrastructure/` | Teams following Uncle Bob, complex business logic |
 
-## All 38 Capabilities
+## All 53 Capabilities
 
 <Tabs>
 <TabItem label="Transport">
@@ -23,6 +25,8 @@ import { Tabs, TabItem, Aside, Badge } from '@astrojs/starlight/components';
 | `grpc` | Protocol Buffers, buf tooling, interceptors | `docker` |
 | `kafka-consumer` | Consumer group, handler pattern, graceful drain | `docker` |
 | `websocket` | WebSocket upgrader, connection management | `http-api` |
+| `graphql` <Badge text="New" variant="success" /> | gqlgen schema, resolvers, playground | `auth-jwt`, `observability`, `health` |
+| `sse` <Badge text="New" variant="success" /> | SSE endpoint, event stream writer (requires `http-api`) | `health`, `observability` |
 
 </TabItem>
 <TabItem label="Data">
@@ -32,6 +36,10 @@ import { Tabs, TabItem, Aside, Badge } from '@astrojs/starlight/components';
 | `mysql` | Connection pooling, health checks, repository scaffold | `migrations`, `docker` |
 | `postgres` <Badge text="New" variant="success" /> | Connection pooling, health checks, repository scaffold | `migrations`, `docker` |
 | `redis` | Connection management, repository pattern | `docker` |
+| `mongodb` <Badge text="New" variant="success" /> | MongoDB client, repository pattern, health checks | `docker`, `health` |
+| `sqlite` <Badge text="New" variant="success" /> | Pure Go SQLite, repository scaffold | `migrations` |
+| `s3` <Badge text="New" variant="success" /> | AWS S3 client, upload/download (requires `config`) | `docker`, `observability` |
+| `dynamodb` <Badge text="New" variant="success" /> | AWS DynamoDB client, table ops (requires `config`) | `docker`, `observability` |
 | `migrations` | Migration runner, up/down files, version tracking | — |
 
 </TabItem>
@@ -42,6 +50,8 @@ import { Tabs, TabItem, Aside, Badge } from '@astrojs/starlight/components';
 | `auth-jwt` | JWT middleware, claims extraction | `http-api` |
 | `rate-limiting` | Token bucket limiter, per-endpoint config | `http-api` |
 | `cors` | CORS middleware, configurable origins | `http-api` |
+| `multi-tenancy` <Badge text="New" variant="success" /> | Tenant middleware, row-level isolation | `http-api`, `config` |
+| `feature-flags` <Badge text="New" variant="success" /> | Feature flag evaluator, config-based storage | `config` |
 
 </TabItem>
 <TabItem label="Resilience">
@@ -63,6 +73,7 @@ import { Tabs, TabItem, Aside, Badge } from '@astrojs/starlight/components';
 | `repository` | Generic repository, common CRUD operations |
 | `worker` | Worker pool, job interface, graceful shutdown |
 | `scheduler` | Cron-like scheduler, job registration |
+| `saga` <Badge text="New" variant="success" /> | Saga orchestrator, compensation handlers (requires `event-bus`) |
 
 </TabItem>
 <TabItem label="Observability">
@@ -83,6 +94,9 @@ import { Tabs, TabItem, Aside, Badge } from '@astrojs/starlight/components';
 | `bootstrap` | Thin `main.go` + wiring (requires `platform`) |
 | `docker` | `docker-compose.yml`, `.env.example` |
 | `ci-github` | Issue templates, PR template |
+| `ci-gitlab` <Badge text="New" variant="success" /> | GitLab CI/CD pipeline (conflicts with `ci-github`) |
+| `makefile` <Badge text="New" variant="success" /> | Makefile with build, test, lint targets |
+| `devcontainer` <Badge text="New" variant="success" /> | VS Code Dev Container config |
 | `validation` | Input validation rules, error formatting |
 | `uuid` | UUID v4 generation, type-safe ID wrappers |
 
@@ -99,6 +113,15 @@ import { Tabs, TabItem, Aside, Badge } from '@astrojs/starlight/components';
 | `linting` | `.golangci.yaml` with curated linter set |
 | `pre-commit` | Pre-commit hooks, automated checks |
 | `testing` | Test helpers, example table-driven tests |
+
+</TabItem>
+<TabItem label="Frontend">
+
+| Capability | What You Get | Requires |
+|-----------|-------------|----------|
+| `templ` <Badge text="New" variant="success" /> | Type-safe Go HTML templating, layout system | `http-api` |
+| `htmx` <Badge text="New" variant="success" /> | Server-driven interactivity, partial rendering | `http-api`, `templ` |
+| `static-assets` <Badge text="New" variant="success" /> | Embedded static files, cache headers | `http-api` |
 
 </TabItem>
 </Tabs>

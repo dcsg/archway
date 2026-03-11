@@ -42,15 +42,21 @@ Architecture  +  Capabilities  =  Your Service
 |-------------|-----------|----------|
 | Hexagonal | `domain/` → `port/` → `service/` → `adapter/` | Production APIs, microservices |
 | Flat | Single package | CLIs, scripts, prototypes |
+| Layered | `handler/` → `service/` → `repository/` → `model/` | Most common Go pattern, simpler services |
+| Clean | `entity/` → `usecase/` → `interface/` → `infrastructure/` | Teams following Uncle Bob, complex business logic |
 
-**Capabilities** are modular features you compose in — **38 and growing:**
+**Capabilities** are modular features you compose in — **53 and growing:**
 
 | Transport | Data | Resilience | Patterns |
 |-----------|------|------------|----------|
 | `http-api` | `postgres` | `circuit-breaker` | `cqrs` |
 | `grpc` | `mysql` | `retry` | `event-bus` |
-| `kafka-consumer` | `redis` | `idempotency` | `outbox` |
-| `websocket` | `migrations` | `health` | `repository` |
+| `graphql` | `redis` | `idempotency` | `outbox` |
+| `kafka-consumer` | `mongodb` | `health` | `repository` |
+| `websocket` | `sqlite` | | `saga` |
+| `sse` | `s3` | | `worker` |
+| | `dynamodb` | | `scheduler` |
+| | `migrations` | | |
 | | `uuid` | | |
 
 | Security | Observability | Infrastructure | Quality |
@@ -59,9 +65,16 @@ Architecture  +  Capabilities  =  Your Service
 | `rate-limiting` | `request-id` | `bootstrap` | `linting` |
 | `cors` | `audit-log` | `docker` | `pre-commit` |
 | `validation` | | `worker` | `ci-github` |
-| `api-versioning` | | `scheduler` | |
-| | | `http-client` | |
-| | | `email-gateway` | |
+| `api-versioning` | | `scheduler` | `ci-gitlab` |
+| `multi-tenancy` | | `http-client` | `makefile` |
+| `feature-flags` | | `email-gateway` | |
+| | | `devcontainer` | |
+
+| Frontend |
+|----------|
+| `templ` |
+| `htmx` |
+| `static-assets` |
 
 Each capability provides template files, config, and wiring code. The `bootstrap` capability gives you a thin 15-line `main.go` that delegates to `internal/bootstrap/` for testable dependency injection — and other capabilities automatically wire into it.
 
@@ -283,7 +296,7 @@ Archway is built on a **provider model** — each language is a self-contained p
 
 | Language | Status | Architectures | Capabilities |
 |----------|--------|---------------|-------------|
-| **Go** | Stable | hexagonal, flat | 38 capabilities |
+| **Go** | Stable | hexagonal, flat, layered, clean | 53 capabilities |
 | **TypeScript/Node** | Planned | — | — |
 
 Want to add a language? See the [provider guide](https://dcsg.github.io/archway/) in the docs.

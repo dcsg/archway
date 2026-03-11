@@ -5,7 +5,7 @@ template: splash
 hero:
   tagline: |
     Architecture-aware service composer and enforcer
-    <p class="hero-description">Compose production-grade Go services from architecture patterns and 38 modular capabilities. Guide, compose, analyze, and enforce — from first commit to production.</p>
+    <p class="hero-description">Compose production-grade Go services from architecture patterns and 53 modular capabilities. Guide, compose, analyze, and enforce — from first commit to production.</p>
   actions:
     - text: Get Started
       link: /archway/getting-started/quickstart/
@@ -24,14 +24,14 @@ Architecture (hexagonal) + Capabilities (http-api, mysql, docker) = Your Service
 
 Pick an architecture, pick what your service needs — Archway wires it all together, feeds your AI agents the rules, and enforces it stays true.
 
-**38 capabilities. Zero lock-in. You own every line of code.**
+**53 capabilities. Zero lock-in. You own every line of code.**
 
 <CardGrid>
   <Card title="Guide" icon="star">
     Feed AI agents your architecture context with `archway guide`. Prevention beats correction — agents write correct code from the first line.
   </Card>
   <Card title="Compose" icon="puzzle">
-    Pick an architecture pattern and combine 38 modular capabilities — transport, data, security, resilience, observability, and more. Get a production-ready service in one command.
+    Pick an architecture pattern and combine 53 modular capabilities — transport, data, security, resilience, observability, and more. Get a production-ready service in one command.
   </Card>
   <Card title="Analyze" icon="magnifier">
     Scan any Go codebase. Archway detects the architecture pattern, maps dependencies, and reports what's there — deterministically, no LLM needed.
@@ -72,14 +72,15 @@ The smart wizard suggests what you're missing. Adding HTTP? You probably want ra
 
 | Category | Capabilities |
 |----------|-------------|
-| **Transport** | HTTP API, gRPC, Kafka consumer, WebSocket |
-| **Data** | MySQL, PostgreSQL, Redis, migrations |
-| **Security** | JWT auth, rate limiting, CORS |
+| **Transport** | HTTP API, gRPC, GraphQL, Kafka consumer, WebSocket, SSE |
+| **Data** | MySQL, PostgreSQL, Redis, MongoDB, SQLite, S3, DynamoDB, migrations |
+| **Security** | JWT auth, rate limiting, CORS, multi-tenancy, feature flags |
 | **Resilience** | Circuit breaker, retry, idempotency, outbox |
-| **Patterns** | CQRS, event bus, repository, worker, scheduler |
+| **Patterns** | CQRS, event bus, repository, saga, worker, scheduler |
 | **Observability** | Health checks, OpenTelemetry, request ID, audit log |
-| **Infrastructure** | Docker, CI/GitHub, validation, UUID |
+| **Infrastructure** | Docker, CI/GitHub, CI/GitLab, validation, UUID, Makefile, Dev Container |
 | **Cross-cutting** | i18n, email gateway, Mailpit, API versioning |
+| **Frontend** | templ, htmx, static assets |
 
 <CardGrid>
   <Card title="Read the docs" icon="right-arrow">

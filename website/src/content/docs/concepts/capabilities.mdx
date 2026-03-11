@@ -1,13 +1,13 @@
 ---
 title: Capabilities
-description: 38 modular features you can compose into your service
+description: 53 modular features you can compose into your service
 ---
 
 import { Aside, Tabs, TabItem, Badge } from '@astrojs/starlight/components';
 
 Capabilities are self-contained modules that add specific functionality to your project. Each provides template files, configuration, and wiring code.
 
-Archway ships with **38 capabilities** across **8 categories**.
+Archway ships with **53 capabilities** across **8 categories**.
 
 ## Transport
 
@@ -33,6 +33,22 @@ WebSocket server support.
 
 **What you get:** WebSocket upgrader, connection management, message handling patterns.
 
+### `graphql` <Badge text="New" variant="success" />
+GraphQL API with [gqlgen](https://gqlgen.com/) code generation.
+
+**What you get:** gqlgen schema, resolver scaffolding, playground endpoint, code generation config.
+
+**Suggests:** `auth-jwt`, `observability`, `health`, `docker`
+
+### `sse` <Badge text="New" variant="success" />
+Server-Sent Events for real-time streaming.
+
+**What you get:** SSE endpoint handler, event stream writer, client connection management.
+
+**Requires:** `http-api`
+
+**Suggests:** `health`, `observability`
+
 ## Data
 
 ### `mysql`
@@ -55,6 +71,38 @@ Redis connection and repository pattern.
 **What you get:** Connection management, repository pattern scaffold.
 
 **Suggests:** `docker`
+
+### `mongodb` <Badge text="New" variant="success" />
+MongoDB connection and repository pattern using official Go driver.
+
+**What you get:** MongoDB client setup, repository pattern scaffold, health checks.
+
+**Suggests:** `docker`, `health`, `observability`
+
+### `sqlite` <Badge text="New" variant="success" />
+SQLite database with [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite) (pure Go, no CGO).
+
+**What you get:** SQLite connection setup, repository pattern scaffold.
+
+**Suggests:** `migrations`
+
+### `s3` <Badge text="New" variant="success" />
+AWS S3 object storage client.
+
+**What you get:** S3 client setup, upload/download helpers, presigned URLs.
+
+**Requires:** `config`
+
+**Suggests:** `docker`, `observability`
+
+### `dynamodb` <Badge text="New" variant="success" />
+AWS DynamoDB document database client.
+
+**What you get:** DynamoDB client setup, table operations, query helpers.
+
+**Requires:** `config`
+
+**Suggests:** `docker`, `observability`
 
 ### `migrations`
 Database migration support.
@@ -83,6 +131,24 @@ Cross-Origin Resource Sharing middleware.
 **What you get:** CORS middleware with configurable origins, methods, and headers.
 
 **Requires:** `http-api`
+
+### `multi-tenancy` <Badge text="New" variant="success" />
+Row-level tenant isolation with tenant context middleware.
+
+**What you get:** Tenant middleware, tenant-scoped repository wrapper, tenant context propagation.
+
+**Requires:** `http-api`, `config`
+
+**Suggests:** `auth-jwt`, `observability`
+
+### `feature-flags` <Badge text="New" variant="success" />
+Feature flag evaluation with local config fallback.
+
+**What you get:** Feature flag evaluator, config-based flag storage, middleware for flag context.
+
+**Requires:** `config`
+
+**Suggests:** `observability`
 
 ## Resilience
 
@@ -135,6 +201,15 @@ Periodic task scheduling.
 
 **What you get:** Cron-like scheduler, job registration, configurable intervals.
 
+### `saga` <Badge text="New" variant="success" />
+Saga orchestrator for distributed transactions.
+
+**What you get:** Saga orchestrator, step definition, compensation handlers, execution tracking.
+
+**Requires:** `event-bus`
+
+**Suggests:** `observability`, `outbox`
+
 ## Observability
 
 ### `health`
@@ -185,6 +260,27 @@ GitHub workflow and templates.
 
 **What you get:** Issue templates (bug report, feature request), pull request template.
 
+### `ci-gitlab` <Badge text="New" variant="success" />
+GitLab CI/CD pipeline configuration.
+
+**What you get:** `.gitlab-ci.yml` with build, test, and lint stages.
+
+**Suggests:** `docker`, `linting`, `testing`
+
+**Conflicts:** `ci-github`
+
+### `makefile` <Badge text="New" variant="success" />
+Makefile with common development targets.
+
+**What you get:** Makefile with `build`, `test`, `lint`, `run`, `docker-build` targets.
+
+### `devcontainer` <Badge text="New" variant="success" />
+VS Code Dev Container for consistent development environments.
+
+**What you get:** `.devcontainer/devcontainer.json` with Go tooling, extensions, and settings.
+
+**Suggests:** `docker`
+
 ### `validation`
 Input validation.
 
@@ -227,6 +323,35 @@ Resilient HTTP client.
 API versioning support.
 
 **What you get:** Version routing, header/path-based versioning strategies.
+
+## Frontend
+
+### `templ` <Badge text="New" variant="success" />
+Type-safe Go HTML templating with [templ](https://templ.guide/) — server-rendered components.
+
+**What you get:** templ component scaffolding, layout system, render helpers.
+
+**Requires:** `http-api`
+
+**Suggests:** `htmx`, `static-assets`
+
+### `htmx` <Badge text="New" variant="success" />
+[HTMX](https://htmx.org/) integration for server-driven interactivity without JavaScript.
+
+**What you get:** HTMX helpers, partial rendering patterns, swap target helpers.
+
+**Requires:** `http-api`, `templ`
+
+**Suggests:** `static-assets`
+
+### `static-assets` <Badge text="New" variant="success" />
+Static file serving with embedded assets and cache headers.
+
+**What you get:** Static file handler with `embed.FS`, cache-control headers, content-type detection.
+
+**Requires:** `http-api`
+
+**Suggests:** `templ`
 
 ## Quality
 

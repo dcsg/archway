@@ -58,8 +58,8 @@ Together, Guide (prevention) + Enforce (detection) = the gap is zero.
 |---|---|---|---|---|
 | 1 | **Hexagonal** | domain → port → service → adapter | Production APIs, microservices | shipped |
 | 2 | **Flat** | single package | CLIs, scripts, prototypes | shipped |
-| 3 | **Layered** | handler → service → repository | Most common Go pattern, simpler services | planned (v1.1) |
-| 4 | **Clean** | entity → usecase → interface → infrastructure | Teams following Uncle Bob, complex business logic | planned (v1.1) |
+| 3 | **Layered** | handler → service → repository | Most common Go pattern, simpler services | shipped |
+| 4 | **Clean** | entity → usecase → interface → infrastructure | Teams following Uncle Bob, complex business logic | shipped |
 | 5 | **DDD** | bounded contexts, aggregates, domain events | Complex domains with multiple subdomains | planned (v2.0) |
 | 6 | **Modular Monolith** | multiple modules, shared infra, one binary | Teams avoiding premature microservices | planned (v2.0) |
 | 7 | **Event-driven** | event sourcing + CQRS as primary pattern | Event-sourced systems, audit-heavy domains | planned (v2.0) |
