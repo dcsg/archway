@@ -1,0 +1,7 @@
+name: timeout
+description: "Context-based timeout middleware for HTTP handlers and service calls"
+requires:
+  - http-api
+suggests:
+  - observability
+conflicts: []

@@ -1,0 +1,8 @@
+name: ddd
+description: "Domain-Driven Design building blocks — AggregateRoot, ValueObject, DomainEvent"
+requires: []
+suggests:
+  - event-bus
+  - repository
+  - cqrs
+conflicts: []

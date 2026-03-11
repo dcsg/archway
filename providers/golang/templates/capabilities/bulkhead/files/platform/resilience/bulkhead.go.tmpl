@@ -1,0 +1,37 @@
+package resilience
+
+import (
+	"context"
+	"errors"
+	"fmt"
+)
+
+// ErrBulkheadFull is returned when the bulkhead has no available capacity.
+var ErrBulkheadFull = errors.New("bulkhead: at capacity")
+
+// Bulkhead limits concurrent execution using a semaphore pattern.
+type Bulkhead struct {
+	name string
+	sem  chan struct{}
+}
+
+// NewBulkhead creates a new bulkhead with the given name and max concurrency.
+func NewBulkhead(name string, maxConcurrent int) *Bulkhead {
+	return &Bulkhead{
+		name: name,
+		sem:  make(chan struct{}, maxConcurrent),
+	}
+}
+
+// Execute runs fn if a semaphore slot is available; returns ErrBulkheadFull otherwise.
+func (b *Bulkhead) Execute(ctx context.Context, fn func() error) error {
+	select {
+	case b.sem <- struct{}{}:
+		defer func() { <-b.sem }()
+		return fn()
+	case <-ctx.Done():
+		return fmt.Errorf("bulkhead %q: %w", b.name, ctx.Err())
+	default:
+		return ErrBulkheadFull
+	}
+}

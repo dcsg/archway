@@ -1,0 +1,8 @@
+name: ci-bitbucket
+description: "Bitbucket Pipelines CI/CD configuration"
+requires: []
+suggests:
+  - linting
+  - testing
+  - docker
+conflicts: []

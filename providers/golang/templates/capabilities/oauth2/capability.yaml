@@ -1,0 +1,7 @@
+name: oauth2
+description: "OAuth2 client credentials and authorization code flow support"
+requires:
+  - http-api
+suggests:
+  - auth-jwt
+conflicts: []

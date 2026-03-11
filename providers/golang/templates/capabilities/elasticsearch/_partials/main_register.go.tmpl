@@ -1,0 +1,6 @@
+// Create Elasticsearch client.
+	esClient, err := esrepo.NewClient(cfg.Elasticsearch.Addresses, logger)
+	if err != nil {
+		return fmt.Errorf("create elasticsearch client: %w", err)
+	}
+	_ = esClient

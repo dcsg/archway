@@ -1,0 +1,10 @@
+// Connect to NATS.
+	natsConn, err := nats.Connect(cfg.NATS.URL)
+	if err != nil {
+		return fmt.Errorf("connect nats: %w", err)
+	}
+	natsSub := natshandler.NewSubscriber(natsConn, logger)
+	natsPub := natshandler.NewPublisher(natsConn, logger)
+	// TODO: Register NATS subscriptions.
+	_ = natsSub
+	_ = natsPub

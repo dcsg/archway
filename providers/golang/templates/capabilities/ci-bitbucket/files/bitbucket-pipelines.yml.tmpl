@@ -1,0 +1,30 @@
+image: golang:1.24
+
+pipelines:
+  default:
+    - step:
+        name: Build & Test
+        caches:
+          - go-modules
+        script:
+          - go build ./...
+          - go test ./...
+          - go vet ./...
+  pull-requests:
+    '**':
+      - step:
+          name: Lint & Test
+          caches:
+            - go-modules
+          script:
+            - go build ./...
+            - go test ./...
+            - go vet ./...
+
+definitions:
+  caches:
+    go-modules:
+      key:
+        files:
+          - go.sum
+      path: /root/go/pkg/mod

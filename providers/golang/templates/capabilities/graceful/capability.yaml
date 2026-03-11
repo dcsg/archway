@@ -1,0 +1,7 @@
+name: graceful
+description: "Standalone graceful shutdown manager for services without platform capability"
+requires: []
+suggests:
+  - health
+conflicts:
+  - platform

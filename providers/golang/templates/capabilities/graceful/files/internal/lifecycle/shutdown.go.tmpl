@@ -1,0 +1,73 @@
+package lifecycle
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
+)
+
+// cleanupFunc holds a named cleanup function.
+type cleanupFunc struct {
+	Name string
+	Fn   func() error
+}
+
+// ShutdownManager handles graceful shutdown on OS signals.
+type ShutdownManager struct {
+	ctx      context.Context
+	cancel   context.CancelFunc
+	sigCh    chan os.Signal
+	cleanups []cleanupFunc
+}
+
+// NewShutdownManager creates a ShutdownManager that listens for SIGINT and SIGTERM.
+func NewShutdownManager() *ShutdownManager {
+	ctx, cancel := context.WithCancel(context.Background())
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	sm := &ShutdownManager{
+		ctx:    ctx,
+		cancel: cancel,
+		sigCh:  sigCh,
+	}
+
+	go func() {
+		<-sigCh
+		slog.Info("shutdown signal received")
+		cancel()
+	}()
+
+	return sm
+}
+
+// Context returns a context that is cancelled when a shutdown signal is received.
+func (sm *ShutdownManager) Context() context.Context {
+	return sm.ctx
+}
+
+// Wait blocks until a shutdown signal is received.
+func (sm *ShutdownManager) Wait() {
+	<-sm.ctx.Done()
+}
+
+// RegisterCleanup registers a named cleanup function to run during shutdown.
+func (sm *ShutdownManager) RegisterCleanup(name string, fn func() error) {
+	sm.cleanups = append(sm.cleanups, cleanupFunc{Name: name, Fn: fn})
+}
+
+// Shutdown calls all registered cleanup functions in reverse order and logs errors.
+func (sm *ShutdownManager) Shutdown() {
+	for i := len(sm.cleanups) - 1; i >= 0; i-- {
+		c := sm.cleanups[i]
+		if err := c.Fn(); err != nil {
+			slog.Error(fmt.Sprintf("cleanup %q failed: %v", c.Name, err))
+		} else {
+			slog.Info(fmt.Sprintf("cleanup %q completed", c.Name))
+		}
+	}
+	signal.Stop(sm.sigCh)
+}

@@ -1,0 +1,87 @@
+package security
+
+import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"encoding/base64"
+	"fmt"
+)
+
+// Encryptor provides AES-256-GCM encryption and decryption.
+type Encryptor struct {
+	aead cipher.AEAD
+}
+
+// NewEncryptor creates an Encryptor from a 32-byte AES-256 key.
+func NewEncryptor(key []byte) (*Encryptor, error) {
+	const keySize = 32
+	if len(key) != keySize {
+		return nil, fmt.Errorf("encryption key must be %d bytes, got %d", keySize, len(key))
+	}
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, fmt.Errorf("creating AES cipher: %w", err)
+	}
+
+	aead, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("creating GCM: %w", err)
+	}
+
+	return &Encryptor{aead: aead}, nil
+}
+
+// Encrypt encrypts plaintext using AES-256-GCM with a random nonce prepended to the output.
+func (e *Encryptor) Encrypt(plaintext []byte) ([]byte, error) {
+	nonce := make([]byte, e.aead.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
+		return nil, fmt.Errorf("generating nonce: %w", err)
+	}
+
+	return e.aead.Seal(nonce, nonce, plaintext, nil), nil
+}
+
+// Decrypt decrypts ciphertext produced by Encrypt.
+func (e *Encryptor) Decrypt(ciphertext []byte) ([]byte, error) {
+	nonceSize := e.aead.NonceSize()
+	if len(ciphertext) < nonceSize {
+		return nil, fmt.Errorf("ciphertext too short: got %d bytes, need at least %d", len(ciphertext), nonceSize)
+	}
+
+	nonce := ciphertext[:nonceSize]
+	encrypted := ciphertext[nonceSize:]
+
+	plaintext, err := e.aead.Open(nil, nonce, encrypted, nil)
+	if err != nil {
+		return nil, fmt.Errorf("decrypting: %w", err)
+	}
+
+	return plaintext, nil
+}
+
+// EncryptString encrypts a string and returns a base64-encoded result.
+func (e *Encryptor) EncryptString(plaintext string) (string, error) {
+	ciphertext, err := e.Encrypt([]byte(plaintext))
+	if err != nil {
+		return "", err
+	}
+
+	return base64.StdEncoding.EncodeToString(ciphertext), nil
+}
+
+// DecryptString decodes a base64 string and decrypts it.
+func (e *Encryptor) DecryptString(encoded string) (string, error) {
+	ciphertext, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		return "", fmt.Errorf("decoding base64: %w", err)
+	}
+
+	plaintext, err := e.Decrypt(ciphertext)
+	if err != nil {
+		return "", err
+	}
+
+	return string(plaintext), nil
+}

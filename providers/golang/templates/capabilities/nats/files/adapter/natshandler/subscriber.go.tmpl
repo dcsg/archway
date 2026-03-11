@@ -1,0 +1,44 @@
+package natshandler
+
+import (
+	"fmt"
+	"log/slog"
+
+	"github.com/nats-io/nats.go"
+)
+
+// Subscriber wraps a NATS connection for consuming messages.
+type Subscriber struct {
+	conn          *nats.Conn
+	logger        *slog.Logger
+	subscriptions []*nats.Subscription
+}
+
+// NewSubscriber creates a new NATS subscriber.
+func NewSubscriber(conn *nats.Conn, logger *slog.Logger) *Subscriber {
+	return &Subscriber{
+		conn:   conn,
+		logger: logger,
+	}
+}
+
+// Subscribe registers a handler for the given subject.
+func (s *Subscriber) Subscribe(subject string, handler func(msg *nats.Msg)) error {
+	sub, err := s.conn.Subscribe(subject, handler)
+	if err != nil {
+		return fmt.Errorf("subscribe to %s: %w", subject, err)
+	}
+	s.subscriptions = append(s.subscriptions, sub)
+	s.logger.Info("subscribed to NATS subject", "subject", subject)
+	return nil
+}
+
+// Close drains and unsubscribes all active subscriptions.
+func (s *Subscriber) Close() error {
+	for _, sub := range s.subscriptions {
+		if err := sub.Drain(); err != nil {
+			s.logger.Error("drain subscription failed", "subject", sub.Subject, "error", err)
+		}
+	}
+	return nil
+}

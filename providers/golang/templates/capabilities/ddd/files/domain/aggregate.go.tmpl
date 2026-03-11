@@ -1,0 +1,39 @@
+package domain
+
+// AggregateRoot is the base type for all aggregate roots.
+// It tracks uncommitted domain events and manages versioning.
+type AggregateRoot struct {
+	ID      string
+	Version int
+	events  []DomainEvent
+}
+
+// NewAggregateRoot creates a new AggregateRoot with the given ID.
+func NewAggregateRoot(id string) AggregateRoot {
+	return AggregateRoot{
+		ID:      id,
+		Version: 0,
+	}
+}
+
+// RecordEvent appends a domain event to the list of uncommitted events.
+func (a *AggregateRoot) RecordEvent(event DomainEvent) {
+	a.events = append(a.events, event)
+}
+
+// Events returns a copy of the uncommitted domain events.
+func (a *AggregateRoot) Events() []DomainEvent {
+	copied := make([]DomainEvent, len(a.events))
+	copy(copied, a.events)
+	return copied
+}
+
+// ClearEvents clears the list of uncommitted domain events.
+func (a *AggregateRoot) ClearEvents() {
+	a.events = nil
+}
+
+// IncrementVersion bumps the aggregate version by one.
+func (a *AggregateRoot) IncrementVersion() {
+	a.Version++
+}

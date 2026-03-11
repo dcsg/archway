@@ -1,0 +1,5 @@
+name: encryption
+description: "At-rest encryption helpers using AES-256-GCM"
+requires: []
+suggests: []
+conflicts: []

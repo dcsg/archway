@@ -1,0 +1,40 @@
+package natshandler
+
+import (
+	"fmt"
+	"log/slog"
+	"time"
+
+	"github.com/nats-io/nats.go"
+)
+
+// Publisher wraps a NATS connection for publishing messages.
+type Publisher struct {
+	conn   *nats.Conn
+	logger *slog.Logger
+}
+
+// NewPublisher creates a new NATS publisher.
+func NewPublisher(conn *nats.Conn, logger *slog.Logger) *Publisher {
+	return &Publisher{
+		conn:   conn,
+		logger: logger,
+	}
+}
+
+// Publish sends data to the given subject.
+func (p *Publisher) Publish(subject string, data []byte) error {
+	if err := p.conn.Publish(subject, data); err != nil {
+		return fmt.Errorf("publish to %s: %w", subject, err)
+	}
+	return nil
+}
+
+// Request sends a request to the given subject and waits for a reply.
+func (p *Publisher) Request(subject string, data []byte, timeout time.Duration) (*nats.Msg, error) {
+	msg, err := p.conn.Request(subject, data, timeout)
+	if err != nil {
+		return nil, fmt.Errorf("request to %s: %w", subject, err)
+	}
+	return msg, nil
+}

@@ -1,0 +1,31 @@
+package httphandler
+
+import (
+	"context"
+	"net/http"
+	"time"
+)
+
+// TimeoutConfig holds timeout durations for HTTP handlers.
+type TimeoutConfig struct {
+	Default time.Duration
+	Read    time.Duration
+	Write   time.Duration
+}
+
+// Timeout returns middleware that wraps each request with a context timeout.
+func Timeout(cfg TimeoutConfig) func(http.Handler) http.Handler {
+	timeout := cfg.Default
+	if timeout == 0 {
+		timeout = 30 * time.Second
+	}
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx, cancel := context.WithTimeout(r.Context(), timeout)
+			defer cancel()
+
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}

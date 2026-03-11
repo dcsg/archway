@@ -1,0 +1,109 @@
+package httphandler
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strings"
+	"time"
+)
+
+// OAuth2Config holds OAuth2 provider configuration.
+type OAuth2Config struct {
+	ClientID     string
+	ClientSecret string
+	TokenURL     string
+	AuthURL      string
+	RedirectURL  string
+	Scopes       string
+}
+
+// TokenResponse represents an OAuth2 token response.
+type TokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	TokenType    string `json:"token_type"`
+	ExpiresIn    int    `json:"expires_in"`
+	RefreshToken string `json:"refresh_token,omitempty"`
+}
+
+// OAuth2Middleware validates Bearer tokens on incoming requests.
+func OAuth2Middleware(cfg OAuth2Config) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			authHeader := r.Header.Get("Authorization")
+			if authHeader == "" {
+				http.Error(w, "missing authorization header", http.StatusUnauthorized)
+				return
+			}
+
+			parts := strings.SplitN(authHeader, " ", 2)
+			if len(parts) != 2 || !strings.EqualFold(parts[0], "bearer") {
+				http.Error(w, "invalid authorization header", http.StatusUnauthorized)
+				return
+			}
+
+			token := strings.TrimSpace(parts[1])
+			if token == "" {
+				http.Error(w, "empty bearer token", http.StatusUnauthorized)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// HandleOAuth2Callback handles the OAuth2 redirect callback.
+func HandleOAuth2Callback(cfg OAuth2Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		code := r.URL.Query().Get("code")
+		if code == "" {
+			http.Error(w, "missing authorization code", http.StatusBadRequest)
+			return
+		}
+
+		tokenResp, err := ExchangeToken(r.Context(), cfg, code)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("token exchange failed: %s", err), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(tokenResp); err != nil {
+			http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		}
+	}
+}
+
+// ExchangeToken exchanges an authorization code for an access token.
+func ExchangeToken(ctx context.Context, cfg OAuth2Config, code string) (*TokenResponse, error) {
+	data := fmt.Sprintf(
+		"grant_type=authorization_code&code=%s&redirect_uri=%s&client_id=%s&client_secret=%s",
+		code, cfg.RedirectURL, cfg.ClientID, cfg.ClientSecret,
+	)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, cfg.TokenURL, strings.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("creating token request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("executing token request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("token endpoint returned status %d", resp.StatusCode)
+	}
+
+	var tokenResp TokenResponse
+	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
+		return nil, fmt.Errorf("decoding token response: %w", err)
+	}
+
+	return &tokenResp, nil
+}

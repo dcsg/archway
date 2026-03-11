@@ -1,0 +1,7 @@
+name: bulkhead
+description: "Concurrency limiter using semaphore pattern for load isolation"
+requires: []
+suggests:
+  - observability
+  - circuit-breaker
+conflicts: []

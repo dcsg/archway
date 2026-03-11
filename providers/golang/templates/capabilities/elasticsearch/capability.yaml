@@ -1,0 +1,7 @@
+name: elasticsearch
+description: "Elasticsearch client with index management and search helpers"
+requires: []
+suggests:
+  - observability
+  - docker
+conflicts: []

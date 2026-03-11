@@ -1,0 +1,7 @@
+name: nats
+description: "NATS messaging with JetStream for pub/sub and request-reply"
+requires: []
+suggests:
+  - health
+  - observability
+conflicts: []

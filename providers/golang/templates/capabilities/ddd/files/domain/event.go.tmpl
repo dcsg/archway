@@ -1,0 +1,35 @@
+package domain
+
+import "time"
+
+// DomainEvent represents something significant that happened in the domain.
+type DomainEvent interface {
+	// EventName returns the name of the event.
+	EventName() string
+	// OccurredAt returns the time the event occurred.
+	OccurredAt() time.Time
+}
+
+// BaseEvent provides a default implementation of DomainEvent.
+type BaseEvent struct {
+	Name      string
+	Timestamp time.Time
+}
+
+// NewBaseEvent creates a new BaseEvent with the given name and current time.
+func NewBaseEvent(name string) BaseEvent {
+	return BaseEvent{
+		Name:      name,
+		Timestamp: time.Now(),
+	}
+}
+
+// EventName returns the name of the event.
+func (e BaseEvent) EventName() string {
+	return e.Name
+}
+
+// OccurredAt returns the time the event occurred.
+func (e BaseEvent) OccurredAt() time.Time {
+	return e.Timestamp
+}

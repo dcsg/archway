@@ -18,6 +18,14 @@ var capabilityTemplateMap = map[string][]string{
 	"kafka-consumer": {"adapter/kafkahandler/consumer.go.tmpl"},
 	"redis":          {"adapter/redisrepo/connection.go.tmpl"},
 	"bff":            {"adapter/bffgateway/gateway.go.tmpl"},
+	"ddd":            {"domain/aggregate.go.tmpl", "domain/event.go.tmpl"},
+	"graceful":       {"internal/lifecycle/shutdown.go.tmpl"},
+	"nats":           {"adapter/natshandler/subscriber.go.tmpl"},
+	"elasticsearch":  {"adapter/esrepo/client.go.tmpl"},
+	"timeout":        {"adapter/httphandler/timeout.go.tmpl"},
+	"bulkhead":       {"platform/resilience/bulkhead.go.tmpl"},
+	"oauth2":         {"adapter/httphandler/oauth2.go.tmpl"},
+	"encryption":     {"platform/security/encryption.go.tmpl"},
 }
 
 // patternLabel returns a human-readable label for a capability pattern.
@@ -29,6 +37,14 @@ var patternLabel = map[string]string{
 	"kafka-consumer": "Kafka Consumer Pattern",
 	"redis":          "Redis Repository Pattern",
 	"bff":            "BFF Gateway Pattern",
+	"ddd":            "DDD Building Blocks",
+	"graceful":       "Graceful Shutdown Pattern",
+	"nats":           "NATS Messaging Pattern",
+	"elasticsearch":  "Elasticsearch Client Pattern",
+	"timeout":        "Timeout Middleware Pattern",
+	"bulkhead":       "Bulkhead Pattern",
+	"oauth2":         "OAuth2 Flow Pattern",
+	"encryption":     "Encryption Pattern",
 }
 
 // ExtractPatterns reads template files from the embedded FS for the given
