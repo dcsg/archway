@@ -386,5 +386,3 @@ func (t *claudeTarget) WriteSplit(projectDir string, sc SplitContent) error {
 
 	return nil
 }
-
-
