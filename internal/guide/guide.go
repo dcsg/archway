@@ -64,6 +64,9 @@ func buildContent(opts GenerateOptions) string {
 	if patterns := ExtractPatterns(opts.TemplateFS, opts.Capabilities); patterns != "" {
 		b.WriteString(patterns)
 	}
+	if catalog, err := BuildCatalog(opts.TemplateFS, opts.Capabilities); err == nil && len(catalog) > 0 {
+		writeCatalog(&b, catalog, opts.Capabilities)
+	}
 	writeAntiPatterns(&b, opts.Architecture)
 
 	return b.String()
