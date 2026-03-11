@@ -1,0 +1,8 @@
+// BFF gateway — register backend service clients.
+	bffClients := map[string]bffgateway.ServiceClient{
+		// TODO: Register your backend service clients here.
+		// "users":  bffgateway.NewHTTPClient("http://users-service:8080"),
+		// "orders": bffgateway.NewHTTPClient("http://orders-service:8080"),
+	}
+	gateway := bffgateway.NewGateway(bffClients)
+	_ = gateway // TODO: Pass gateway to your handlers.

@@ -100,6 +100,46 @@ func TestNewHexagonalWithHTTPAPI(t *testing.T) {
 	}
 }
 
+func TestNewHexagonalWithBFF(t *testing.T) {
+	tmp := t.TempDir()
+	chdir(t, tmp)
+
+	_, err := executeCommand(t,
+		"new", "test-bff",
+		"--arch", "hexagonal",
+		"--cap", "http-api,bff,health",
+		"--no-wizard",
+		"--set", "skip_hooks=true",
+	)
+	if err != nil {
+		t.Fatalf("new command failed: %v", err)
+	}
+
+	svcDir := filepath.Join(tmp, "test-bff")
+
+	// Verify BFF gateway files exist.
+	for _, p := range []string{
+		"adapter/bffgateway/gateway.go",
+		"adapter/bffgateway/httpclient.go",
+		"adapter/httphandler/handler.go",
+		"archway.yaml",
+	} {
+		full := filepath.Join(svcDir, p)
+		if _, err := os.Stat(full); os.IsNotExist(err) {
+			t.Errorf("expected %s to exist", p)
+		}
+	}
+
+	// Verify archway.yaml includes bff capability.
+	data, err := os.ReadFile(filepath.Join(svcDir, "archway.yaml"))
+	if err != nil {
+		t.Fatalf("failed to read archway.yaml: %v", err)
+	}
+	if !strings.Contains(string(data), "bff") {
+		t.Errorf("archway.yaml should list bff capability")
+	}
+}
+
 func TestNewFlat(t *testing.T) {
 	tmp := t.TempDir()
 	chdir(t, tmp)

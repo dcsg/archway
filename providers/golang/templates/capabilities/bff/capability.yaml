@@ -1,0 +1,12 @@
+name: bff
+description: "Backend-for-Frontend gateway — aggregates and shapes backend service responses for a specific client"
+requires:
+  - http-api
+suggests:
+  - circuit-breaker
+  - retry
+  - observability
+  - health
+  - cors
+  - rate-limiting
+conflicts: []

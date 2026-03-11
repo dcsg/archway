@@ -151,6 +151,12 @@ func TestCategoryFor_Known(t *testing.T) {
 	}
 }
 
+func TestCategoryFor_BFF(t *testing.T) {
+	if got := categoryFor("bff"); got != "transport" {
+		t.Errorf("categoryFor(bff) = %q, want transport", got)
+	}
+}
+
 func TestCategoryFor_Unknown(t *testing.T) {
 	if got := categoryFor("nonexistent"); got != "other" {
 		t.Errorf("categoryFor(nonexistent) = %q, want other", got)
