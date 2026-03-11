@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -459,7 +460,7 @@ func initGitRepo(t *testing.T, dir string) {
 
 func gitCmd(t *testing.T, dir string, args ...string) {
 	t.Helper()
-	c := exec.Command("git", args...)
+	c := exec.CommandContext(context.Background(), "git", args...)
 	c.Dir = dir
 	out, err := c.CombinedOutput()
 	if err != nil {

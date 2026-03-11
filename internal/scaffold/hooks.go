@@ -2,6 +2,7 @@ package scaffold
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -73,7 +74,7 @@ func RunPostScaffoldHooks(outputDir string, hooks []string, vars map[string]inte
 			}
 		}
 
-		cmd := exec.Command("sh", "-c", renderedHook)
+		cmd := exec.CommandContext(context.Background(), "sh", "-c", renderedHook)
 		cmd.Dir = outputDir
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr

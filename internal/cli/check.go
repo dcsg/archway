@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -124,7 +125,7 @@ func runCheck(opts *globalOptions, flags *checkFlags) error {
 
 // getStagedFiles returns relative file paths in the git staging area.
 func getStagedFiles(projectPath string) ([]string, error) {
-	cmd := exec.Command("git", "diff", "--cached", "--name-only", "--diff-filter=ACM")
+	cmd := exec.CommandContext(context.Background(), "git", "diff", "--cached", "--name-only", "--diff-filter=ACM")
 	cmd.Dir = projectPath
 	out, err := cmd.Output()
 	if err != nil {
@@ -289,7 +290,7 @@ func printCombinedJSON(checkerResult *checker.CheckResult, ruleResult *rules.Run
 	}
 
 	if checkerResult != nil {
-		var allViolations []checker.Violation
+		allViolations := make([]checker.Violation, 0, len(checkerResult.DependencyViolations)+len(checkerResult.StructureViolations)+len(checkerResult.FunctionViolations)+len(checkerResult.NamingViolations))
 		allViolations = append(allViolations, checkerResult.DependencyViolations...)
 		allViolations = append(allViolations, checkerResult.StructureViolations...)
 		allViolations = append(allViolations, checkerResult.FunctionViolations...)

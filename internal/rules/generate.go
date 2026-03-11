@@ -12,9 +12,11 @@ func GenerateRules(cfg *config.ArchwayConfig) []Rule {
 		return nil
 	}
 
-	var rules []Rule
-	rules = append(rules, generateArchRules(cfg)...)
-	rules = append(rules, generateCapRules(cfg)...)
+	archRules := generateArchRules(cfg)
+	capRules := generateCapRules(cfg)
+	rules := make([]Rule, 0, len(archRules)+len(capRules))
+	rules = append(rules, archRules...)
+	rules = append(rules, capRules...)
 	return rules
 }
 

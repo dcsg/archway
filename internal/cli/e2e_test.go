@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,7 +13,7 @@ import (
 
 func goModTidy(t *testing.T, dir string) {
 	t.Helper()
-	cmd := exec.Command("go", "mod", "tidy")
+	cmd := exec.CommandContext(context.Background(), "go", "mod", "tidy")
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), "GOFLAGS=")
 	out, err := cmd.CombinedOutput()
