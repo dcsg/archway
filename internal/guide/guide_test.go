@@ -304,6 +304,81 @@ func TestBuildContent_EmptyCapabilities(t *testing.T) {
 	assert.Contains(t, content, "No capabilities configured")
 }
 
+func TestBuildContent_CatalogOnly(t *testing.T) {
+	opts := GenerateOptions{
+		Architecture: "hexagonal",
+		Capabilities: []string{"http-api", "mysql"},
+		CatalogOnly:  true,
+	}
+
+	content := buildContent(opts)
+
+	// Should contain header and catalog-related sections.
+	assert.Contains(t, content, "# Archway -- Architecture Guide")
+
+	// Should NOT contain architecture-specific sections.
+	assert.NotContains(t, content, "Architecture: hexagonal")
+	assert.NotContains(t, content, "## Layer Rules")
+	assert.NotContains(t, content, "## Dependency Direction")
+	assert.NotContains(t, content, "## Adding Code")
+	assert.NotContains(t, content, "## Capabilities")
+	assert.NotContains(t, content, "## Anti-patterns to Avoid")
+}
+
+func TestBuildContent_CatalogOnlyFalse_FullOutput(t *testing.T) {
+	opts := GenerateOptions{
+		Architecture: "hexagonal",
+		Capabilities: []string{"http-api"},
+		CatalogOnly:  false,
+	}
+
+	content := buildContent(opts)
+
+	assert.Contains(t, content, "Architecture: hexagonal")
+	assert.Contains(t, content, "## Layer Rules")
+	assert.Contains(t, content, "## Anti-patterns to Avoid")
+	assert.Contains(t, content, "## Capabilities")
+}
+
+func TestWriteRuleSummaries_WithRules(t *testing.T) {
+	dir := t.TempDir()
+	rulesDir := filepath.Join(dir, ".archway", "rules")
+	require.NoError(t, os.MkdirAll(rulesDir, 0o755))
+
+	// Create a valid rule file.
+	ruleYAML := `id: no-fmt-println
+engine: grep
+severity: warning
+description: Do not use fmt.Println
+pattern: "fmt\\.Println"
+scope:
+  - "**/*.go"
+`
+	require.NoError(t, os.WriteFile(filepath.Join(rulesDir, "no-fmt-println.yaml"), []byte(ruleYAML), 0o644))
+
+	// Create a .go file so scope is not stale.
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "main.go"), []byte("package main\n"), 0o644))
+
+	var b strings.Builder
+	writeRuleSummaries(&b, dir)
+
+	content := b.String()
+	assert.Contains(t, content, "## Active Rules")
+	assert.Contains(t, content, "no-fmt-println")
+	assert.Contains(t, content, "grep")
+	assert.Contains(t, content, "warning")
+	assert.Contains(t, content, "archway check")
+}
+
+func TestWriteRuleSummaries_NoRulesDir(t *testing.T) {
+	dir := t.TempDir()
+
+	var b strings.Builder
+	writeRuleSummaries(&b, dir)
+
+	assert.Empty(t, b.String())
+}
+
 func TestForbiddenDeps_ComponentWithNoForbidden(t *testing.T) {
 	// Component that may depend on everything else.
 	comp := config.Component{
