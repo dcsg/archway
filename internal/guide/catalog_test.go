@@ -23,6 +23,21 @@ func testCapFS() fstest.MapFS {
 		"templates/capabilities/saga/capability.yaml": &fstest.MapFile{
 			Data: []byte("name: saga\ndescription: \"Saga orchestrator\"\nrequires: [event-bus]\nsuggests: [observability]\nconflicts: []\n"),
 		},
+		"templates/capabilities/rate-limiting/capability.yaml": &fstest.MapFile{
+			Data: []byte("name: rate-limiting\ndescription: \"Rate limiter middleware\"\nrequires: []\nsuggests: []\nconflicts: []\n"),
+		},
+		"templates/capabilities/cors/capability.yaml": &fstest.MapFile{
+			Data: []byte("name: cors\ndescription: \"CORS middleware\"\nrequires: []\nsuggests: []\nconflicts: []\n"),
+		},
+		"templates/capabilities/health/capability.yaml": &fstest.MapFile{
+			Data: []byte("name: health\ndescription: \"Health check endpoints\"\nrequires: []\nsuggests: []\nconflicts: []\n"),
+		},
+		"templates/capabilities/multi-tenancy/capability.yaml": &fstest.MapFile{
+			Data: []byte("name: multi-tenancy\ndescription: \"Multi-tenant isolation middleware\"\nrequires: []\nsuggests: [auth-jwt]\nconflicts: []\n"),
+		},
+		"templates/capabilities/auth-jwt/capability.yaml": &fstest.MapFile{
+			Data: []byte("name: auth-jwt\ndescription: \"JWT authentication middleware\"\nrequires: []\nsuggests: []\nconflicts: []\n"),
+		},
 	}
 }
 
@@ -32,8 +47,8 @@ func TestBuildCatalog_WithFS(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildCatalog() error = %v", err)
 	}
-	if len(catalog) != 5 {
-		t.Fatalf("expected 5 entries, got %d", len(catalog))
+	if len(catalog) != 10 {
+		t.Fatalf("expected 10 entries, got %d", len(catalog))
 	}
 
 	installedCount := 0
@@ -163,5 +178,90 @@ func TestCatalogInBuildContent(t *testing.T) {
 	content := buildContent(opts)
 	if !strings.Contains(content, "## Capability Catalog") {
 		t.Error("buildContent should include capability catalog")
+	}
+}
+
+func TestWriteWarnings_DangerousCombination(t *testing.T) {
+	var b strings.Builder
+	writeWarnings(&b, []string{"http-api"})
+	output := b.String()
+	if !strings.Contains(output, "## Interaction Warnings") {
+		t.Error("expected Interaction Warnings section")
+	}
+	if !strings.Contains(output, "rate-limiting") {
+		t.Error("expected warning about rate-limiting")
+	}
+}
+
+func TestWriteWarnings_SafeCombination(t *testing.T) {
+	var b strings.Builder
+	writeWarnings(&b, []string{"http-api", "rate-limiting", "cors", "health", "observability", "request-id"})
+	output := b.String()
+	if strings.Contains(output, "## Interaction Warnings") {
+		t.Errorf("expected no warnings for safe combination, got: %s", output)
+	}
+}
+
+func TestWriteWarnings_CriticalFirst(t *testing.T) {
+	var b strings.Builder
+	// multi-tenancy without auth triggers critical; http-api without health triggers regular.
+	writeWarnings(&b, []string{"multi-tenancy", "http-api"})
+	output := b.String()
+
+	critIdx := strings.Index(output, "CRITICAL:")
+	warnIdx := strings.Index(output, "WARNING:")
+	if critIdx < 0 {
+		t.Fatal("expected CRITICAL warning")
+	}
+	if warnIdx < 0 {
+		t.Fatal("expected WARNING")
+	}
+	if critIdx > warnIdx {
+		t.Error("CRITICAL warnings should appear before WARNING")
+	}
+}
+
+func TestWriteSuggestions_ReflectsActualMissing(t *testing.T) {
+	var b strings.Builder
+	writeSuggestions(&b, []string{"http-api"})
+	output := b.String()
+	if !strings.Contains(output, "## Architecture Suggestions") {
+		t.Error("expected Architecture Suggestions section")
+	}
+	if !strings.Contains(output, "**Add ") {
+		t.Error("expected numbered suggestion format")
+	}
+	// rate-limiting is a suggestion for http-api
+	if !strings.Contains(output, "rate-limiting") {
+		t.Error("expected rate-limiting suggestion for http-api")
+	}
+}
+
+func TestWriteSuggestions_EmptyWhenAllInstalled(t *testing.T) {
+	var b strings.Builder
+	// Provide capabilities that satisfy all suggestion rules triggered by http-api.
+	writeSuggestions(&b, []string{
+		"http-api", "platform", "bootstrap", "rate-limiting", "auth-jwt",
+		"testing", "docker", "ci-github", "linting", "cors", "health",
+		"observability", "request-id",
+	})
+	output := b.String()
+	if strings.Contains(output, "## Architecture Suggestions") {
+		t.Errorf("expected no suggestions, got: %s", output)
+	}
+}
+
+func TestBuildContent_IncludesWarningsAndSuggestions(t *testing.T) {
+	opts := GenerateOptions{
+		Architecture: "hexagonal",
+		Capabilities: []string{"http-api", "mysql"},
+		TemplateFS:   testCapFS(),
+	}
+	content := buildContent(opts)
+	if !strings.Contains(content, "## Interaction Warnings") {
+		t.Error("buildContent should include Interaction Warnings")
+	}
+	if !strings.Contains(content, "## Architecture Suggestions") {
+		t.Error("buildContent should include Architecture Suggestions")
 	}
 }
