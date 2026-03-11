@@ -13,7 +13,10 @@ import (
 )
 
 func newGuideCommand(_ *globalOptions) *cobra.Command {
-	var target string
+	var (
+		target      string
+		catalogOnly bool
+	)
 
 	cmd := &cobra.Command{
 		Use:   "guide",
@@ -21,16 +24,21 @@ func newGuideCommand(_ *globalOptions) *cobra.Command {
 		Long: `Generate architecture guidance files for AI coding agents.
 
 Reads archway.yaml from the current directory and generates instruction files
-for Claude Code, Cursor, GitHub Copilot, and Windsurf.`,
+for Claude Code, Cursor, GitHub Copilot, and Windsurf.
+
+Use --catalog-only to generate only the capability catalog without requiring
+an archway.yaml configuration file.`,
 		Example: `  archway guide
   archway guide --target claude
-  archway guide --target cursor`,
+  archway guide --target cursor
+  archway guide --catalog-only`,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			return runGuide(target)
+			return runGuide(target, catalogOnly)
 		},
 	}
 
 	cmd.Flags().StringVar(&target, "target", "all", "Output target: all, claude, cursor, copilot, windsurf")
+	cmd.Flags().BoolVar(&catalogOnly, "catalog-only", false, "Generate only the capability catalog (no archway.yaml required)")
 	_ = cmd.RegisterFlagCompletionFunc("target", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		return []string{"all", "claude", "cursor", "copilot", "windsurf"}, cobra.ShellCompDirectiveNoFileComp
 	})
@@ -38,7 +46,27 @@ for Claude Code, Cursor, GitHub Copilot, and Windsurf.`,
 	return cmd
 }
 
-func runGuide(target string) error {
+func runGuide(target string, catalogOnly bool) error {
+	projectDir := "."
+
+	if catalogOnly {
+		// Catalog-only mode: no archway.yaml required.
+		p, provErr := provider.Get("go")
+		opts := guide.GenerateOptions{
+			ProjectDir:  projectDir,
+			Target:      target,
+			CatalogOnly: true,
+		}
+		if provErr == nil {
+			opts.TemplateFS = p.GetTemplateFS()
+		}
+		if err := guide.Generate(opts); err != nil {
+			return err
+		}
+		fmt.Printf("Guide generated (catalog-only) for target: %s\n", target)
+		return nil
+	}
+
 	cfgPath, err := config.FindArchwayYAML(".")
 	if err != nil {
 		return fmt.Errorf("no archway.yaml found in current directory or parents: %w", err)
@@ -48,8 +76,6 @@ func runGuide(target string) error {
 	if err != nil {
 		return fmt.Errorf("load archway.yaml: %w", err)
 	}
-
-	projectDir := "."
 
 	// Look up the language provider to get the template FS for pattern extraction.
 	p, provErr := provider.Get(cfg.Language)

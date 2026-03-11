@@ -304,6 +304,193 @@ func TestBuildContent_EmptyCapabilities(t *testing.T) {
 	assert.Contains(t, content, "No capabilities configured")
 }
 
+func TestBuildContent_CatalogOnly(t *testing.T) {
+	opts := GenerateOptions{
+		Architecture: "hexagonal",
+		Capabilities: []string{"http-api", "mysql"},
+		CatalogOnly:  true,
+	}
+
+	content := buildContent(opts)
+
+	// Should contain header and catalog-related sections.
+	assert.Contains(t, content, "# Archway -- Architecture Guide")
+
+	// Should NOT contain architecture-specific sections.
+	assert.NotContains(t, content, "Architecture: hexagonal")
+	assert.NotContains(t, content, "## Layer Rules")
+	assert.NotContains(t, content, "## Dependency Direction")
+	assert.NotContains(t, content, "## Adding Code")
+	assert.NotContains(t, content, "## Capabilities")
+	assert.NotContains(t, content, "## Anti-patterns to Avoid")
+}
+
+func TestBuildContent_CatalogOnlyFalse_FullOutput(t *testing.T) {
+	opts := GenerateOptions{
+		Architecture: "hexagonal",
+		Capabilities: []string{"http-api"},
+		CatalogOnly:  false,
+	}
+
+	content := buildContent(opts)
+
+	assert.Contains(t, content, "Architecture: hexagonal")
+	assert.Contains(t, content, "## Layer Rules")
+	assert.Contains(t, content, "## Anti-patterns to Avoid")
+	assert.Contains(t, content, "## Capabilities")
+}
+
+func TestWriteRuleSummaries_WithRules(t *testing.T) {
+	dir := t.TempDir()
+	rulesDir := filepath.Join(dir, ".archway", "rules")
+	require.NoError(t, os.MkdirAll(rulesDir, 0o755))
+
+	// Create a valid rule file.
+	ruleYAML := `id: no-fmt-println
+engine: grep
+severity: warning
+description: Do not use fmt.Println
+pattern: "fmt\\.Println"
+scope:
+  - "**/*.go"
+`
+	require.NoError(t, os.WriteFile(filepath.Join(rulesDir, "no-fmt-println.yaml"), []byte(ruleYAML), 0o644))
+
+	// Create a .go file so scope is not stale.
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "main.go"), []byte("package main\n"), 0o644))
+
+	var b strings.Builder
+	writeRuleSummaries(&b, dir)
+
+	content := b.String()
+	assert.Contains(t, content, "## Active Rules")
+	assert.Contains(t, content, "no-fmt-println")
+	assert.Contains(t, content, "grep")
+	assert.Contains(t, content, "warning")
+	assert.Contains(t, content, "archway check")
+}
+
+func TestWriteRuleSummaries_NoRulesDir(t *testing.T) {
+	dir := t.TempDir()
+
+	var b strings.Builder
+	writeRuleSummaries(&b, dir)
+
+	assert.Empty(t, b.String())
+}
+
+func TestGuideIntegration_FullOutputWithCatalogAndRules(t *testing.T) {
+	dir := t.TempDir()
+
+	// Create .archway/rules/ with a proxy rule.
+	rulesDir := filepath.Join(dir, ".archway", "rules")
+	require.NoError(t, os.MkdirAll(rulesDir, 0o755))
+	ruleYAML := `id: domain-isolation
+engine: grep
+severity: error
+description: Domain must not import infrastructure
+pattern: "infrastructure"
+scope:
+  - "domain/**/*.go"
+`
+	require.NoError(t, os.WriteFile(filepath.Join(rulesDir, "domain-isolation.yaml"), []byte(ruleYAML), 0o644))
+	// Create a file matching scope so rule isn't stale.
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "domain"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "domain", "entity.go"), []byte("package domain\n"), 0o644))
+
+	cfg := &config.ArchwayConfig{
+		Architecture: "hexagonal",
+		Capabilities: []string{"http-api", "mysql", "auth-jwt"},
+		Components: []config.Component{
+			{Name: "domain", In: []string{"domain/**"}, MayDependOn: []string{}},
+			{Name: "ports", In: []string{"port/**"}, MayDependOn: []string{"domain"}},
+			{Name: "service", In: []string{"service/**"}, MayDependOn: []string{"domain", "ports"}},
+			{Name: "adapters", In: []string{"adapter/**"}, MayDependOn: []string{"ports", "domain"}},
+		},
+	}
+
+	err := GenerateFromConfig(dir, cfg, "claude")
+	require.NoError(t, err)
+
+	data, err := os.ReadFile(filepath.Join(dir, ".claude", "rules", "archway.md"))
+	require.NoError(t, err)
+	content := string(data)
+
+	// Architecture sections.
+	assert.Contains(t, content, "Architecture: hexagonal")
+	assert.Contains(t, content, "## Layer Rules")
+	assert.Contains(t, content, "## Dependency Direction")
+	assert.Contains(t, content, "## Adding Code")
+	assert.Contains(t, content, "## Capabilities")
+	assert.Contains(t, content, "## Anti-patterns to Avoid")
+
+	// Capabilities listed.
+	assert.Contains(t, content, "http-api")
+	assert.Contains(t, content, "mysql")
+	assert.Contains(t, content, "auth-jwt")
+
+	// Warnings section (http-api without rate-limiting triggers one).
+	assert.Contains(t, content, "## Interaction Warnings")
+
+	// Rule summaries.
+	assert.Contains(t, content, "## Active Rules")
+	assert.Contains(t, content, "domain-isolation")
+}
+
+func TestGuideIntegration_CatalogOnlyMode(t *testing.T) {
+	dir := t.TempDir()
+
+	opts := GenerateOptions{
+		ProjectDir:   dir,
+		Target:       "claude",
+		Capabilities: []string{"http-api"},
+		CatalogOnly:  true,
+		TemplateFS:   testCapFS(),
+	}
+
+	err := Generate(opts)
+	require.NoError(t, err)
+
+	data, err := os.ReadFile(filepath.Join(dir, ".claude", "rules", "archway.md"))
+	require.NoError(t, err)
+	content := string(data)
+
+	// Should have catalog.
+	assert.Contains(t, content, "## Capability Catalog")
+
+	// Should NOT have architecture sections.
+	assert.NotContains(t, content, "## Layer Rules")
+	assert.NotContains(t, content, "## Dependency Direction")
+	assert.NotContains(t, content, "## Anti-patterns to Avoid")
+}
+
+func TestGuideTokenCompliance(t *testing.T) {
+	opts := GenerateOptions{
+		Architecture: "hexagonal",
+		Capabilities: []string{
+			"http-api", "mysql", "redis", "docker", "ci-github",
+			"observability", "health", "cors", "auth-jwt", "rate-limiting",
+		},
+		TemplateFS: testCapFS(),
+		Components: []config.Component{
+			{Name: "domain", In: []string{"domain/**"}, MayDependOn: []string{}},
+			{Name: "ports", In: []string{"port/**"}, MayDependOn: []string{"domain"}},
+			{Name: "service", In: []string{"service/**"}, MayDependOn: []string{"domain", "ports"}},
+			{Name: "adapters", In: []string{"adapter/**"}, MayDependOn: []string{"ports", "domain"}},
+		},
+	}
+
+	content := buildContent(opts)
+	words := len(strings.Fields(content))
+	approxTokens := int(float64(words) * 1.3)
+
+	// Guide should stay under 2000 tokens (INV-001 upper bound for rules files is 1500,
+	// but guide is a generated composite so we allow up to 2000).
+	if approxTokens > 2000 {
+		t.Errorf("guide output too large: ~%d tokens (%d words); consider trimming", approxTokens, words)
+	}
+}
+
 func TestForbiddenDeps_ComponentWithNoForbidden(t *testing.T) {
 	// Component that may depend on everything else.
 	comp := config.Component{

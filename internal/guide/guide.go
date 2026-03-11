@@ -3,9 +3,12 @@ package guide
 import (
 	"fmt"
 	"io/fs"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/dcsg/archway/internal/config"
+	"github.com/dcsg/archway/internal/rules"
 )
 
 // GenerateOptions holds the inputs for guide generation.
@@ -16,6 +19,7 @@ type GenerateOptions struct {
 	Capabilities []string
 	Components   []config.Component
 	TemplateFS   fs.FS // optional: embedded FS for pattern extraction
+	CatalogOnly  bool  // when true, only output catalog-related sections
 }
 
 // Generate produces guide files for the specified target(s).
@@ -56,15 +60,29 @@ func buildContent(opts GenerateOptions) string {
 	var b strings.Builder
 
 	writeHeader(&b)
-	writeArchitecture(&b, opts.Architecture)
-	writeLayerRules(&b, opts.Architecture, opts.Components)
-	writeDependencyDirection(&b, opts.Architecture, opts.Components)
-	writeAddingCode(&b, opts.Architecture)
-	writeCapabilities(&b, opts.Capabilities)
-	if patterns := ExtractPatterns(opts.TemplateFS, opts.Capabilities); patterns != "" {
-		b.WriteString(patterns)
+
+	if !opts.CatalogOnly {
+		writeArchitecture(&b, opts.Architecture)
+		writeLayerRules(&b, opts.Architecture, opts.Components)
+		writeDependencyDirection(&b, opts.Architecture, opts.Components)
+		writeAddingCode(&b, opts.Architecture)
+		writeCapabilities(&b, opts.Capabilities)
+		if patterns := ExtractPatterns(opts.TemplateFS, opts.Capabilities); patterns != "" {
+			b.WriteString(patterns)
+		}
 	}
-	writeAntiPatterns(&b, opts.Architecture)
+
+	if catalog, err := BuildCatalog(opts.TemplateFS, opts.Capabilities); err == nil && len(catalog) > 0 {
+		writeCatalog(&b, catalog, opts.Capabilities)
+	}
+	writeWarnings(&b, opts.Capabilities)
+	writeSuggestions(&b, opts.Capabilities)
+
+	if !opts.CatalogOnly {
+		writeAntiPatterns(&b, opts.Architecture)
+	}
+
+	writeRuleSummaries(&b, opts.ProjectDir)
 
 	return b.String()
 }
@@ -286,6 +304,48 @@ func capabilityDir(cap string) string {
 		return d
 	}
 	return "see project structure"
+}
+
+func writeRuleSummaries(b *strings.Builder, projectDir string) {
+	if projectDir == "" {
+		return
+	}
+
+	rulesDir := filepath.Join(projectDir, ".archway", "rules")
+	if _, err := os.Stat(rulesDir); os.IsNotExist(err) {
+		return
+	}
+
+	loadedRules, statuses, err := rules.LoadRules(rulesDir, projectDir)
+	if err != nil {
+		return
+	}
+
+	// Filter to valid rules only.
+	var validRules []rules.Rule
+	statusMap := make(map[string]string, len(statuses))
+	for _, s := range statuses {
+		statusMap[s.Rule.ID] = s.Status
+	}
+	for _, r := range loadedRules {
+		if statusMap[r.ID] == "valid" {
+			validRules = append(validRules, r)
+		}
+	}
+
+	if len(validRules) == 0 {
+		return
+	}
+
+	fmt.Fprintf(b, "## Active Rules\n\n")
+	fmt.Fprintf(b, "%d proxy rules enforced by `archway check`:\n\n", len(validRules))
+	b.WriteString("| Rule | Engine | Severity | Scope |\n")
+	b.WriteString("|------|--------|----------|-------|\n")
+	for _, r := range validRules {
+		scope := strings.Join(r.Scope, ", ")
+		fmt.Fprintf(b, "| %s | %s | %s | %s |\n", r.ID, r.Engine, r.Severity, scope)
+	}
+	b.WriteString("\nRun `archway check` to validate. Run `archway check --staged` as pre-commit hook.\n\n")
 }
 
 func writeAntiPatterns(b *strings.Builder, arch string) {

@@ -84,7 +84,7 @@ func TestCapabilityWarnings(t *testing.T) {
 		{"event-bus without outbox warns", []string{"event-bus"}, 1, false},
 		{"event-bus with outbox no warn", []string{"event-bus", "outbox"}, 0, true},
 		{"empty caps no warnings", []string{}, 0, true},
-		{"full stack fewer warnings", []string{"http-api", "postgres", "uuid", "health", "cors", "observability", "request-id"}, 0, true},
+		{"full stack fewer warnings", []string{"http-api", "postgres", "uuid", "health", "cors", "observability", "request-id", "rate-limiting"}, 0, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

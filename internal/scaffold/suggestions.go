@@ -87,6 +87,8 @@ var defaultWarningRules = []warningRule{
 	{ifHas: "http-client", missing: []string{"circuit-breaker", "retry"}, message: "http-client without resilience: External calls should have circuit breakers or retry logic"},
 	{ifHas: "kafka-consumer", missing: []string{"health"}, message: "kafka-consumer without health: Consumers need health checks for orchestrator readiness probes"},
 	{ifHas: "grpc", missing: []string{"health"}, message: "grpc without health: gRPC services should implement the health checking protocol"},
+	{ifHas: "http-api", missing: []string{"rate-limiting"}, message: "http-api without rate-limiting: Public APIs need rate limiting to prevent abuse and ensure fair usage"},
+	{ifHas: "multi-tenancy", missing: []string{"auth-jwt"}, message: "multi-tenancy without auth: Multi-tenant services MUST authenticate requests to enforce tenant isolation"},
 }
 
 // CapabilityWarnings returns warnings about potentially problematic capability combinations.
