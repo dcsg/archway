@@ -2,10 +2,32 @@ package scaffold
 
 import (
 	"fmt"
+	"os/exec"
+	"runtime"
 	"strings"
 
 	"gopkg.in/yaml.v3"
 )
+
+// detectedGoVersion returns the major.minor Go version from the system.
+// It tries `go env GOVERSION` first, then falls back to runtime.Version().
+func detectedGoVersion() string {
+	if out, err := exec.Command("go", "env", "GOVERSION").Output(); err == nil {
+		v := strings.TrimSpace(string(out))
+		v = strings.TrimPrefix(v, "go")
+		parts := strings.SplitN(v, ".", 3)
+		if len(parts) >= 2 {
+			return parts[0] + "." + parts[1]
+		}
+		return v
+	}
+	v := strings.TrimPrefix(runtime.Version(), "go")
+	parts := strings.SplitN(v, ".", 3)
+	if len(parts) >= 2 {
+		return parts[0] + "." + parts[1]
+	}
+	return v
+}
 
 type Manifest struct {
 	Name        string               `yaml:"name" json:"name"`
@@ -48,11 +70,15 @@ func (m *Manifest) Defaults() map[string]interface{} {
 		if variable.Default == "" {
 			continue
 		}
+		d := variable.Default
+		if d == "auto" && variable.Name == "GoVersion" {
+			d = detectedGoVersion()
+		}
 		switch variable.Type {
 		case "bool":
-			out[variable.Name] = strings.EqualFold(variable.Default, "true")
+			out[variable.Name] = strings.EqualFold(d, "true")
 		default:
-			out[variable.Name] = variable.Default
+			out[variable.Name] = d
 		}
 	}
 	return out
