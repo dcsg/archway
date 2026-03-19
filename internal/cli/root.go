@@ -7,6 +7,7 @@ import (
 
 	// Register language providers via init() so they're available via provider.Get().
 	_ "github.com/dcsg/archway/providers/golang"
+	_ "github.com/dcsg/archway/providers/typescript"
 )
 
 var (
