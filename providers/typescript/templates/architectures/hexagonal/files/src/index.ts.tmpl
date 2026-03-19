@@ -1,0 +1,22 @@
+/**
+ * {{.ServiceName}} — entry point
+ *
+ * Wire dependencies here and start transport(s).
+ * Add the 'bootstrap' capability for structured dependency injection,
+ * 'platform' for config and logging, and 'http-api' for an HTTP server.
+ */
+
+async function main(): Promise<void> {
+  console.log('{{.ServiceName}} starting...')
+
+  // TODO: Wire your dependencies and start transports here.
+  // Example with capabilities:
+  //   import { createServer } from './transport/http/server.js'
+  //   const server = await createServer()
+  //   await server.listen()
+}
+
+main().catch((err: unknown) => {
+  console.error('Fatal error:', err)
+  process.exit(1)
+})

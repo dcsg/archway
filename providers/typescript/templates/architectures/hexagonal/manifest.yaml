@@ -1,0 +1,29 @@
+name: hexagonal
+description: "Hexagonal (Ports & Adapters) architecture — domain-centric with strict dependency direction"
+language: typescript
+variables:
+  - name: ServiceName
+    type: string
+    required: true
+    description: "Name of the service"
+  - name: PackageName
+    type: string
+    required: true
+    description: "npm package name (e.g. my-api or @acme/my-api)"
+  - name: NodeVersion
+    type: string
+    default: "20"
+    description: "Node.js major version"
+components:
+  - name: domain
+    in: ["src/domain/**"]
+    may_depend_on: []
+  - name: application
+    in: ["src/application/**"]
+    may_depend_on: [domain]
+  - name: infrastructure
+    in: ["src/infrastructure/**"]
+    may_depend_on: [domain, application]
+  - name: transport
+    in: ["src/transport/**"]
+    may_depend_on: [domain, application, infrastructure]

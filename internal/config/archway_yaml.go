@@ -244,6 +244,10 @@ func DefaultArchwayConfig(language, architecture string) *ArchwayConfig {
 		},
 	}
 
+	if language == "typescript" {
+		return defaultTypeScriptConfig(cfg, architecture)
+	}
+
 	switch architecture {
 	case "flat":
 		cfg.Components = nil
@@ -268,5 +272,29 @@ func DefaultArchwayConfig(language, architecture string) *ArchwayConfig {
 		cfg.Templates = TemplateSourceConfig{Source: "archway/api"}
 	}
 
+	return cfg
+}
+
+func defaultTypeScriptConfig(cfg *ArchwayConfig, architecture string) *ArchwayConfig {
+	switch architecture {
+	case "flat":
+		cfg.Components = nil
+		cfg.Rules.Structure = StructureConfig{
+			ForbiddenDirs: []string{"utils/", "helpers/"},
+		}
+		cfg.Templates = TemplateSourceConfig{Source: "archway/typescript/flat"}
+	default: // hexagonal
+		cfg.Components = []Component{
+			{Name: "domain", In: []string{"src/domain/**"}, MayDependOn: []string{}},
+			{Name: "application", In: []string{"src/application/**"}, MayDependOn: []string{"domain"}},
+			{Name: "infrastructure", In: []string{"src/infrastructure/**"}, MayDependOn: []string{"domain", "application"}},
+			{Name: "transport", In: []string{"src/transport/**"}, MayDependOn: []string{"domain", "application", "infrastructure"}},
+		}
+		cfg.Rules.Structure = StructureConfig{
+			RequiredDirs:  []string{"src/domain/", "src/application/", "src/infrastructure/", "src/transport/"},
+			ForbiddenDirs: []string{"utils/", "helpers/"},
+		}
+		cfg.Templates = TemplateSourceConfig{Source: "archway/typescript/hexagonal"}
+	}
 	return cfg
 }

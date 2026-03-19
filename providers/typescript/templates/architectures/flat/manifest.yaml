@@ -1,0 +1,16 @@
+name: flat
+description: "Flat structure for simple services and scripts"
+language: typescript
+variables:
+  - name: ServiceName
+    type: string
+    required: true
+    description: "Name of the service"
+  - name: PackageName
+    type: string
+    required: true
+    description: "npm package name"
+  - name: NodeVersion
+    type: string
+    default: "20"
+    description: "Node.js major version"

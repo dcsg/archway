@@ -1,0 +1,14 @@
+/**
+ * {{.ServiceName}} — entry point
+ */
+
+async function main(): Promise<void> {
+  console.log('{{.ServiceName}} starting...')
+
+  // TODO: Add your service logic here.
+}
+
+main().catch((err: unknown) => {
+  console.error('Fatal error:', err)
+  process.exit(1)
+})
