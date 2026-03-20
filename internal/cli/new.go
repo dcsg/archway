@@ -169,10 +169,16 @@ func runNew(ctx context.Context, opts *newCommandOptions) error {
 
 	fmt.Println("\nNext steps:")
 	fmt.Printf("  cd %s\n", filepath.Join(opts.OutputDir, opts.Name))
-	if template == "flat" || opts.Architecture == "flat" {
-		fmt.Println("  go run .")
-	} else {
-		fmt.Printf("  go run ./cmd/%s\n", opts.Name)
+	switch opts.Language {
+	case "typescript":
+		fmt.Println("  npm install")
+		fmt.Println("  npm run dev")
+	default: // go
+		if template == "flat" || opts.Architecture == "flat" {
+			fmt.Println("  go run .")
+		} else {
+			fmt.Printf("  go run ./cmd/%s\n", opts.Name)
+		}
 	}
 	fmt.Println("\nTip: Run 'keel:init' to set up AI-powered development guardrails.")
 
@@ -189,8 +195,11 @@ func printEquivalentCommand(opts *newCommandOptions) {
 	if opts.Capabilities != "" {
 		parts = append(parts, "--cap", opts.Capabilities)
 	}
-	if opts.ModulePath != "" {
+	if opts.ModulePath != "" && opts.Language != "typescript" {
 		parts = append(parts, "--module", opts.ModulePath)
+	}
+	if opts.Language != "" && opts.Language != "go" {
+		parts = append(parts, "--language", opts.Language)
 	}
 	parts = append(parts, "--no-wizard")
 	fmt.Printf("\nEquivalent command:\n  %s\n", strings.Join(parts, " "))
