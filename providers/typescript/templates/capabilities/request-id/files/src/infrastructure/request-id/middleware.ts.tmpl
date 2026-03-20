@@ -1,0 +1,34 @@
+import { randomUUID } from 'node:crypto'
+import { runWithRequestId } from './context.js'
+{{- if eq .HttpFramework "express"}}
+import type { Request, Response, NextFunction } from 'express'
+
+export function requestIdMiddleware(req: Request, res: Response, next: NextFunction): void {
+  const requestId = (req.headers['x-request-id'] as string | undefined) ?? randomUUID()
+  res.setHeader('x-request-id', requestId)
+  runWithRequestId(requestId, next)
+}
+{{- end}}
+{{- if eq .HttpFramework "fastify"}}
+import type { FastifyRequest, FastifyReply, HookHandlerDoneFunction } from 'fastify'
+
+export function requestIdHook(
+  req: FastifyRequest,
+  reply: FastifyReply,
+  done: HookHandlerDoneFunction,
+): void {
+  const requestId = (req.headers['x-request-id'] as string | undefined) ?? req.id
+  void reply.header('x-request-id', requestId)
+  runWithRequestId(requestId, done)
+}
+{{- end}}
+{{- if eq .HttpFramework "hono"}}
+import type { MiddlewareHandler } from 'hono'
+
+export const requestIdMiddleware: MiddlewareHandler = async (c, next) => {
+  const requestId = c.req.header('x-request-id') ?? randomUUID()
+  c.res.headers.set('x-request-id', requestId)
+  await new Promise<void>((resolve) => runWithRequestId(requestId, resolve))
+  await next()
+}
+{{- end}}

@@ -1,0 +1,4 @@
+name: graceful
+description: "SIGTERM/SIGINT handler with registered shutdown hooks and 30s timeout"
+suggests:
+  - http-api

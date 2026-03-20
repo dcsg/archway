@@ -1,0 +1,64 @@
+services:
+  {{.ServiceName}}:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      PORT: "3000"
+      LOG_LEVEL: debug
+    restart: unless-stopped
+{{- if .HasPostgreSQL}}
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: {{.ServiceName}}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+{{- end}}
+{{- if .HasMySQL}}
+
+  mysql:
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: {{.ServiceName}}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+{{- end}}
+{{- if .HasRedis}}
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+{{- end}}
+{{- if .HasMongoDB}}
+
+  mongodb:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+{{- end}}
+{{- if or .HasPostgreSQL .HasMySQL .HasMongoDB}}
+
+volumes:
+{{- if .HasPostgreSQL}}
+  postgres_data:
+{{- end}}
+{{- if .HasMySQL}}
+  mysql_data:
+{{- end}}
+{{- if .HasMongoDB}}
+  mongo_data:
+{{- end}}
+{{- end}}

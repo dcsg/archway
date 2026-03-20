@@ -9,21 +9,15 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "lint": "eslint . --ext .ts",
-    "lint:fix": "eslint . --ext .ts --fix",
-    "format": "prettier --write \"src/**/*.ts\"",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
   },
   "engines": {
     "node": ">={{.NodeVersion}}.0.0"
   },
+  "dependencies": {},
   "devDependencies": {
     "@types/node": "^{{.NodeVersion}}",
-    "@typescript-eslint/eslint-plugin": "^8",
-    "@typescript-eslint/parser": "^8",
-    "eslint": "^9",
-    "prettier": "^3",
     "tsx": "^4",
     "typescript": "^5",
     "vitest": "^2"

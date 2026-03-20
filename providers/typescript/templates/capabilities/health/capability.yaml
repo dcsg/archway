@@ -1,0 +1,4 @@
+name: health
+description: "GET /healthz and GET /readyz endpoints for orchestrator readiness probes"
+requires:
+  - http-api

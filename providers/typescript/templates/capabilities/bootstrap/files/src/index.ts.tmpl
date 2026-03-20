@@ -1,0 +1,56 @@
+{{- if .HasPlatform}}
+import { logger, config } from './infrastructure/platform/index.js'
+{{- end}}
+{{- if .HasHTTP}}
+import { createServer } from './transport/http/server.js'
+{{- end}}
+{{- if .HasGraceful}}
+import { createShutdownManager } from './infrastructure/graceful/shutdown.js'
+{{- end}}
+
+async function main(): Promise<void> {
+  {{- if .HasPlatform}}
+  logger.info({ env: config.NODE_ENV }, '{{.ServiceName}} starting')
+  {{- else}}
+  console.log('{{.ServiceName}} starting')
+  {{- end}}
+
+  {{- if .HasGraceful}}
+  const shutdown = createShutdownManager()
+  {{- end}}
+
+  {{- if .HasHTTP}}
+  {{- if .HasPlatform}}
+  const server = await createServer({ logger, config })
+  {{- else}}
+  const server = await createServer()
+  {{- end}}
+  {{- if .HasGraceful}}
+  shutdown.register('http-server', () => server.close())
+  {{- end}}
+  {{- if .HasPlatform}}
+  const port = config.PORT
+  {{- else}}
+  const port = Number(process.env['PORT'] ?? 3000)
+  {{- end}}
+  await server.listen(port)
+  {{- if .HasPlatform}}
+  logger.info({ port }, 'server listening')
+  {{- else}}
+  console.log(`server listening on port ${port}`)
+  {{- end}}
+  {{- end}}
+
+  {{- if .HasGraceful}}
+  await shutdown.waitForSignal()
+  {{- end}}
+}
+
+main().catch((err: unknown) => {
+  {{- if .HasPlatform}}
+  logger.error({ err }, 'fatal error')
+  {{- else}}
+  console.error('Fatal error:', err)
+  {{- end}}
+  process.exit(1)
+})

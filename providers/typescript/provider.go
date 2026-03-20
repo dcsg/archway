@@ -117,6 +117,13 @@ func (p *TypeScriptProvider) Scaffold(_ context.Context, req provider.ScaffoldRe
 	}
 	archwayBytes, _ := os.ReadFile(archwayPath)
 
+	// Inject capability-specific npm dependencies into package.json.
+	if len(capabilities) > 0 {
+		if err := injectPackageDependencies(req.OutputDir, capabilities, req.Options); err != nil {
+			return nil, fmt.Errorf("inject package dependencies: %w", err)
+		}
+	}
+
 	files := append([]string{}, renderResult.FilesCreated...)
 	files = append(files, archwayPath)
 

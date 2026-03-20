@@ -1,0 +1,2 @@
+name: testing
+description: "Vitest config with coverage and test helper utilities"

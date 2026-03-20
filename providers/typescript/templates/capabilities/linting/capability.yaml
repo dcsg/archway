@@ -1,0 +1,2 @@
+name: linting
+description: "Strict ESLint + Prettier — @typescript-eslint/recommended with type-aware rules"

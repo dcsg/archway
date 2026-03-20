@@ -1,0 +1,46 @@
+type ShutdownHook = () => Promise<void> | void
+
+interface ShutdownManager {
+  register(name: string, hook: ShutdownHook): void
+  waitForSignal(): Promise<void>
+}
+
+export function createShutdownManager(timeoutMs = 30_000): ShutdownManager {
+  const hooks: Array<{ name: string; fn: ShutdownHook }> = []
+
+  return {
+    register(name: string, hook: ShutdownHook): void {
+      hooks.push({ name, fn: hook })
+    },
+
+    waitForSignal(): Promise<void> {
+      return new Promise((resolve) => {
+        const shutdown = (signal: string) => {
+          console.log(`\nReceived ${signal}, shutting down gracefully...`)
+
+          const timeout = setTimeout(() => {
+            console.error('Shutdown timed out, forcing exit')
+            process.exit(1)
+          }, timeoutMs)
+
+          Promise.allSettled(
+            hooks.map(async ({ name, fn }) => {
+              try {
+                await fn()
+              } catch (err) {
+                console.error(`Shutdown hook "${name}" failed:`, err)
+              }
+            }),
+          ).then(() => {
+            clearTimeout(timeout)
+            console.log('Shutdown complete')
+            resolve()
+          })
+        }
+
+        process.once('SIGTERM', () => shutdown('SIGTERM'))
+        process.once('SIGINT', () => shutdown('SIGINT'))
+      })
+    },
+  }
+}

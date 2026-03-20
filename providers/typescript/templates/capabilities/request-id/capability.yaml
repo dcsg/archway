@@ -1,0 +1,4 @@
+name: request-id
+description: "UUID per request via AsyncLocalStorage — propagated across the full call chain"
+requires:
+  - http-api

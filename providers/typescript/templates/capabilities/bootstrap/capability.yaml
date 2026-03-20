@@ -1,0 +1,4 @@
+name: bootstrap
+description: "Thin index.ts with explicit dependency wiring — composition root pattern"
+suggests:
+  - platform

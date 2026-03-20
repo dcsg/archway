@@ -1,0 +1,2 @@
+name: docker
+description: "Multi-stage Dockerfile (build + production) and docker-compose for local dev"

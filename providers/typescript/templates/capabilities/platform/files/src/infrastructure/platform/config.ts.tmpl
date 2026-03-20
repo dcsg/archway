@@ -1,0 +1,10 @@
+import { cleanEnv, str, num, bool } from 'envalid'
+
+export const config = cleanEnv(process.env, {
+  NODE_ENV: str({ choices: ['development', 'production', 'test'], default: 'development' }),
+  PORT: num({ default: 3000 }),
+  LOG_LEVEL: str({ default: 'info' }),
+  SHUTDOWN_TIMEOUT_MS: num({ default: 30_000 }),
+})
+
+export type Config = typeof config

@@ -1,0 +1,5 @@
+name: platform
+description: "Config loading, structured logging (pino), and lifecycle management"
+suggests:
+  - bootstrap
+  - observability

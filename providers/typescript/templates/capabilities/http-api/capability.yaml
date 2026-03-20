@@ -1,0 +1,15 @@
+name: http-api
+description: "HTTP API server — Express, Fastify, or Hono"
+variables:
+  - name: HttpFramework
+    type: string
+    default: "express"
+    description: "HTTP framework"
+    choices: ["express", "fastify", "hono"]
+suggests:
+  - health
+  - request-id
+  - platform
+  - graceful
+  - cors
+  - validation

@@ -1,0 +1,66 @@
+{{- if eq .HttpFramework "express"}}
+import { Router } from 'express'
+
+export const healthRouter = Router()
+
+let ready = false
+
+// Call this once your service is fully initialised.
+export function setReady(state: boolean): void {
+  ready = state
+}
+
+// Liveness probe — is the process alive?
+healthRouter.get('/healthz', (_req, res) => {
+  res.json({ status: 'ok' })
+})
+
+// Readiness probe — is the service ready to accept traffic?
+healthRouter.get('/readyz', (_req, res) => {
+  if (!ready) {
+    res.status(503).json({ status: 'not ready' })
+    return
+  }
+  res.json({ status: 'ok' })
+})
+{{- end}}
+{{- if eq .HttpFramework "fastify"}}
+import type { FastifyInstance } from 'fastify'
+
+let ready = false
+
+export function setReady(state: boolean): void {
+  ready = state
+}
+
+export async function healthRoutes(app: FastifyInstance): Promise<void> {
+  app.get('/healthz', async () => ({ status: 'ok' }))
+
+  app.get('/readyz', async (_req, reply) => {
+    if (!ready) {
+      return reply.status(503).send({ status: 'not ready' })
+    }
+    return { status: 'ok' }
+  })
+}
+{{- end}}
+{{- if eq .HttpFramework "hono"}}
+import { Hono } from 'hono'
+
+export const healthRoutes = new Hono()
+
+let ready = false
+
+export function setReady(state: boolean): void {
+  ready = state
+}
+
+healthRoutes.get('/healthz', (c) => c.json({ status: 'ok' }))
+
+healthRoutes.get('/readyz', (c) => {
+  if (!ready) {
+    return c.json({ status: 'not ready' }, 503)
+  }
+  return c.json({ status: 'ok' })
+})
+{{- end}}
